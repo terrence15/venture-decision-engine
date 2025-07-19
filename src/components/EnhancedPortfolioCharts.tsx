@@ -152,21 +152,23 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topInvestments} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+              <BarChart data={topInvestments} margin={{ top: 10, right: 10, left: 10, bottom: 40 }}>
                 <XAxis 
                   dataKey="name" 
                   angle={-45}
                   textAnchor="end"
-                  height={60}
-                  fontSize={10}
+                  height={50}
+                  fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
+                  interval={0}
                 />
                 <YAxis 
-                  fontSize={10}
+                  fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
-                  label={{ value: 'Investment ($M)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                  width={40}
+                  label={{ value: '$M', angle: 0, position: 'insideTopLeft', style: { textAnchor: 'middle' } }}
                 />
-                <Bar dataKey="investment" radius={[4, 4, 0, 0]} stroke="hsl(var(--border))" strokeWidth={1} />
+                <Bar dataKey="investment" radius={[2, 2, 0, 0]} stroke="hsl(var(--border))" strokeWidth={1} />
                 <ChartTooltip content={<CustomTooltip />} />
               </BarChart>
             </ResponsiveContainer>
@@ -185,22 +187,23 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart data={scatterData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <ScatterChart data={scatterData} margin={{ top: 10, right: 10, left: 40, bottom: 30 }}>
                 <XAxis 
                   type="number" 
                   dataKey="x" 
                   name="Investment"
-                  fontSize={10}
+                  fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
-                  label={{ value: 'Investment ($M)', position: 'insideBottom', offset: -10 }}
+                  label={{ value: 'Investment ($M)', position: 'insideBottom', offset: -5, style: { fontSize: '10px' } }}
                 />
                 <YAxis 
                   type="number" 
                   dataKey="y" 
                   name="MOIC"
-                  fontSize={10}
+                  fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
-                  label={{ value: 'MOIC (x)', angle: -90, position: 'insideLeft' }}
+                  width={35}
+                  label={{ value: 'MOIC', angle: -90, position: 'insideLeft', style: { fontSize: '10px' } }}
                 />
                 <Scatter fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" strokeWidth={1} />
                 <ChartTooltip content={<CustomTooltip />} />
