@@ -63,7 +63,10 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     }).format(amount);
   };
 
-  const formatPercentage = (value: number) => {
+  const formatPercentage = (value: number | null | undefined) => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return 'N/A';
+    }
     return `${value.toFixed(1)}%`;
   };
 
