@@ -24,30 +24,33 @@ export async function getEnhancedCompanyData(
 
 Research this company using external sources like:
 - Crunchbase for funding and executive data
-- LinkedIn for management team information
+- LinkedIn for management team information  
 - Company website and press releases
 - Industry reports and news coverage
 - Financial databases and SEC filings if public
+- PitchBook for market positioning and exit comps
+- Product Hunt, app stores, and customer review sites
+- Social media and hiring trends
 
 Provide your analysis in the following JSON format:
 {
-  "ceoName": "Full name of the CEO",
+  "ceoName": "Full name of the current CEO",
   "ceoExperience": "Years of professional experience as integer",
   "managementScore": "Score 0-100 based on team experience, track record, and industry reputation",
   "overallRiskScore": "Score 0-100 where 100 is highest risk, based on market, financial, and operational factors",
   "marketRiskScore": "Score 0-100 for market-specific risks in their industry",
-  "keyStrengths": ["List of 3-4 key company/team strengths"],
-  "riskFactors": ["List of 3-4 specific risk factors"],
-  "recommendation": "One of: Reinvest, Hold, Exit, Monitor",
-  "reasoning": "2-3 sentences explaining the recommendation based on research",
-  "currentValuation": "Estimated current valuation in USD as integer",
+  "keyStrengths": ["List of 3-4 key company/team strengths based on research"],
+  "riskFactors": ["List of 3-4 specific risk factors based on research"],
+  "recommendation": "One of: Reinvest, Hold, Exit, Monitor, Double Down",
+  "reasoning": "2-3 sentences explaining the recommendation based on external research",
+  "currentValuation": "Estimated current valuation in USD as integer (latest round or estimated)",
   "totalReturn": "Estimated total return in USD as integer (can be negative)",
   "lastFundingDate": "Most recent funding date in YYYY-MM-DD format or 'Unknown'",
-  "industryCategory": "Primary industry category",
-  "fundingStage": "Current funding stage (Seed, Series A, Series B, etc.)"
+  "industryCategory": "Primary industry category (e.g., FinTech, HealthTech, SaaS, etc.)",
+  "fundingStage": "Current funding stage (Pre-Seed, Seed, Series A, Series B, etc.)"
 }
 
-Be thorough in your research and provide realistic, data-driven assessments.`;
+Be thorough in your research and provide realistic, data-driven assessments. If you cannot find specific information, use reasonable estimates based on similar companies in the industry and stage.`;
 
   try {
     console.log(`Fetching enhanced data for ${companyName} using GPT-4.1...`);
@@ -63,7 +66,7 @@ Be thorough in your research and provide realistic, data-driven assessments.`;
         messages: [
           {
             role: 'system',
-            content: 'You are an experienced venture capital research analyst with access to comprehensive business databases and market intelligence. Provide thorough, accurate research-based analysis.'
+            content: 'You are an experienced venture capital research analyst with access to comprehensive business databases and market intelligence. Provide thorough, accurate research-based analysis using multiple credible sources.'
           },
           {
             role: 'user',
@@ -88,7 +91,7 @@ Be thorough in your research and provide realistic, data-driven assessments.`;
       throw new Error('No response content received from OpenAI');
     }
 
-    console.log(`Raw response for ${companyName}:`, content);
+    console.log(`Raw enhanced response for ${companyName}:`, content);
 
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -98,7 +101,7 @@ Be thorough in your research and provide realistic, data-driven assessments.`;
     }
 
     const analysis = JSON.parse(jsonMatch[0]);
-    console.log(`Parsed analysis for ${companyName}:`, analysis);
+    console.log(`Parsed enhanced analysis for ${companyName}:`, analysis);
     
     const result = {
       ceoName: analysis.ceoName || 'CEO TBD',

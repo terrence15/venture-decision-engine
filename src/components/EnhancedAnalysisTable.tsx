@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, ChevronUp, Download, RefreshCw, ArrowUpDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,7 +84,9 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing, onCom
       'Hold': 'bg-green-100 text-green-800 border-green-300',
       'Reinvest': 'bg-blue-100 text-blue-800 border-blue-300',
       'Exit': 'bg-red-100 text-red-800 border-red-300',
-      'Monitor': 'bg-yellow-100 text-yellow-800 border-yellow-300'
+      'Monitor': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'Double Down': 'bg-purple-100 text-purple-800 border-purple-300',
+      'Decline': 'bg-gray-100 text-gray-800 border-gray-300'
     };
     
     return (
@@ -102,12 +103,13 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing, onCom
     if (amount === null || amount === undefined || isNaN(amount)) {
       return 'N/A';
     }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(1)}K`;
+    } else {
+      return `$${amount.toLocaleString()}`;
+    }
   };
 
   const formatPercentage = (value: number | null | undefined) => {
@@ -356,7 +358,6 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing, onCom
                               </div>
                             </div>
                             
-                            {/* Enhanced Executive Info */}
                             <div>
                               <h4 className="font-semibold text-sm text-muted-foreground mb-2">Leadership</h4>
                               <div className="grid grid-cols-2 gap-3 text-sm">

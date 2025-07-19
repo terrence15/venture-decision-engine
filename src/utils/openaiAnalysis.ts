@@ -1,3 +1,4 @@
+
 interface CompanyData {
   id: string;
   companyName: string;
@@ -28,20 +29,22 @@ export async function analyzeCompanyWithOpenAI(
   company: CompanyData, 
   apiKey: string
 ): Promise<AnalysisResult> {
-  // Check for insufficient data (fail-safe logic)
+  // Enhanced fail-safe logic based on your specifications
   const criticalFields = [
-    company.moic,
-    company.revenueGrowth,
-    company.burnMultiple || company.runway,
-    company.tam,
-    company.exitActivity,
-    company.additionalInvestmentRequested
+    { field: 'moic', value: company.moic },
+    { field: 'revenueGrowth', value: company.revenueGrowth },
+    { field: 'burnMultiple', value: company.burnMultiple },
+    { field: 'runway', value: company.runway },
+    { field: 'tam', value: company.tam },
+    { field: 'exitActivity', value: company.exitActivity },
+    { field: 'additionalInvestmentRequested', value: company.additionalInvestmentRequested }
   ];
   
   const missingCriticalData = criticalFields.filter(field => 
-    field === null || field === undefined || field === ''
+    field.value === null || field.value === undefined || field.value === '' || field.value === 0
   ).length;
   
+  // Fail-safe: If 2+ critical fields are missing, return standardized fallback
   if (missingCriticalData >= 2) {
     return {
       recommendation: 'Insufficient data to assess',
@@ -55,8 +58,9 @@ export async function analyzeCompanyWithOpenAI(
     };
   }
 
-  const prompt = `You are a venture capital investor evaluating whether to approve an additional capital request from a portfolio company. Use the provided performance, market, valuation, and competitive data to make an informed investment decision.
+  const prompt = `You are a venture capital investor making live recommendations. You must integrate internal Excel data with verified external market signals in every field — not as a separate section, but within the body of reasoning and risk evaluation.
 
+COMPANY ANALYSIS DATA:
 Company: ${company.companyName}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
@@ -69,22 +73,58 @@ Exit Activity in Sector: ${company.exitActivity}
 Barrier to Entry: ${company.barrierToEntry}/5
 Additional Investment Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
 
-You must integrate internal Excel data with verified external market signals. Research this company using external sources like Crunchbase, LinkedIn, TechCrunch, and other credible business intelligence sources.
+RESEARCH REQUIREMENTS:
+You must conduct independent external research for each company using verified third-party sources:
+- Crunchbase (funding rounds, investor quality, valuation signals)
+- LinkedIn (hiring trends, team growth, leadership changes)
+- TechCrunch, VentureBeat (funding news, product launches, market coverage)
+- PitchBook (exit comps, market positioning)
+- Glassdoor (employee sentiment, organizational health)
+- Company blog/press releases (strategic updates, partnerships)
 
+SCORING WEIGHTS (for internal model calibration):
+- Implied MOIC: 20%
+- TTM Revenue Growth: 15% 
+- Burn Multiple: 15%
+- Runway Post-Investment: 10%
+- Exit Activity in Sector: 10%
+- TAM: 10%
+- Barrier to Entry: 10%
+- Fund Dilution Exposure: 10%
+
+UPSIDE SIGNAL GUIDELINES:
+- TTM Revenue Growth > 50% YoY = Strong signal
+- TAM Score 4-5 = Large/Expanding market
+- Exit Activity "High" or "Moderate + recent comps" = Favorable
+- MOIC > 1.7x = Attractive
+- Burn Multiple < 1.5x = Efficient
+- Barrier to Entry ≥ 4 = Defensible moat
+
+DOWNSIDE RISK GUIDELINES:
+- Burn Multiple > 2.5x = Inefficient
+- Runway < 6 months = Concerning
+- Exit Activity "Low" with no peer comps = Weak
+- TTM Growth < 25% YoY = Weak
+- Equity Stake < 5% = Dilution risk
+
+OUTPUT INSTRUCTIONS:
 Provide your analysis in the following JSON format:
+
 {
-  "recommendation": "Specific capital amount decision (e.g., 'Invest $250K of $1M request', 'Decline', 'Bridge Capital Only - $500K')",
+  "recommendation": "Specific capital amount decision (e.g., 'Invest $250K of $1M request', 'Invest full $500K', 'Bridge Capital Only - $150K', 'Decline')",
   "timingBucket": "One of: Double Down, Reinvest (3-12 Months), Hold (3-6 Months), Bridge Capital Only, Exit Opportunistically, Decline",
-  "reasoning": "2-4 sentences combining internal performance data with external market validation. Start with internal performance, follow with external signals, then flag downside risks, end with investment logic.",
+  "reasoning": "2-4 sentences combining internal performance data with external market validation. Structure: Start with internal performance stat (ARR, growth, burn) → Follow with external validation (funding, hiring, product reviews, investor quality) → Flag downside risks (runway, competition, market) → End with investment logic",
   "confidence": "Integer 1-5 where 5=complete internal+strong external validation, 3=solid internal but mixed external, 1=missing data",
-  "keyRisks": "1-2 sentences highlighting the most material threat, including at least one external-facing risk",
-  "suggestedAction": "1 tactical sentence with specific next step for the investment team",
+  "keyRisks": "1-2 sentences highlighting the most material threat, including at least one external-facing risk (competitor activity, hiring slowdown, category saturation, etc.)",
+  "suggestedAction": "1 tactical sentence with specific next step: request updated CAC/LTV, monitor hiring funnel, diligence Series B interest, review cohort retention, etc.",
   "externalSources": "Brief list of research sources used (e.g., 'Crunchbase (funding data), LinkedIn (hiring trends), TechCrunch coverage')"
 }
 
-Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasibility, and downside protection. Be objective and data-driven.`;
+CRITICAL: Each field must cite at least one internal and one external insight — fully blended in the reasoning. Think like a VC partner prioritizing growth-adjusted capital efficiency, exit feasibility, and downside risk.`;
 
   try {
+    console.log(`Analyzing ${company.companyName} with enhanced AI prompting...`);
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -96,20 +136,21 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
         messages: [
           {
             role: 'system',
-            content: 'You are an experienced venture capital investor with deep expertise in portfolio management and capital allocation decisions. Provide objective, data-driven investment recommendations.'
+            content: 'You are an experienced venture capital investor with deep expertise in portfolio management and capital allocation decisions. You have access to comprehensive business databases and market intelligence. Provide thorough, research-backed investment recommendations that integrate internal performance data with external market signals.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.3,
-        max_tokens: 1000,
+        temperature: 0.2,
+        max_tokens: 2000,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('OpenAI API Error:', errorData);
       throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 
@@ -120,13 +161,17 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
       throw new Error('No response content received from OpenAI');
     }
 
+    console.log(`Raw AI response for ${company.companyName}:`, content);
+
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error('Could not extract JSON from response:', content);
       throw new Error('Could not parse JSON response from OpenAI');
     }
 
     const analysis = JSON.parse(jsonMatch[0]);
+    console.log(`Parsed analysis for ${company.companyName}:`, analysis);
     
     return {
       recommendation: analysis.recommendation || 'Analysis incomplete',
@@ -140,7 +185,7 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
     };
 
   } catch (error) {
-    console.error('OpenAI API Error:', error);
+    console.error(`OpenAI API Error for ${company.companyName}:`, error);
     throw new Error(error instanceof Error ? error.message : 'Failed to analyze company data');
   }
 }
@@ -154,10 +199,13 @@ export async function analyzePortfolio(
   
   for (let i = 0; i < companies.length; i++) {
     const company = companies[i];
-    onProgress?.(((i + 1) / companies.length) * 100);
+    const progress = ((i + 1) / companies.length) * 100;
+    onProgress?.(progress);
     
     try {
+      console.log(`Analyzing company ${i + 1}/${companies.length}: ${company.companyName}`);
       const analysis = await analyzeCompanyWithOpenAI(company, apiKey);
+      
       results.push({
         ...company,
         recommendation: analysis.recommendation,
@@ -170,8 +218,8 @@ export async function analyzePortfolio(
         insufficientData: analysis.insufficientData
       } as any);
       
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1500));
     } catch (error) {
       console.error(`Failed to analyze ${company.companyName}:`, error);
       results.push({

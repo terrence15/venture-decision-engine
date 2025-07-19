@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
 import { EnhancedCompanyData } from '@/types/portfolio';
@@ -21,8 +22,19 @@ interface EnhancedPortfolioChartsProps {
   companies: EnhancedCompanyData[];
 }
 
+// Fixed color palette for recommendations
+const RECOMMENDATION_COLORS = {
+  'Reinvest': '#10b981',
+  'Hold': '#3b82f6', 
+  'Exit': '#ef4444',
+  'Monitor': '#f59e0b',
+  'Double Down': '#8b5cf6',
+  'Decline': '#6b7280',
+  'Pending': '#64748b'
+};
+
 export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsProps) {
-  // Recommendation distribution data
+  // Recommendation distribution data with proper colors
   const recommendationCounts = companies.reduce((acc, company) => {
     const rec = company.recommendation || 'Pending';
     acc[rec] = (acc[rec] || 0) + 1;
@@ -32,10 +44,7 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
   const pieData = Object.entries(recommendationCounts).map(([name, count]) => ({
     name,
     count,
-    fill: name === 'Reinvest' ? '#10b981' : 
-          name === 'Hold' ? '#3b82f6' : 
-          name === 'Exit' ? '#ef4444' : 
-          name === 'Monitor' ? '#f59e0b' : '#6b7280'
+    fill: RECOMMENDATION_COLORS[name as keyof typeof RECOMMENDATION_COLORS] || RECOMMENDATION_COLORS.Pending
   }));
 
   // Top investments data
@@ -49,13 +58,14 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
       investment: Number((company.totalInvestment / 1000000).toFixed(1))
     }));
 
-  // Investment vs Returns scatter data
+  // Investment vs Returns scatter data with company names
   const scatterData = companies
     .filter(company => company.moic && company.totalInvestment)
     .map(company => ({
       x: Number((company.totalInvestment / 1000000).toFixed(1)),
       y: company.moic,
-      name: company.companyName
+      companyName: company.companyName,
+      name: company.companyName // Add name for tooltip
     }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -69,6 +79,24 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
               {entry.name === 'investment' ? 'M' : entry.name === 'y' ? 'x' : ''}
             </p>
           ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const ScatterTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-lg p-2 shadow-lg">
+          <p className="font-medium text-foreground text-sm">{data.companyName}</p>
+          <p className="text-xs text-muted-foreground">
+            Investment: ${data.x}M
+          </p>
+          <p className="text-xs text-muted-foreground">
+            MOIC: {data.y}x
+          </p>
         </div>
       );
     }
@@ -202,7 +230,7 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
                   strokeWidth={1}
                   r={4}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<ScatterTooltip />} />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
