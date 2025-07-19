@@ -145,8 +145,23 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
           throw new Error('Excel file must contain at least a header row and one data row');
         }
         
-        // Extract headers (first row)
-        const headers = jsonData[0] as string[];
+        // Find the actual header row (look through first 5 rows for the row with most filled cells)
+        let headerRowIndex = 0;
+        let maxFilledCells = 0;
+        
+        for (let i = 0; i < Math.min(5, jsonData.length); i++) {
+          const row = jsonData[i] as any[];
+          const filledCells = row.filter(cell => cell && typeof cell === 'string' && cell.trim().length > 0).length;
+          if (filledCells > maxFilledCells) {
+            maxFilledCells = filledCells;
+            headerRowIndex = i;
+          }
+        }
+        
+        console.log(`Using row ${headerRowIndex + 1} as header row`);
+        
+        // Extract headers from the identified header row
+        const headers = jsonData[headerRowIndex] as string[];
         console.log('Raw headers found:', headers);
         console.log('Headers length:', headers.length);
         
@@ -170,10 +185,10 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
           throw new Error(`Could not find essential columns for: ${missingEssentials.join(', ')}. Available headers: ${headers.join(', ')}`);
         }
         
-        // Parse data rows
+        // Parse data rows (start from row after header)
         const companies: RawCompanyData[] = [];
         
-        for (let i = 1; i < jsonData.length; i++) {
+        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
           const row = jsonData[i] as any[];
           
           // Skip empty rows
