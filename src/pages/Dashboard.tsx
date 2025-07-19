@@ -27,8 +27,8 @@ export function Dashboard() {
   const [selectedCompany, setSelectedCompany] = useState<EnhancedCompanyData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [apiKey, setApiKey] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [perplexityApiKey, setPerplexityApiKey] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -131,29 +131,36 @@ export function Dashboard() {
       return;
     }
 
-    const storedApiKey = localStorage.getItem('openai_api_key');
-    if (storedApiKey) {
-      runAnalysis(storedApiKey);
+    const storedOpenaiKey = localStorage.getItem('openai_api_key');
+    const storedPerplexityKey = localStorage.getItem('perplexity_api_key');
+    
+    if (storedOpenaiKey) {
+      runAnalysis(storedOpenaiKey, storedPerplexityKey || undefined);
     } else {
       setShowApiInput(true);
     }
   };
 
-  const handleApiKeySubmit = async (apiKey: string) => {
-    localStorage.setItem('openai_api_key', apiKey);
+  const handleApiKeySubmit = async (openaiKey: string, perplexityKey?: string) => {
+    localStorage.setItem('openai_api_key', openaiKey);
+    if (perplexityKey) {
+      localStorage.setItem('perplexity_api_key', perplexityKey);
+    }
+    setApiKey(openaiKey);
+    setPerplexityApiKey(perplexityKey || '');
     setShowApiInput(false);
-    await runAnalysis(apiKey);
+    await runAnalysis(openaiKey, perplexityKey);
   };
 
-  const runAnalysis = async (apiKey: string) => {
+  const runAnalysis = async (openaiKey: string, perplexityKey?: string) => {
     setIsAnalyzing(true);
     setAnalysisProgress(0);
     
     try {
       console.log('Starting comprehensive portfolio analysis...');
       console.log('API Keys available:', {
-        openai: !!apiKey,
-        perplexity: !!perplexityApiKey
+        openai: !!openaiKey,
+        perplexity: !!perplexityKey
       });
       
       const rawCompanies = companies.map(company => ({
@@ -178,8 +185,8 @@ export function Dashboard() {
       
       const analyzedCompanies = await analyzePortfolio(
         rawCompanies, 
-        apiKey,
-        perplexityApiKey || undefined, // Pass Perplexity API key for external research
+        openaiKey,
+        perplexityKey, // Pass Perplexity API key for external research
         setAnalysisProgress
       );
       
@@ -189,7 +196,7 @@ export function Dashboard() {
       
       const fullyEnhancedCompanies = await enhanceCompaniesWithApiData(
         analyzedCompanies as EnhancedCompanyData[],
-        apiKey,
+        openaiKey,
         (current, total) => {
           const progress = Math.round((current / total) * 100);
           setAnalysisProgress(progress);
@@ -200,7 +207,7 @@ export function Dashboard() {
       setCompanies(fullyEnhancedCompanies);
       toast({
         title: "Comprehensive Analysis Complete",
-        description: `Successfully analyzed ${fullyEnhancedCompanies.length} companies with ${perplexityApiKey ? 'external research integration' : 'internal data only'}`,
+        description: `Successfully analyzed ${fullyEnhancedCompanies.length} companies with ${perplexityKey ? 'external research integration' : 'internal data only'}`,
       });
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -288,27 +295,25 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Enhanced API Key Input Section */}
+          {/* API Key Status */}
           <div className="flex flex-col sm:flex-row items-start gap-3">
             <div className="flex flex-col gap-2">
-              <Input
-                type="password"
-                placeholder="OpenAI API Key (required for analysis)"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="w-64 bg-secondary/50 border-border/50"
-              />
-              <Input
-                type="password"
-                placeholder="Perplexity API Key (optional, for external research)"
-                value={perplexityApiKey}
-                onChange={(e) => setPerplexityApiKey(e.target.value)}
-                className="w-64 bg-secondary/50 border-border/50"
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">OpenAI:</span>
+                <span className={`text-sm ${apiKey ? 'text-green-500' : 'text-muted-foreground'}`}>
+                  {apiKey ? 'Connected' : 'Not connected'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Perplexity:</span>
+                <span className={`text-sm ${perplexityApiKey ? 'text-green-500' : 'text-muted-foreground'}`}>
+                  {perplexityApiKey ? 'Connected (External Research)' : 'Not connected (Internal only)'}
+                </span>
+              </div>
             </div>
             <div className="text-xs text-muted-foreground max-w-md">
-              <p>• OpenAI API: Required for AI investment analysis</p>
-              <p>• Perplexity API: Optional, enables real-time external research from Crunchbase, LinkedIn, TechCrunch, etc.</p>
+              <p>• OpenAI: Required for AI investment analysis</p>
+              <p>• Perplexity: Optional, enables real-time research from Crunchbase, LinkedIn, TechCrunch</p>
             </div>
           </div>
 
@@ -397,19 +402,17 @@ export function Dashboard() {
               >
                 Table View
               </Button>
-              {companies.length > 0 && apiKey && (
-                <Button
-                  onClick={() => runAnalysis(apiKey)}
-                  disabled={isAnalyzing}
-                  className="bg-gradient-to-r from-accent to-primary text-white shadow-glow"
-                  size="sm"
-                >
-                  {isAnalyzing ? 
-                    `Analyzing... ${analysisProgress}%` : 
-                    `Analyze Portfolio ${perplexityApiKey ? '(+External Research)' : '(Internal Only)'}`
-                  }
-                </Button>
-              )}
+              <Button
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
+                className="bg-gradient-to-r from-accent to-primary text-white shadow-glow"
+                size="sm"
+              >
+                {isAnalyzing ? 
+                  `Analyzing... ${analysisProgress}%` : 
+                  `Analyze Portfolio`
+                }
+              </Button>
             </div>
           </div>
 
@@ -443,7 +446,7 @@ export function Dashboard() {
           {/* API Key Input Modal */}
           {showApiInput && (
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-card border border-border/50 p-6 rounded-lg max-w-md w-full mx-4 shadow-strong">
+              <div className="bg-card border border-border/50 p-6 rounded-lg max-w-lg w-full mx-4 shadow-strong">
                 <ApiKeyInput 
                   onApiKeySubmit={handleApiKeySubmit}
                   isAnalyzing={isAnalyzing}
