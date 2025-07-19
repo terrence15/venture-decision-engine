@@ -6,6 +6,7 @@ import { EnhancedAnalysisTable } from '@/components/EnhancedAnalysisTable';
 import { SearchAndFilter } from '@/components/SearchAndFilter';
 import { EnhancedPortfolioCharts } from '@/components/EnhancedPortfolioCharts';
 import { EnhancedCompanyCard } from '@/components/EnhancedCompanyCard';
+import { CompanyDetailModal } from '@/components/CompanyDetailModal';
 import { ApiKeyInput } from '@/components/ApiKeyInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,8 @@ export function Dashboard() {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<EnhancedCompanyData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [apiKey, setApiKey] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
   // Search and filter state
@@ -254,6 +257,17 @@ export function Dashboard() {
             </div>
           </div>
 
+          {/* API Key Input */}
+          <div className="flex items-center gap-3">
+            <Input
+              type="password"
+              placeholder="OpenAI API Key (for real-time data)"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="w-64 bg-secondary/50 border-border/50"
+            />
+          </div>
+
           {/* Portfolio Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
@@ -316,6 +330,7 @@ export function Dashboard() {
             <SearchAndFilter
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
+              placeholder="Search companies, industries, or CEOs..."
               selectedFilters={filters}
               onFilterChange={setFilters}
               onClearFilters={clearFilters}
@@ -346,11 +361,14 @@ export function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredCompanies.length > 0 ? (
                 filteredCompanies.map((company) => (
-                  <EnhancedCompanyCard
-                    key={company.id}
-                    company={company}
-                    onClick={() => setSelectedCompany(company)}
-                  />
+                   <EnhancedCompanyCard
+                     key={company.id}
+                     company={company}
+                     onClick={() => {
+                       setSelectedCompany(company);
+                       setIsModalOpen(true);
+                     }}
+                   />
                 ))
               ) : (
                 <div className="col-span-full text-center py-12">
@@ -383,8 +401,18 @@ export function Dashboard() {
                 </button>
               </div>
             </div>
-          )}
+           )}
         </div>
+
+        {/* Company Detail Modal */}
+        {selectedCompany && (
+          <CompanyDetailModal
+            company={selectedCompany}
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            apiKey={apiKey}
+          />
+        )}
       </main>
     </div>
   );

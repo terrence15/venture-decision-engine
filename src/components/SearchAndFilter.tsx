@@ -10,18 +10,20 @@ import { Card, CardContent } from '@/components/ui/card';
 interface SearchAndFilterProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  selectedFilters: {
+  placeholder?: string;
+  selectedFilters?: {
     recommendation: string[];
     confidence: string[];
     investmentRange: string;
   };
-  onFilterChange: (filters: any) => void;
-  onClearFilters: () => void;
+  onFilterChange?: (filters: any) => void;
+  onClearFilters?: () => void;
 }
 
 export function SearchAndFilter({
   searchTerm,
   onSearchChange,
+  placeholder = "Search companies...",
   selectedFilters,
   onFilterChange,
   onClearFilters
@@ -75,7 +77,7 @@ export function SearchAndFilter({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search companies, recommendations, or metrics..."
+                placeholder={placeholder}
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="pl-10"
