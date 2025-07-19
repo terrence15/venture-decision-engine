@@ -103,12 +103,19 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing, onCom
     if (amount === null || amount === undefined || isNaN(amount)) {
       return 'N/A';
     }
-    if (amount >= 1000000) {
+    
+    // Debug logging to see actual values
+    console.log('Formatting currency amount:', amount);
+    
+    // Handle the formatting properly
+    if (amount >= 1000000000) {
+      return `$${(amount / 1000000000).toFixed(1)}B`;
+    } else if (amount >= 1000000) {
       return `$${(amount / 1000000).toFixed(1)}M`;
     } else if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(1)}K`;
+      return `$${(amount / 1000).toFixed(0)}K`;
     } else {
-      return `$${amount.toLocaleString()}`;
+      return `$${Math.round(amount).toLocaleString()}`;
     }
   };
 

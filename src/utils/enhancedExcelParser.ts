@@ -252,6 +252,8 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
               else if (['totalInvestment', 'currentValuation', 'additionalInvestmentRequested', 'arrTtm'].includes(fieldName)) {
                 let cleanValue = String(value).replace(/[$,\s]/g, '');
                 
+                console.log(`Processing ${fieldName} - Raw value:`, value, 'Clean value:', cleanValue);
+                
                 if (cleanValue === '' || cleanValue === '-' || cleanValue === 'N/A') {
                   value = null;
                 } else {
@@ -259,8 +261,16 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
                   if (isNaN(parsedValue)) {
                     value = null;
                   } else {
-                    // Scale from thousands to actual dollars for these fields
-                    value = parsedValue * 1000;
+                    // Check if the column name indicates thousands
+                    const isInThousands = header.toLowerCase().includes('thousand');
+                    if (isInThousands) {
+                      // Scale from thousands to actual dollars
+                      value = parsedValue * 1000;
+                      console.log(`Scaled ${fieldName} from ${parsedValue} thousands to ${value} dollars`);
+                    } else {
+                      value = parsedValue;
+                      console.log(`Using direct value for ${fieldName}:`, value);
+                    }
                   }
                 }
                 company[fieldName] = value;
@@ -352,6 +362,10 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
           company.riskAssessment.overallRiskScore = Math.min(100, riskScore);
           
           if (company.companyName) {
+            console.log(`Parsed company ${company.companyName}:`, {
+              totalInvestment: company.totalInvestment,
+              additionalInvestmentRequested: company.additionalInvestmentRequested
+            });
             companies.push(company);
           }
         }
