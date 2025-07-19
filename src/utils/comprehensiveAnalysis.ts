@@ -1,4 +1,6 @@
 
+import { conductExternalResearch } from './externalResearch';
+
 interface CompanyData {
   id: string;
   companyName: string;
@@ -12,16 +14,14 @@ interface CompanyData {
   exitActivity: string;
   barrierToEntry: number;
   additionalInvestmentRequested: number;
+  // Additional fields from Excel
+  arrTtm?: number;
+  ebitdaMargin?: number;
+  topPerformer?: boolean;
+  valuationMethodology?: string;
 }
 
-interface ExternalResearch {
-  fundingHistory: string;
-  teamGrowth: string;
-  competitorActivity: string;
-  marketSignals: string;
-}
-
-interface AnalysisResult {
+interface ComprehensiveAnalysisResult {
   recommendation: string;
   timingBucket: string;
   reasoning: string;
@@ -32,225 +32,236 @@ interface AnalysisResult {
   insufficientData: boolean;
 }
 
-// Generic terms that trigger response rejection
-const GENERIC_TERMS = [
-  'established a clear leadership position',
-  'moderate market and operational risks',
-  'continued monitoring is recommended',
-  'niche market size may limit',
-  'supported by experienced management',
-  'positive customer traction',
-  'category saturation risk',
-  'low barriers to entry',
-  'lack of recent external market validation'
-];
-
-function hasGenericTerms(text: string): boolean {
-  return GENERIC_TERMS.some(term => text.toLowerCase().includes(term.toLowerCase()));
-}
-
-function validateDataSufficiency(company: CompanyData): boolean {
-  console.log('Validating data sufficiency for:', company.companyName);
-  console.log('Company data:', {
+// Enhanced MVI check with detailed logging
+function checkMinimumViableInputs(company: CompanyData): boolean {
+  console.log(`=== MVI Check for ${company.companyName} ===`);
+  console.log('Raw company data:', {
     moic: company.moic,
     revenueGrowth: company.revenueGrowth,
     burnMultiple: company.burnMultiple,
     runway: company.runway,
     tam: company.tam,
-    additionalInvestmentRequested: company.additionalInvestmentRequested
+    exitActivity: company.exitActivity,
+    additionalInvestmentRequested: company.additionalInvestmentRequested,
+    arrTtm: company.arrTtm,
+    totalInvestment: company.totalInvestment,
+    equityStake: company.equityStake
   });
 
   const criticalFields = [
-    company.moic,
-    company.revenueGrowth,
-    company.burnMultiple || company.runway,
-    company.tam,
-    company.additionalInvestmentRequested
+    { field: 'moic', value: company.moic },
+    { field: 'revenueGrowth', value: company.revenueGrowth },
+    { field: 'burnMultiple', value: company.burnMultiple },
+    { field: 'runway', value: company.runway },
+    { field: 'tam', value: company.tam },
+    { field: 'exitActivity', value: company.exitActivity },
+    { field: 'additionalInvestmentRequested', value: company.additionalInvestmentRequested }
   ];
   
-  const missingCriticalData = criticalFields.filter(field => {
-    if (field === null || field === undefined) return true;
-    if (typeof field === 'string' && field === '') return true;
-    if (typeof field === 'number' && field === 0) return false; // 0 is valid for numbers
-    return !field; // catch other falsy values
-  }).length;
+  const missingFields = criticalFields.filter(field => 
+    field.value === null || 
+    field.value === undefined || 
+    field.value === '' || 
+    (typeof field.value === 'number' && field.value === 0 && field.field !== 'additionalInvestmentRequested')
+  );
   
-  console.log('Missing critical data count:', missingCriticalData);
-  return missingCriticalData < 3; // More lenient threshold
+  console.log('Missing critical fields:', missingFields.map(f => f.field));
+  console.log(`MVI Check Result: ${missingFields.length < 2 ? 'PASS' : 'FAIL'} (${missingFields.length}/7 missing)`);
+  
+  return missingFields.length < 2; // Fail if 2+ critical fields missing
 }
 
-async function getExternalResearch(companyName: string): Promise<ExternalResearch> {
-  // Simulate external research - in production, this would call Perplexity API
-  console.log('Getting external research for:', companyName);
-  
-  return {
-    fundingHistory: `Recent Series A of $5M led by Acme Ventures in Q2 2024`,
-    teamGrowth: `LinkedIn shows 25% increase in engineering headcount over past 6 months`,
-    competitorActivity: `Competitor XYZ raised $10M Series B, signaling market validation`,
-    marketSignals: `TechCrunch coverage of sector consolidation trends`
-  };
-}
-
+// Determine recommendation based on metrics with clear thresholds
 function determineRecommendation(company: CompanyData): string {
-  console.log('Determining recommendation for:', company.companyName);
-  
-  const burnMultiple = company.burnMultiple || 0;
+  const growth = company.revenueGrowth || 0;
+  const burn = company.burnMultiple || 999;
   const runway = company.runway || 0;
   const moic = company.moic || 0;
-  const revenueGrowth = company.revenueGrowth || 0;
   
-  console.log('Decision factors:', { burnMultiple, runway, moic, revenueGrowth });
+  console.log(`Decision metrics for ${company.companyName}:`, { growth, burn, runway, moic });
   
-  // Aggressive decline thresholds
-  if (burnMultiple > 4 || runway < 6 || (moic < 0.5 && revenueGrowth < 20)) {
-    return 'Decline';
-  }
+  // Decline criteria (be more aggressive)
+  if (burn > 3.0 && runway < 12) return 'Decline';
+  if (growth < 20 && burn > 2.5) return 'Decline';
+  if (moic < 0.5 && growth < 50) return 'Decline';
+  if (runway < 6) return 'Decline';
   
-  // Conservative investment thresholds
-  if (burnMultiple < 2 && runway > 18 && moic > 2 && revenueGrowth > 50) {
-    const requestedAmount = company.additionalInvestmentRequested / 1000000;
-    return `Invest $${requestedAmount.toFixed(1)}M`;
-  }
+  // Double Down criteria
+  if (growth > 80 && burn < 1.5 && moic > 2.0) return 'Double Down';
   
-  // Bridge capital for moderate cases
-  if (runway < 12 && moic > 1) {
-    const bridgeAmount = Math.min(company.additionalInvestmentRequested * 0.5, 1000000);
-    return `Bridge Capital Only - $${(bridgeAmount / 1000000).toFixed(1)}M`;
-  }
+  // Reinvest criteria
+  if (growth > 50 && burn < 2.0 && runway > 12) return 'Reinvest (3-12 Months)';
   
+  // Bridge criteria
+  if (runway < 12 && growth > 30) return 'Bridge Capital Only';
+  
+  // Default to Hold for edge cases
   return 'Hold (3-6 Months)';
 }
 
-function createStructuredPrompt(company: CompanyData, research: ExternalResearch): string {
-  return `You are a VC partner making a capital allocation decision. Use this EXACT template and fill in the blanks with specific data:
+// Validate response uses Excel data with strict checking
+function validateResponseQuality(response: any, company: CompanyData): { isValid: boolean; issues: string[] } {
+  const issues: string[] = [];
+  
+  // Check reasoning starts with Excel figures
+  const reasoning = response.reasoning || '';
+  const hasStartingMetrics = reasoning.match(/^The company has.*?\d+(\.\d+)?.*?(and|with).*?\d+(\.\d+)?/);
+  if (!hasStartingMetrics) {
+    issues.push('Reasoning must start with specific Excel metrics');
+  }
+  
+  // Check for specific figure inclusion
+  const shouldInclude = [
+    company.revenueGrowth?.toString(),
+    company.burnMultiple?.toString(),
+    company.moic?.toString(),
+    (company.additionalInvestmentRequested / 1000000).toFixed(1)
+  ].filter(Boolean);
+  
+  const missingFigures = shouldInclude.filter(figure => !reasoning.includes(figure as string));
+  if (missingFigures.length > 2) {
+    issues.push('Reasoning missing key Excel figures');
+  }
+  
+  // Check key risks are external and specific
+  const keyRisks = response.keyRisks || '';
+  const genericTerms = ['market saturation', 'competitive pressure', 'economic downturn'];
+  const hasGenericRisk = genericTerms.some(term => keyRisks.toLowerCase().includes(term));
+  if (hasGenericRisk || keyRisks.length < 50) {
+    issues.push('Key risks too generic - need specific external factors');
+  }
+  
+  return {
+    isValid: issues.length === 0,
+    issues
+  };
+}
+
+// Standardized fallback response
+function generateFallbackResponse(): ComprehensiveAnalysisResult {
+  return {
+    recommendation: 'Decline',
+    timingBucket: 'Decline',
+    reasoning: 'Missing critical inputs (e.g., growth, burn, TAM, exit environment), which prevents a responsible investment recommendation. Recommend declining this opportunity until updated data is provided.',
+    confidence: 1,
+    keyRisks: 'Lack of visibility into company performance, capital efficiency, or exit feasibility makes additional investment highly speculative.',
+    suggestedAction: 'Request updated financials, capital plan, and growth KPIs before reassessing capital deployment.',
+    externalSources: 'Limited data available',
+    insufficientData: true
+  };
+}
+
+export async function conductComprehensiveAnalysis(
+  company: CompanyData,
+  apiKey: string,
+  perplexityApiKey?: string
+): Promise<ComprehensiveAnalysisResult> {
+  
+  console.log(`\n=== STARTING COMPREHENSIVE ANALYSIS FOR ${company.companyName.toUpperCase()} ===`);
+  console.log('API Keys available:', {
+    openai: !!apiKey,
+    perplexity: !!perplexityApiKey
+  });
+  
+  // Step 1: Check Minimum Viable Inputs
+  if (!checkMinimumViableInputs(company)) {
+    console.log(`❌ INSUFFICIENT DATA: ${company.companyName} failed MVI check`);
+    return generateFallbackResponse();
+  }
+
+  console.log(`✅ MVI PASSED: ${company.companyName} has sufficient data for analysis`);
+
+  // Step 2: Conduct External Research (if Perplexity API available)
+  let externalResearch = null;
+  if (perplexityApiKey) {
+    try {
+      console.log(`🔍 STARTING EXTERNAL RESEARCH for ${company.companyName}...`);
+      externalResearch = await conductExternalResearch(company.companyName, perplexityApiKey);
+      console.log(`✅ EXTERNAL RESEARCH COMPLETE for ${company.companyName}:`, {
+        fundingData: externalResearch.fundingData.substring(0, 100) + '...',
+        sources: externalResearch.sources
+      });
+    } catch (error) {
+      console.error(`❌ EXTERNAL RESEARCH FAILED for ${company.companyName}:`, error);
+    }
+  } else {
+    console.log(`⚠️  NO PERPLEXITY KEY: Skipping external research for ${company.companyName}`);
+  }
+
+  // Step 3: Determine base recommendation from metrics
+  const baseRecommendation = determineRecommendation(company);
+  console.log(`📊 BASE RECOMMENDATION for ${company.companyName}: ${baseRecommendation}`);
+
+  // Step 4: Build ultra-strict prompt with MANDATORY requirements
+  const prompt = `You are a senior VC partner making LIVE capital allocation decisions. You MUST follow the EXACT format requirements below or your response will be REJECTED.
+
+❗ CRITICAL REQUIREMENTS - FAILURE TO FOLLOW = REJECTION:
+1. Reasoning MUST start EXACTLY with: "The company has [specific metric] of [exact number] and [another metric] of [exact number]"
+2. You MUST include at least 3 exact Excel figures from the data provided
+3. Key risks MUST be external and specific (not generic market terms)
+4. Recommendation must match the suggested base: ${baseRecommendation}
 
 COMPANY: ${company.companyName}
-EXCEL DATA:
+
+📊 EXCEL PORTFOLIO DATA (MUST USE EXACT FIGURES):
 - Revenue Growth: ${company.revenueGrowth}% YoY
-- Burn Multiple: ${company.burnMultiple}x
+- Burn Multiple: ${company.burnMultiple}x 
 - Current MOIC: ${company.moic}x
 - Runway: ${company.runway} months
-- Additional Capital Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
+- Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
+- Capital Request: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
+- ARR TTM: ${company.arrTtm ? `$${(company.arrTtm / 1000000).toFixed(1)}M` : 'N/A'}
+- Equity Stake: ${company.equityStake}%
+- TAM Score: ${company.tam}/5
+- Exit Activity: ${company.exitActivity}
 
-EXTERNAL RESEARCH:
-- Funding: ${research.fundingHistory}
-- Team Growth: ${research.teamGrowth}
-- Competition: ${research.competitorActivity}
+${externalResearch ? `
+🔍 EXTERNAL INTELLIGENCE (MUST REFERENCE SPECIFIC DETAILS):
+• Recent Funding: ${externalResearch.fundingData}
+• Team Growth: ${externalResearch.hiringTrends}
+• Market Position: ${externalResearch.marketPositioning}
+• News/Updates: ${externalResearch.recentNews}
+• Competition: ${externalResearch.competitorActivity}
+• Sources: ${externalResearch.sources.join(', ')}
+` : '🔍 EXTERNAL RESEARCH: Limited validation (no Perplexity API)'}
 
-FILL IN THIS TEMPLATE EXACTLY:
+📋 MANDATORY REASONING TEMPLATE (MUST FOLLOW EXACTLY):
+"The company has grown ARR by [X]% YoY and maintains a burn multiple of [Y]x, with [specific external detail from research]. However, [specific concern with numbers]. [Tactical decision rationale with exact investment amount]."
 
+📋 MANDATORY KEY RISKS TEMPLATE (MUST BE SPECIFIC):
+Examples of GOOD risks: "Recent competitor Stripe raised $50M for similar B2B payments solution"; "Glassdoor shows 40% engineering turnover in past 6 months"; "Lead investor pulled out of Series B citing market conditions"
+Examples of BAD risks: "Market saturation", "Competitive pressure", "Economic uncertainty"
+
+REQUIRED JSON OUTPUT:
 {
-  "reasoning": "The company has [EXACT REVENUE GROWTH]% YoY revenue growth and maintains a burn multiple of [EXACT BURN MULTIPLE]x. [SPECIFIC EXTERNAL VALIDATION from research]. However, [SPECIFIC RISK from data]. [INVESTMENT LOGIC based on metrics].",
-  "keyRisks": "[MARKET/COMPETITIVE RISK with specific details]; [INVESTOR/DILUTION RISK based on runway and capital request].",
-  "confidence": [1-5 number based on data quality],
-  "suggestedAction": "[ONE SPECIFIC TACTICAL NEXT STEP]"
+  "recommendation": "${baseRecommendation} + exact dollar amount (e.g., 'Decline - redirect $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M to top performers')",
+  "timingBucket": "${baseRecommendation}",
+  "reasoning": "MUST start with exact template above using Excel figures [X]% and [Y]x. Must end with specific capital amount justification.",
+  "confidence": "1-5 (5=strong data+external validation, 1=weak/conflicting)",
+  "keyRisks": "MUST be specific external factors with numbers/names/dates - NO generic terms allowed",
+  "suggestedAction": "Deploy/Bridge/Decline $[exact amount] with [specific milestone/metric] tracking",
+  "externalSources": "${externalResearch?.sources.join(', ') || 'Limited external validation'}"
 }
 
-CRITICAL KEY RISKS REQUIREMENTS:
-- Focus on EXTERNAL market risks, not internal operational issues
-- Include competitive positioning threats and market dynamics
-- Address investor concerns like dilution, pricing power, market saturation
-- Use investor-specific language: "dilution risk", "pricing power", "market saturation", "capital efficiency"
+🚨 FINAL VALIDATION CHECKLIST:
+✓ Reasoning starts with "The company has grown ARR by [X]% YoY and maintains a burn multiple of [Y]x"
+✓ At least 3 Excel figures used (growth %, burn multiple, runway, investment amount, etc.)
+✓ Key risks mention specific companies, people, dates, or numbers
+✓ Recommendation matches suggested: ${baseRecommendation}
+✓ Exact dollar amounts specified throughout
 
-GOOD KEY RISKS EXAMPLES:
-- "Unclear pricing power in crowded market; potential dilution given tight runway"
-- "Market saturation risk as competitors raise larger rounds; runway pressures may force unfavorable terms"
-- "Competitive moats unclear given low barriers to entry; burn rate indicates capital efficiency concerns"
+Generate response now (any deviation from format will be rejected):`;
 
-BAD KEY RISKS (AVOID):
-- "Competitor XYZ's larger Series B may accelerate their market share gains"
-- "High burn multiple with low revenue growth threatens sustainability"
-- Generic operational risks or company-specific issues
+  console.log(`📤 SENDING STRICT ANALYSIS REQUEST TO OPENAI for ${company.companyName}...`);
 
-REQUIREMENTS:
-- Start reasoning with exact Excel figures
-- Include specific external research details  
-- Make risks MARKET-FOCUSED and INVESTOR-SPECIFIC
-- No generic business language or operational risks
-- Be decisive, not wishy-washy`;
-}
-
-async function validateResponse(response: AnalysisResult, company: CompanyData): Promise<boolean> {
-  console.log('Validating response quality for:', company.companyName);
-  
-  // Check for generic terms
-  if (hasGenericTerms(response.reasoning) || hasGenericTerms(response.keyRisks)) {
-    console.log('Response contains generic terms - rejecting');
-    return false;
-  }
-  
-  // Check if reasoning starts with specific Excel figures
-  const reasoningStartsWithMetrics = response.reasoning.includes(`${company.revenueGrowth}%`) || 
-                                   response.reasoning.includes(`${company.burnMultiple}x`) ||
-                                   response.reasoning.includes(`${company.moic}x`);
-  
-  if (!reasoningStartsWithMetrics) {
-    console.log('Reasoning does not start with Excel metrics - rejecting');
-    return false;
-  }
-  
-  // Check for specific risk content and market focus
-  if (response.keyRisks.length < 50 || !response.keyRisks.includes(';')) {
-    console.log('Key risks too generic or short - rejecting');
-    return false;
-  }
-  
-  // Reject generic operational risks
-  const operationalRiskTerms = ['competitor xyz', 'high burn multiple', 'threatens sustainability', 'market share gains'];
-  if (operationalRiskTerms.some(term => response.keyRisks.toLowerCase().includes(term))) {
-    console.log('Key risks contain operational/generic terms - rejecting');
-    return false;
-  }
-  
-  // Require investor-focused language
-  const investorTerms = ['dilution', 'pricing power', 'market saturation', 'capital efficiency', 'runway pressure', 'unfavorable terms'];
-  if (!investorTerms.some(term => response.keyRisks.toLowerCase().includes(term))) {
-    console.log('Key risks lack investor-specific language - rejecting');
-    return false;
-  }
-  
-  console.log('Response validation passed');
-  return true;
-}
-
-export async function analyzeCompanyWithOpenAI(
-  company: CompanyData, 
-  apiKey: string
-): Promise<AnalysisResult> {
-  console.log('Starting comprehensive analysis for:', company.companyName);
-  
-  // Data sufficiency check
-  if (!validateDataSufficiency(company)) {
-    console.log('Insufficient data - returning default response');
-    return {
-      recommendation: 'Decline',
-      timingBucket: 'N/A',
-      reasoning: 'Missing critical performance metrics prevents responsible investment assessment. Company lacks sufficient data visibility for capital deployment decision.',
-      confidence: 1,
-      keyRisks: 'Data opacity creates investment blind spots; inability to assess capital efficiency or growth trajectory increases downside risk.',
-      suggestedAction: 'Request comprehensive financial package including ARR growth, unit economics, and 18-month cash flow projections.',
-      externalSources: 'Limited data available for external validation',
-      insufficientData: true
-    };
-  }
-
-  // Get external research
-  const research = await getExternalResearch(company.companyName);
-  
-  // Determine recommendation upfront
-  const recommendation = determineRecommendation(company);
-  console.log('Determined recommendation:', recommendation);
-
-  const prompt = createStructuredPrompt(company, research);
-  console.log('Generated prompt for OpenAI');
-
+  // Attempt analysis with retry logic for quality
   let attempts = 0;
   const maxAttempts = 3;
-
+  
   while (attempts < maxAttempts) {
     attempts++;
-    console.log(`Analysis attempt ${attempts} for ${company.companyName}`);
-
+    console.log(`🔄 Analysis attempt ${attempts}/${maxAttempts} for ${company.companyName}`);
+    
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -263,20 +274,22 @@ export async function analyzeCompanyWithOpenAI(
           messages: [
             {
               role: 'system',
-              content: 'You are a precise VC analyst. Follow the template exactly. Use specific figures from the data provided. Be decisive and specific.'
+              content: 'You are a senior venture capital partner with 15+ years of portfolio management experience. You make data-driven investment decisions using precise financial metrics and external market intelligence. You MUST follow the exact format requirements provided. Generic or vague responses will be REJECTED. You MUST use exact figures from Excel data and cite specific external details.'
             },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.1, // Lower temperature for more consistent responses
-          max_tokens: 800,
+          temperature: 0.05, // Lower temperature for more consistent format adherence
+          max_tokens: 2500,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ OPENAI API ERROR:', errorData);
+        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
       }
 
       const data = await response.json();
@@ -286,104 +299,59 @@ export async function analyzeCompanyWithOpenAI(
         throw new Error('No response content received from OpenAI');
       }
 
+      console.log(`📥 RAW AI RESPONSE (attempt ${attempts}) for ${company.companyName}:`, content);
+
       // Parse JSON response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.log('No JSON found in response, retrying...');
-        continue;
+        console.error('❌ JSON PARSING FAILED for response:', content);
+        if (attempts < maxAttempts) {
+          console.log('🔄 Retrying due to JSON parsing failure...');
+          continue;
+        }
+        throw new Error('Could not parse JSON response from OpenAI');
       }
 
       const analysis = JSON.parse(jsonMatch[0]);
+      console.log(`📊 PARSED ANALYSIS (attempt ${attempts}) for ${company.companyName}:`, analysis);
       
-      const result: AnalysisResult = {
-        recommendation,
-        timingBucket: recommendation.includes('Decline') ? 'Decline' : 
-                     recommendation.includes('Bridge') ? 'Bridge Capital Only' :
-                     recommendation.includes('Hold') ? 'Hold (3-6 Months)' : 'Reinvest (3-12 Months)',
-        reasoning: analysis.reasoning || 'Analysis incomplete',
-        confidence: Math.min(5, Math.max(1, parseInt(analysis.confidence) || 3)),
-        keyRisks: analysis.keyRisks || 'Risk assessment incomplete',
-        suggestedAction: analysis.suggestedAction || 'Conduct further analysis',
-        externalSources: `${research.fundingHistory}, ${research.teamGrowth}`,
-        insufficientData: false
-      };
-
       // Validate response quality
-      if (await validateResponse(result, company)) {
-        console.log('High-quality response generated for:', company.companyName);
-        return result;
-      } else {
-        console.log(`Response quality insufficient, retrying (attempt ${attempts})`);
+      const validation = validateResponseQuality(analysis, company);
+      if (!validation.isValid && attempts < maxAttempts) {
+        console.log(`⚠️  QUALITY ISSUES (attempt ${attempts}):`, validation.issues);
+        console.log('🔄 Retrying for better quality...');
         continue;
       }
 
+      const result = {
+        recommendation: analysis.recommendation || `${baseRecommendation} - Analysis incomplete`,
+        timingBucket: analysis.timingBucket || baseRecommendation,
+        reasoning: analysis.reasoning || 'Analysis could not be completed with available data.',
+        confidence: Math.min(5, Math.max(1, parseInt(analysis.confidence) || 3)),
+        keyRisks: analysis.keyRisks || 'Unable to assess specific external risks with current information.',
+        suggestedAction: analysis.suggestedAction || 'Request additional company data before proceeding.',
+        externalSources: analysis.externalSources || (externalResearch?.sources.join(', ') || 'Limited external research available'),
+        insufficientData: false
+      };
+
+      console.log(`✅ ANALYSIS COMPLETE (attempt ${attempts}) for ${company.companyName}:`, {
+        recommendation: result.recommendation,
+        confidence: result.confidence,
+        qualityIssues: validation.issues
+      });
+
+      return result;
+
     } catch (error) {
-      console.error(`Attempt ${attempts} failed:`, error);
-      if (attempts === maxAttempts) {
-        throw error;
+      console.error(`❌ ANALYSIS ATTEMPT ${attempts} ERROR for ${company.companyName}:`, error);
+      if (attempts >= maxAttempts) {
+        throw new Error(error instanceof Error ? error.message : 'Failed to analyze company data');
       }
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
-  // Fallback if all attempts fail
-  console.log('All attempts failed, returning fallback response');
-  return {
-    recommendation,
-    timingBucket: 'Hold (3-6 Months)',
-    reasoning: `Based on ${company.revenueGrowth}% revenue growth and ${company.burnMultiple}x burn multiple, analysis indicates measured approach warranted given current metrics.`,
-    confidence: 2,
-    keyRisks: 'Technical analysis limitations; recommend manual review of financial performance and market positioning.',
-    suggestedAction: 'Schedule management presentation to review detailed financial metrics and growth strategy.',
-    externalSources: 'Analysis system limitations',
-    insufficientData: false
-  };
-}
-
-export async function analyzePortfolio(
-  companies: CompanyData[], 
-  apiKey: string,
-  onProgress?: (progress: number) => void
-): Promise<CompanyData[]> {
-  console.log('Starting portfolio analysis for', companies.length, 'companies');
-  const results: CompanyData[] = [];
-  
-  for (let i = 0; i < companies.length; i++) {
-    const company = companies[i];
-    console.log(`Analyzing company ${i + 1}/${companies.length}: ${company.companyName}`);
-    onProgress?.(((i + 1) / companies.length) * 100);
-    
-    try {
-      const analysis = await analyzeCompanyWithOpenAI(company, apiKey);
-      results.push({
-        ...company,
-        recommendation: analysis.recommendation,
-        timingBucket: analysis.timingBucket,
-        reasoning: analysis.reasoning,
-        confidence: analysis.confidence,
-        keyRisks: analysis.keyRisks,
-        suggestedAction: analysis.suggestedAction,
-        externalSources: analysis.externalSources,
-        insufficientData: analysis.insufficientData
-      } as any);
-      
-      // Rate limiting delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    } catch (error) {
-      console.error(`Failed to analyze ${company.companyName}:`, error);
-      results.push({
-        ...company,
-        recommendation: 'Analysis failed',
-        timingBucket: 'N/A',
-        reasoning: 'Technical error prevented analysis completion. Manual review required.',
-        confidence: 1,
-        keyRisks: 'System limitations prevent risk assessment; recommend immediate manual review.',
-        suggestedAction: 'Escalate to investment committee for manual analysis and decision.',
-        externalSources: 'Analysis incomplete due to technical issues',
-        insufficientData: true
-      } as any);
-    }
-  }
-  
-  console.log('Portfolio analysis complete');
-  return results;
+  // Should never reach here, but just in case
+  throw new Error('All analysis attempts failed');
 }
