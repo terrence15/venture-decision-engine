@@ -289,8 +289,9 @@ Return your analysis in this exact JSON format:
       });
       
       // Try to clean and re-parse JSON
+      let cleanedJson = '';
       try {
-        const cleanedJson = jsonString
+        cleanedJson = jsonString
           .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
           .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
           .trim();
