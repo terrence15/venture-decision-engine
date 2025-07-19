@@ -18,17 +18,30 @@ export interface RawCompanyData {
 
 // Updated column mapping with exact headers from Excel
 const COLUMN_MAPPINGS = {
+  'COMPANY': 'companyName',
   'Company Name': 'companyName',
   'Total Investment ($ in Thousands)': 'totalInvestment',
+  'Total Investment  \r\n($ in Thousands)': 'totalInvestment',
   'Equity Stake % (Fully Diluted)': 'equityStake',
   'MOIC (Implied)': 'moic',
+  'Implied MOIC (x)': 'moic',
+  'Implied MOIC (x) ': 'moic',
   'TTM Revenue Growth': 'revenueGrowth',
+  'TTM Revnue Growth ': 'revenueGrowth',
   'Burn Multiple (Burn Rate / ARR)': 'burnMultiple',
+  'Burn Multiple (Net Burn/Net New ARR)': 'burnMultiple',
+  'Burn Multiple (Net Burn/Net New ARR) ': 'burnMultiple',
   'Runway (Months)': 'runway',
+  'Runway (Months) ': 'runway',
   'TAM Rating (1–5) (Competitive + Growing Market)': 'tam',
+  'TAM \r\n(1-5, 5 being completely untapped and growing market)': 'tam',
   'Exit Activity in Sector (High / Moderate / Low)': 'exitActivity',
+  'Exit Activity in Sector (ie. High, Moderaate, Low)': 'exitActivity',
   'Barrier to Entry (1–5) (Advantage vs. New Firms to Enter)': 'barrierToEntry',
-  'Additional Investment Request': 'additionalInvestmentRequested'
+  'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market)': 'barrierToEntry',
+  'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market) ': 'barrierToEntry',
+  'Additional Investment Request': 'additionalInvestmentRequested',
+  'Additional Investment Requested ($)': 'additionalInvestmentRequested'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -61,6 +74,17 @@ function findBestMatch(target: string, options: string[]): string | null {
     if (normalize(option) === normalizedTarget) {
       console.log(`Exact match found: "${option}" for "${target}"`);
       return option;
+    }
+  }
+  
+  // Special case for company name - match "COMPANY" directly
+  if (target === 'companyName') {
+    for (const option of options) {
+      if (!option || typeof option !== 'string') continue;
+      if (normalize(option) === 'company') {
+        console.log(`Direct company match found: "${option}" for "${target}"`);
+        return option;
+      }
     }
   }
   
@@ -99,7 +123,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   const validHeaders = headers.filter(header => header && typeof header === 'string');
   console.log('Available headers:', validHeaders);
   
-  // First try exact matches
+  // First try exact matches from COLUMN_MAPPINGS
   Object.keys(COLUMN_MAPPINGS).forEach(expectedColumn => {
     const exactMatch = validHeaders.find(header => 
       header.trim() === expectedColumn.trim()
@@ -107,16 +131,22 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
     
     if (exactMatch) {
       mapping[exactMatch] = COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS];
-      console.log(`Exact mapping: "${exactMatch}" → "${expectedColumn}"`);
+      console.log(`Exact mapping: "${exactMatch}" → "${COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS]}"`);
       return;
     }
-    
-    // Fallback to fuzzy matching
-    const fieldName = COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS];
-    const fuzzyMatch = findBestMatch(fieldName, validHeaders);
-    if (fuzzyMatch) {
-      mapping[fuzzyMatch] = fieldName;
-      console.log(`Fuzzy mapping: "${fuzzyMatch}" → "${expectedColumn}"`);
+  });
+  
+  // Then try fuzzy matching for unmapped fields
+  const mappedFields = Object.values(mapping);
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested'];
+  
+  fieldsToMap.forEach(fieldName => {
+    if (!mappedFields.includes(fieldName)) {
+      const fuzzyMatch = findBestMatch(fieldName, validHeaders);
+      if (fuzzyMatch) {
+        mapping[fuzzyMatch] = fieldName;
+        console.log(`Fuzzy mapping: "${fuzzyMatch}" → "${fieldName}"`);
+      }
     }
   });
   
@@ -137,8 +167,15 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
         // Look for "Main Page" sheet first, fallback to first sheet
         let sheetName = 'Main Page';
         if (!workbook.SheetNames.includes(sheetName)) {
-          sheetName = workbook.SheetNames[0];
-          console.log(`"Main Page" sheet not found, using "${sheetName}" instead`);
+          // Also try "Main Page " with trailing space
+          const mainPageWithSpace = workbook.SheetNames.find(name => name.trim() === 'Main Page');
+          if (mainPageWithSpace) {
+            sheetName = mainPageWithSpace;
+            console.log(`Using "${sheetName}" sheet (with trailing space)`);
+          } else {
+            sheetName = workbook.SheetNames[0];
+            console.log(`"Main Page" sheet not found, using "${sheetName}" instead`);
+          }
         }
         
         const worksheet = workbook.Sheets[sheetName];
