@@ -207,14 +207,18 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               // Type conversions based on field
               if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested'].includes(fieldName)) {
                 // Clean the value for number parsing - remove commas, dollar signs, spaces, etc.
+                console.log(`Parsing ${fieldName}: original value =`, value, `(type: ${typeof value})`);
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
+                console.log(`Parsing ${fieldName}: cleaned value =`, cleanValue);
                 // Handle empty strings or non-numeric values
                 if (cleanValue === '' || cleanValue === '-' || cleanValue === 'N/A') {
                   value = null;
                 } else {
                   const parsedValue = parseFloat(cleanValue);
+                  console.log(`Parsing ${fieldName}: parsed value =`, parsedValue);
                   value = isNaN(parsedValue) ? null : parsedValue;
                 }
+                console.log(`Parsing ${fieldName}: final value =`, value);
               } else if (['tam', 'barrierToEntry'].includes(fieldName)) {
                 let cleanValue = String(value).replace(/[^0-9]/g, '');
                 value = parseInt(cleanValue) || 1;
