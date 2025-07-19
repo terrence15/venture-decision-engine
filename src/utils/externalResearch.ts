@@ -20,7 +20,23 @@ export async function conductExternalResearch(
   companyName: string,
   apiKey: string
 ): Promise<ResearchResult> {
-  console.log(`🔍 STARTING EXTERNAL RESEARCH for ${companyName}...`);
+  console.log(`\n🔍 STARTING EXTERNAL RESEARCH for ${companyName}...`);
+  console.log(`🔑 Perplexity API Key Status:`, {
+    hasApiKey: !!apiKey,
+    keyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : 'none'
+  });
+  
+  if (!apiKey) {
+    console.log(`❌ No Perplexity API key provided for ${companyName}`);
+    return {
+      fundingData: 'No external research - API key not provided',
+      hiringTrends: 'No external research - API key not provided',
+      marketPositioning: 'No external research - API key not provided',
+      recentNews: 'No external research - API key not provided',
+      competitorActivity: 'No external research - API key not provided',
+      sources: ['Internal analysis only - no external API key']
+    };
+  }
   
   const researchQueries = [
     `${companyName} latest funding round Series A B C venture capital news 2024 2025`,
@@ -66,13 +82,26 @@ export async function conductExternalResearch(
         }),
       });
 
+      console.log(`📥 Perplexity API Response ${i + 1}:`, {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
+      });
+
       if (response.ok) {
         const data: PerplexityResponse = await response.json();
         const content = data.choices[0]?.message?.content;
+        
+        console.log(`📊 Perplexity Response ${i + 1}:`, {
+          hasContent: !!content,
+          contentLength: content?.length || 0,
+          contentPreview: content ? content.substring(0, 100) + '...' : 'NO CONTENT'
+        });
+        
         if (content) {
           results.push(content);
           successfulQueries++;
-          console.log(`✅ Query ${i + 1} successful:`, content.substring(0, 100) + '...');
+          console.log(`✅ Query ${i + 1} successful`);
           
           // Extract source mentions
           const sourceMatches = content.match(/(Crunchbase|TechCrunch|LinkedIn|PitchBook|AngelList|VentureBeat|company blog|press release|SEC filing)/gi);
@@ -85,15 +114,22 @@ export async function conductExternalResearch(
         }
       } else {
         const errorText = await response.text();
-        console.error(`❌ Query ${i + 1} failed:`, response.status, errorText);
-        results.push('Research query failed');
+        console.error(`❌ Query ${i + 1} failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        results.push(`Research query failed: ${response.status} ${response.statusText}`);
       }
       
       // Rate limiting
       await new Promise(resolve => setTimeout(resolve, 1200));
     } catch (error) {
-      console.error(`❌ Research query ${i + 1} exception:`, error);
-      results.push('Limited external data available');
+      console.error(`❌ Research query ${i + 1} exception:`, {
+        error: error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
+      results.push(`Limited external data available: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -109,7 +145,8 @@ export async function conductExternalResearch(
   console.log(`🏁 EXTERNAL RESEARCH COMPLETE for ${companyName}:`, {
     successfulQueries: successfulQueries,
     totalSources: researchResult.sources.length,
-    sources: researchResult.sources
+    sources: researchResult.sources,
+    hasValidData: successfulQueries > 0
   });
 
   return researchResult;

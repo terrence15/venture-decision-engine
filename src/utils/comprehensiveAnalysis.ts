@@ -52,6 +52,8 @@ function checkMinimumViableInputs(company: CompanyData): boolean {
   
   const result = hasFinancialData && hasBasicData;
   console.log(`MVI Check Result: ${result ? 'PASS' : 'FAIL'}`);
+  console.log(`Financial Data Available: ${hasFinancialData}`);
+  console.log(`Basic Data Available: ${hasBasicData}`);
   return result;
 }
 
@@ -62,6 +64,12 @@ export async function conductComprehensiveAnalysis(
 ): Promise<ComprehensiveAnalysisResult> {
   
   console.log(`\n🚀 STARTING COMPREHENSIVE ANALYSIS FOR ${company.companyName.toUpperCase()}`);
+  console.log(`🔑 API Keys Status:`, {
+    hasOpenAI: !!apiKey,
+    hasPerplexity: !!perplexityApiKey,
+    openaiPreview: apiKey ? `${apiKey.substring(0, 8)}...` : 'none',
+    perplexityPreview: perplexityApiKey ? `${perplexityApiKey.substring(0, 8)}...` : 'none'
+  });
   
   // Step 1: Check if we have enough data
   if (!checkMinimumViableInputs(company)) {
@@ -81,7 +89,10 @@ export async function conductComprehensiveAnalysis(
   // Step 2: Generate Guaranteed Financial Metrics Summary
   console.log(`📊 BUILDING FINANCIAL METRICS SUMMARY for ${company.companyName}...`);
   const financialSummary = buildFinancialMetricsSummary(company);
-  console.log(`✅ Financial Summary: ${financialSummary}`);
+  console.log(`✅ Financial Summary Generated:`, {
+    length: financialSummary.length,
+    preview: financialSummary.substring(0, 100) + '...'
+  });
 
   // Step 3: Conduct External Research (if available)
   let externalResearch = null;
@@ -89,10 +100,19 @@ export async function conductComprehensiveAnalysis(
     try {
       console.log(`🔍 CONDUCTING EXTERNAL RESEARCH for ${company.companyName}...`);
       externalResearch = await conductExternalResearch(company.companyName, perplexityApiKey);
-      console.log(`✅ EXTERNAL RESEARCH COMPLETE for ${company.companyName}`);
+      console.log(`✅ EXTERNAL RESEARCH COMPLETE for ${company.companyName}:`, {
+        sourcesCount: externalResearch.sources.length,
+        sources: externalResearch.sources
+      });
     } catch (error) {
-      console.error(`⚠️  EXTERNAL RESEARCH FAILED for ${company.companyName}:`, error);
+      console.error(`⚠️  EXTERNAL RESEARCH FAILED for ${company.companyName}:`, {
+        error: error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
+      externalResearch = null;
     }
+  } else {
+    console.log(`⚠️  NO PERPLEXITY API KEY - Skipping external research for ${company.companyName}`);
   }
 
   // Step 4: Generate Business Analysis
@@ -100,12 +120,21 @@ export async function conductComprehensiveAnalysis(
   
   try {
     const businessAnalysis = await generateBusinessAnalysis(company, apiKey, externalResearch || undefined);
+    console.log(`✅ BUSINESS ANALYSIS COMPLETE for ${company.companyName}:`, {
+      hasMarketAnalysis: !!businessAnalysis.marketAnalysis,
+      hasRecommendation: !!businessAnalysis.recommendation,
+      confidence: businessAnalysis.confidence,
+      timingBucket: businessAnalysis.timingBucket
+    });
     
     // Step 5: Combine Financial Metrics + Business Analysis
     const combinedReasoning = `${financialSummary} ${businessAnalysis.marketAnalysis}`;
     
-    console.log(`✅ COMPREHENSIVE ANALYSIS COMPLETE for ${company.companyName}`);
-    console.log(`Final Reasoning: ${combinedReasoning.substring(0, 100)}...`);
+    console.log(`🎯 COMPREHENSIVE ANALYSIS COMPLETE for ${company.companyName}:`, {
+      reasoningLength: combinedReasoning.length,
+      hasExternalSources: !!externalResearch,
+      sourcesCount: externalResearch?.sources.length || 0
+    });
     
     return {
       recommendation: businessAnalysis.recommendation,
@@ -119,16 +148,20 @@ export async function conductComprehensiveAnalysis(
     };
 
   } catch (error) {
-    console.error(`❌ BUSINESS ANALYSIS ERROR for ${company.companyName}:`, error);
+    console.error(`❌ BUSINESS ANALYSIS ERROR for ${company.companyName}:`, {
+      error: error,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : 'No stack trace'
+    });
     
     // Fallback with guaranteed financial metrics
     return {
       recommendation: 'Hold - Technical Error',
       timingBucket: 'Hold',
-      reasoning: `${financialSummary} Technical error prevented full market analysis completion. Manual review recommended.`,
+      reasoning: `${financialSummary} Technical error prevented full market analysis completion: ${error instanceof Error ? error.message : 'Unknown error'}. Manual review recommended.`,
       confidence: 1,
-      keyRisks: 'Unable to complete comprehensive analysis due to technical issues.',
-      suggestedAction: 'Retry analysis or conduct manual review.',
+      keyRisks: `Unable to complete comprehensive analysis due to technical issues: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      suggestedAction: 'Retry analysis with valid API key or conduct manual review.',
       externalSources: externalResearch?.sources.join(', ') || 'Limited external research',
       insufficientData: true
     };
