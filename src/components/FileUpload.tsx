@@ -33,7 +33,9 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
   }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File input changed:', e.target.files);
     if (e.target.files && e.target.files[0]) {
+      console.log('File selected:', e.target.files[0].name);
       handleFile(e.target.files[0]);
     }
   };
