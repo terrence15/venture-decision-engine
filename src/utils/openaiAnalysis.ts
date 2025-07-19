@@ -1,25 +1,6 @@
 
 import { conductComprehensiveAnalysis } from './comprehensiveAnalysis';
-
-interface CompanyData {
-  id: string;
-  companyName: string;
-  totalInvestment: number;
-  equityStake: number;
-  moic: number | null;
-  revenueGrowth: number | null;
-  burnMultiple: number | null;
-  runway: number | null;
-  tam: number;
-  exitActivity: string;
-  barrierToEntry: number;
-  additionalInvestmentRequested: number;
-  // Additional Excel fields
-  arrTtm?: number;
-  ebitdaMargin?: number;
-  topPerformer?: boolean;
-  valuationMethodology?: string;
-}
+import { EnhancedCompanyData } from '../types/portfolio';
 
 interface AnalysisResult {
   recommendation: string;
@@ -33,7 +14,7 @@ interface AnalysisResult {
 }
 
 export async function analyzeCompanyWithOpenAI(
-  company: CompanyData, 
+  company: EnhancedCompanyData, 
   apiKey: string,
   perplexityApiKey?: string
 ): Promise<AnalysisResult> {
@@ -79,12 +60,12 @@ export async function analyzeCompanyWithOpenAI(
 }
 
 export async function analyzePortfolio(
-  companies: CompanyData[], 
+  companies: EnhancedCompanyData[], 
   apiKey: string,
   perplexityApiKey?: string,
   onProgress?: (progress: number) => void
-): Promise<CompanyData[]> {
-  const results: CompanyData[] = [];
+): Promise<EnhancedCompanyData[]> {
+  const results: EnhancedCompanyData[] = [];
   
   console.log(`\n🏁 STARTING PORTFOLIO ANALYSIS`);
   console.log('='.repeat(60));
