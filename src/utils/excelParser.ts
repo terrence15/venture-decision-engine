@@ -260,6 +260,11 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       value = parsedValue * 1000;
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
                     }
+                    // Convert equity stake from decimal to percentage if needed
+                    else if (fieldName === 'equityStake' && parsedValue < 1) {
+                      value = parsedValue * 100;
+                      console.log(`Converted equity stake from ${parsedValue} to ${value}%`);
+                    }
                   }
                 }
               } else if (['tam', 'barrierToEntry'].includes(fieldName)) {
