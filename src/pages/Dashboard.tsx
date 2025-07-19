@@ -1,144 +1,52 @@
-import { useState, useMemo, useEffect } from 'react';
+
+import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
-import { EnhancedAnalysisTable } from '@/components/EnhancedAnalysisTable';
-import { SearchAndFilter } from '@/components/SearchAndFilter';
-import { EnhancedPortfolioCharts } from '@/components/EnhancedPortfolioCharts';
-import { EnhancedCompanyCard } from '@/components/EnhancedCompanyCard';
-import { CompanyDetailModal } from '@/components/CompanyDetailModal';
+import { AnalysisTable } from '@/components/AnalysisTable';
 import { ApiKeyInput } from '@/components/ApiKeyInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, DollarSign, TrendingUp, AlertTriangle, Search, Settings } from 'lucide-react';
+import { Building2, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { analyzePortfolio } from '@/utils/openaiAnalysis';
-import { parseEnhancedExcelFile } from '@/utils/enhancedExcelParser';
-import { EnhancedCompanyData } from '@/types/portfolio';
+import { parseExcelFile, RawCompanyData } from '@/utils/excelParser';
+
+// Extended interface for analyzed companies
+interface AnalyzedCompanyData extends RawCompanyData {
+  recommendation?: string;
+  timingBucket?: string;
+  reasoning?: string;
+  confidence?: number;
+  keyRisks?: string;
+  suggestedAction?: string;
+  externalSources?: string;
+  insufficientData?: boolean;
+}
 
 export function Dashboard() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [companies, setCompanies] = useState<EnhancedCompanyData[]>([]);
+  const [companies, setCompanies] = useState<AnalyzedCompanyData[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showApiInput, setShowApiInput] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [isParsingFile, setIsParsingFile] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<EnhancedCompanyData | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [apiKey, setApiKey] = useState<string>('');
-  const [perplexityApiKey, setPerplexityApiKey] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-
-  // Search and filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    recommendation: [] as string[],
-    confidence: [] as string[],
-    investmentRange: ''
-  });
-  
   const { toast } = useToast();
-
-  // Enable dark mode by default
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
-
-  // Load stored API keys on component mount
-  useEffect(() => {
-    console.log('Dashboard mounted, loading API keys from localStorage...');
-    
-    try {
-      const storedOpenaiKey = localStorage.getItem('openai_api_key');
-      const storedPerplexityKey = localStorage.getItem('perplexity_api_key');
-      
-      console.log('Found stored keys:', {
-        openai: !!storedOpenaiKey,
-        perplexity: !!storedPerplexityKey,
-        openaiPreview: storedOpenaiKey ? `${storedOpenaiKey.substring(0, 8)}...` : 'none',
-        perplexityPreview: storedPerplexityKey ? `${storedPerplexityKey.substring(0, 8)}...` : 'none'
-      });
-      
-      if (storedOpenaiKey) {
-        setApiKey(storedOpenaiKey);
-      }
-      if (storedPerplexityKey) {
-        setPerplexityApiKey(storedPerplexityKey);
-      }
-    } catch (error) {
-      console.error('Error loading API keys from localStorage:', error);
-      toast({
-        title: "Storage Error", 
-        description: "Unable to load stored API keys. You may need to re-enter them.",
-        variant: "destructive"
-      });
-    }
-  }, [toast]);
-
-  // Enhanced search and filter logic
-  const filteredCompanies = useMemo(() => {
-    let filtered = companies;
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(company => 
-        company.companyName.toLowerCase().includes(term) ||
-        company.recommendation?.toLowerCase().includes(term) ||
-        company.keyRisks?.toLowerCase().includes(term) ||
-        company.reasoning?.toLowerCase().includes(term) ||
-        company.executive?.ceoName?.toLowerCase().includes(term) ||
-        company.executive?.industryCategory?.toLowerCase().includes(term)
-      );
-    }
-
-    if (filters.recommendation.length > 0) {
-      filtered = filtered.filter(company => 
-        filters.recommendation.includes(company.recommendation || 'Pending')
-      );
-    }
-
-    if (filters.confidence.length > 0) {
-      const confidenceMap = { 'Very Low': 1, 'Low': 2, 'Medium': 3, 'High': 4, 'Very High': 5 };
-      filtered = filtered.filter(company => {
-        const confidenceLevel = company.confidence;
-        const confidenceName = Object.entries(confidenceMap).find(([_, val]) => val === confidenceLevel)?.[0];
-        return confidenceName && filters.confidence.includes(confidenceName);
-      });
-    }
-
-    if (filters.investmentRange) {
-      const getInvestmentRange = (amount: number) => {
-        if (amount < 1000000) return 'Under $1M';
-        if (amount < 5000000) return '$1M - $5M';
-        if (amount < 10000000) return '$5M - $10M';
-        if (amount < 50000000) return '$10M - $50M';
-        return 'Over $50M';
-      };
-
-      filtered = filtered.filter(company => 
-        getInvestmentRange(company.totalInvestment) === filters.investmentRange
-      );
-    }
-
-    return filtered;
-  }, [companies, searchTerm, filters]);
 
   const handleFileUpload = async (file: File) => {
     setIsParsingFile(true);
     try {
-      console.log('Parsing enhanced Excel file:', file.name);
-      const parsedCompanies = await parseEnhancedExcelFile(file);
+      console.log('Parsing Excel file:', file.name);
+      const parsedCompanies = await parseExcelFile(file);
       
       setCompanies(parsedCompanies);
       setUploadedFile(file);
       
       toast({
         title: "File Uploaded Successfully",
-        description: `Loaded ${parsedCompanies.length} companies with enhanced executive data`,
+        description: `Loaded ${parsedCompanies.length} companies from your Excel file`,
       });
       
-      console.log('Parsed enhanced companies:', parsedCompanies);
+      console.log('Parsed companies:', parsedCompanies);
       
     } catch (error) {
       console.error('File parsing failed:', error);
@@ -153,13 +61,6 @@ export function Dashboard() {
   };
 
   const handleAnalyze = () => {
-    console.log('Analyze button clicked');
-    console.log('Current state:', {
-      companiesCount: companies.length,
-      hasOpenaiKey: !!apiKey,
-      hasPerplexityKey: !!perplexityApiKey
-    });
-
     if (companies.length === 0) {
       toast({
         title: "No Data Available",
@@ -169,86 +70,27 @@ export function Dashboard() {
       return;
     }
 
-    if (!apiKey) {
-      console.log('No OpenAI API key found, showing API input modal');
+    // Check if we have a stored API key
+    const storedApiKey = localStorage.getItem('openai_api_key');
+    if (storedApiKey) {
+      runAnalysis(storedApiKey);
+    } else {
       setShowApiInput(true);
-      return;
-    }
-
-    console.log('Starting analysis with existing keys');
-    runAnalysis(apiKey, perplexityApiKey || undefined);
-  };
-
-  const handleApiKeySubmit = async (openaiKey: string, perplexityKey?: string) => {
-    console.log('API keys submitted:', {
-      openai: !!openaiKey,
-      perplexity: !!perplexityKey
-    });
-
-    try {
-      localStorage.setItem('openai_api_key', openaiKey);
-      if (perplexityKey) {
-        localStorage.setItem('perplexity_api_key', perplexityKey);
-      }
-      setApiKey(openaiKey);
-      setPerplexityApiKey(perplexityKey || '');
-      setShowApiInput(false);
-      
-      toast({
-        title: "API Keys Saved",
-        description: `OpenAI key saved${perplexityKey ? ' and Perplexity key saved' : ''}`,
-      });
-      
-      await runAnalysis(openaiKey, perplexityKey);
-    } catch (error) {
-      console.error('Error saving API keys:', error);
-      toast({
-        title: "Storage Error",
-        description: "Failed to save API keys. Please try again.",
-        variant: "destructive"
-      });
     }
   };
 
-  const handleManageApiKeys = () => {
-    console.log('Manual API key management triggered');
-    setShowApiInput(true);
+  const handleApiKeySubmit = async (apiKey: string) => {
+    // Store API key locally
+    localStorage.setItem('openai_api_key', apiKey);
+    setShowApiInput(false);
+    await runAnalysis(apiKey);
   };
 
-  const handleClearApiKeys = () => {
-    console.log('Clearing stored API keys');
-    
-    try {
-      localStorage.removeItem('openai_api_key');
-      localStorage.removeItem('perplexity_api_key');
-      setApiKey('');
-      setPerplexityApiKey('');
-      
-      toast({
-        title: "API Keys Cleared",
-        description: "All stored API keys have been removed",
-      });
-    } catch (error) {
-      console.error('Error clearing API keys:', error);
-      toast({
-        title: "Storage Error",
-        description: "Failed to clear API keys. Please try manually.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const runAnalysis = async (openaiKey: string, perplexityKey?: string) => {
+  const runAnalysis = async (apiKey: string) => {
     setIsAnalyzing(true);
     setAnalysisProgress(0);
     
     try {
-      console.log('Starting comprehensive portfolio analysis...');
-      console.log('API Keys available:', {
-        openai: !!openaiKey,
-        perplexity: !!perplexityKey
-      });
-      
       const rawCompanies = companies.map(company => ({
         id: company.id,
         companyName: company.companyName,
@@ -261,39 +103,19 @@ export function Dashboard() {
         tam: company.tam,
         exitActivity: company.exitActivity,
         barrierToEntry: company.barrierToEntry,
-        additionalInvestmentRequested: company.additionalInvestmentRequested,
-        // Additional Excel fields - now accessing correctly from main company object
-        arrTtm: company.arrTtm,
-        ebitdaMargin: company.ebitdaMargin,
-        topPerformer: company.topPerformer,
-        valuationMethodology: company.valuationMethodology
+        additionalInvestmentRequested: company.additionalInvestmentRequested
       }));
       
       const analyzedCompanies = await analyzePortfolio(
         rawCompanies, 
-        openaiKey,
-        perplexityKey, // Pass Perplexity API key for external research
+        apiKey,
         setAnalysisProgress
       );
       
-      // Enhanced analysis with real-time data
-      console.log('Starting enhanced analysis with real-time data...');
-      const { enhanceCompaniesWithApiData } = await import('@/utils/enhanceCompanyData');
-      
-      const fullyEnhancedCompanies = await enhanceCompaniesWithApiData(
-        analyzedCompanies as EnhancedCompanyData[],
-        openaiKey,
-        (current, total) => {
-          const progress = Math.round((current / total) * 100);
-          setAnalysisProgress(progress);
-          console.log(`Enhanced ${current}/${total} companies (${progress}%)`);
-        }
-      );
-      
-      setCompanies(fullyEnhancedCompanies);
+      setCompanies(analyzedCompanies as AnalyzedCompanyData[]);
       toast({
-        title: "Comprehensive Analysis Complete",
-        description: `Successfully analyzed ${fullyEnhancedCompanies.length} companies with ${perplexityKey ? 'external research integration' : 'internal data only'}`,
+        title: "Analysis Complete",
+        description: `Successfully analyzed ${analyzedCompanies.length} companies`,
       });
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -308,279 +130,137 @@ export function Dashboard() {
     }
   };
 
-  const handleCompanyClick = (company: EnhancedCompanyData) => {
-    setSelectedCompany(company);
-    setIsModalOpen(true);
-  };
-
-  const clearFilters = () => {
-    setSearchTerm('');
-    setFilters({
-      recommendation: [],
-      confidence: [],
-      investmentRange: ''
-    });
-  };
-
-  // Calculate enhanced metrics
+  // Calculate metrics safely
   const totalPortfolioValue = companies.reduce((sum, company) => sum + (company.totalInvestment || 0), 0);
   const totalRequested = companies.reduce((sum, company) => sum + (company.additionalInvestmentRequested || 0), 0);
   const validMOICs = companies.filter(company => company.moic !== null && company.moic !== undefined);
   const avgMOIC = validMOICs.length > 0 ? validMOICs.reduce((sum, company) => sum + company.moic!, 0) / validMOICs.length : 0;
-  const highRiskCount = companies.filter(company => (company.riskAssessment?.overallRiskScore || 50) >= 70).length;
-
-  if (!uploadedFile) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        
-        <main className="container mx-auto px-6 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-4xl font-bold gradient-text mb-4">
-                Portfolio Management
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                AI-powered investment decision support with advanced analytics and executive insights
-              </p>
-            </div>
-            <FileUpload onFileSelect={handleFileUpload} />
-            {isParsingFile && (
-              <div className="mt-4 text-center">
-                <p className="text-muted-foreground">Parsing Excel file with enhanced data extraction...</p>
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const highRiskCount = companies.filter(company => company.confidence && company.confidence <= 2).length;
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
       <main className="container mx-auto px-6 py-8">
-        <div className="space-y-6">
-          {/* Enhanced Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold gradient-text">Portfolio Management</h1>
-              <p className="text-muted-foreground">AI-powered investment decision support</p>
+        {!uploadedFile ? (
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-foreground mb-4">
+                AI-Powered Portfolio Analysis
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Upload your portfolio data to receive objective, risk-adjusted recommendations 
+                for capital deployment decisions backed by LLM analysis.
+              </p>
             </div>
-            
-            {/* Live Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search companies, CEOs, industries..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-64 bg-secondary/50 border-border/50 focus:border-primary/50"
-              />
-            </div>
-          </div>
-
-          {/* Enhanced API Key Status */}
-          <Card className="bg-gradient-to-r from-secondary/30 to-secondary/10 border-border/50">
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">OpenAI:</span>
-                    <Badge variant={apiKey ? "default" : "secondary"}>
-                      {apiKey ? `Connected (${apiKey.substring(0, 8)}...)` : 'Not connected'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Perplexity:</span>
-                    <Badge variant={perplexityApiKey ? "default" : "secondary"}>
-                      {perplexityApiKey ? `Connected (${perplexityApiKey.substring(0, 8)}...)` : 'Not connected'}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground max-w-md">
-                    <p>• OpenAI: Required for AI investment analysis</p>
-                    <p>• Perplexity: Optional, enables real-time research from Crunchbase, LinkedIn, TechCrunch</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleManageApiKeys}
-                    className="flex items-center gap-2"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Manage Keys
-                  </Button>
-                  {(apiKey || perplexityApiKey) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearApiKeys}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      Clear Keys
-                    </Button>
-                  )}
-                </div>
+            <FileUpload onFileSelect={handleFileUpload} />
+            {isParsingFile && (
+              <div className="mt-4 text-center">
+                <p className="text-muted-foreground">Parsing Excel file...</p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Portfolio Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
-                <Building2 className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary">{companies.length}</div>
-                <p className="text-xs text-muted-foreground">Portfolio companies</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
-                <DollarSign className="h-4 w-4 text-success" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-success">
-                  ${(totalPortfolioValue / 1000000).toFixed(1)}M
-                </div>
-                <p className="text-xs text-muted-foreground">Total invested</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Average Return</CardTitle>
-                <TrendingUp className="h-4 w-4 text-accent" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-accent">
-                  {avgMOIC > 0 ? `${avgMOIC.toFixed(1)}x` : 'N/A'}
-                </div>
-                <p className="text-xs text-muted-foreground">Portfolio MOIC</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">High Risk Alert</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-destructive">{highRiskCount}</div>
-                <p className="text-xs text-muted-foreground">
-                  {highRiskCount > 0 && <Badge variant="destructive" className="text-xs">Alert</Badge>}
-                  {highRiskCount === 0 && <span>Companies at risk</span>}
-                </p>
-              </CardContent>
-            </Card>
+            )}
           </div>
-
-          {/* Enhanced Portfolio Charts */}
-          {companies.length > 0 && <EnhancedPortfolioCharts companies={companies} />}
-
-          {/* View Mode Toggle */}
-          <div className="flex items-center justify-between">
-            <SearchAndFilter
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              placeholder="Search companies, industries, or CEOs..."
-              selectedFilters={filters}
-              onFilterChange={setFilters}
-              onClearFilters={clearFilters}
-            />
-            
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30"
-              >
-                Grid View
-              </Button>
-              <Button
-                variant={viewMode === 'table' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('table')}
-                className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30"
-              >
-                Table View
-              </Button>
-              <Button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing}
-                className="bg-gradient-to-r from-accent to-primary text-white shadow-glow"
-                size="sm"
-              >
-                {isAnalyzing ? 
-                  `Analyzing... ${analysisProgress}%` : 
-                  `Analyze Portfolio`
-                }
-              </Button>
-            </div>
-          </div>
-
-          {/* Company Grid or Table */}
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredCompanies.length > 0 ? (
-                filteredCompanies.map((company) => (
-                   <EnhancedCompanyCard
-                     key={company.id}
-                     company={company}
-                     onClick={() => handleCompanyClick(company)}
-                   />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground text-lg">No companies found</p>
-                  <p className="text-muted-foreground text-sm mt-2">Try adjusting your search or filters</p>
+        ) : (
+          <div className="space-y-6">
+            {/* File Info Card */}
+            <Card className="shadow-soft">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Loaded from:</p>
+                    <p className="font-medium">{uploadedFile.name}</p>
+                  </div>
+                  <Badge variant="outline">{companies.length} companies</Badge>
                 </div>
-              )}
+              </CardContent>
+            </Card>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="shadow-soft">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    ${(totalPortfolioValue / 1000000).toFixed(1)}M
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {companies.length} companies
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="shadow-soft">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Capital Requested</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    ${(totalRequested / 1000000).toFixed(1)}M
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Total ask amount
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="shadow-soft">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg MOIC</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {avgMOIC > 0 ? `${avgMOIC.toFixed(1)}x` : 'N/A'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Portfolio multiple
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="shadow-soft">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">High Risk</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{highRiskCount}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Low confidence deals
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            <EnhancedAnalysisTable 
-              companies={filteredCompanies}
+
+            {/* Analysis Table */}
+            <AnalysisTable 
+              companies={companies}
               onAnalyze={handleAnalyze}
               isAnalyzing={isAnalyzing}
-              onCompanyClick={handleCompanyClick}
             />
-          )}
             
-          {/* API Key Input Modal */}
-          {showApiInput && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-card border border-border/50 p-6 rounded-lg max-w-lg w-full mx-4 shadow-strong">
-                <ApiKeyInput 
-                  onApiKeySubmit={handleApiKeySubmit}
-                  isAnalyzing={isAnalyzing}
-                />
-                <button
-                  onClick={() => setShowApiInput(false)}
-                  className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Cancel
-                </button>
+            {/* API Key Input Modal */}
+            {showApiInput && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
+                  <ApiKeyInput 
+                    onApiKeySubmit={handleApiKeySubmit}
+                    isAnalyzing={isAnalyzing}
+                  />
+                  <button
+                    onClick={() => setShowApiInput(false)}
+                    className="mt-4 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-           )}
-        </div>
-
-        {/* Company Detail Modal */}
-        {selectedCompany && (
-          <CompanyDetailModal
-            company={selectedCompany}
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            apiKey={apiKey}
-          />
+            )}
+          </div>
         )}
       </main>
     </div>
