@@ -42,17 +42,17 @@ function findBestMatch(target: string, options: string[]): string | null {
   
   // Enhanced keyword matching for better fuzzy matching
   const keywordMappings: { [key: string]: string[] } = {
-    'companyname': ['company', 'name', 'firm', 'business'],
-    'totalinvestment': ['investment', 'invested', 'capital', 'funding', 'position', 'amount'],
-    'equitystake': ['equity', 'stake', 'ownership', 'share', 'percent', '%'],
-    'moic': ['moic', 'multiple', 'return', 'multiplier'],
-    'revenuegrowth': ['revenue', 'growth', 'sales', 'income'],
-    'burnmultiple': ['burn', 'multiple', 'efficiency'],
-    'runway': ['runway', 'months', 'cash'],
-    'tam': ['tam', 'market', 'addressable', 'size'],
-    'exitactivity': ['exit', 'activity', 'sector', 'ipo', 'acquisition'],
-    'barriertoentry': ['barrier', 'entry', 'competitive', 'moat', 'advantage'],
-    'additionalinvestment': ['additional', 'requested', 'ask', 'need', 'required']
+    'companyname': ['company'],
+    'totalinvestment': ['total', 'investment', 'thousands'],
+    'equitystake': ['equity', 'stake', 'fully', 'diluted'],
+    'moic': ['moic', 'implied'],
+    'revenuegrowth': ['ttm', 'revenue', 'growth'],
+    'burnmultiple': ['burn', 'multiple', 'rate', 'arr'],
+    'runway': ['runway', 'months'],
+    'tam': ['tam', 'rating', 'competitive', 'growing', 'market'],
+    'exitactivity': ['exit', 'activity', 'sector', 'high', 'moderate', 'low'],
+    'barriertoentry': ['barrier', 'entry', 'advantage', 'firms', 'enter'],
+    'additionalinvestment': ['additional', 'investment', 'request']
   };
   
   let bestMatch = null;
