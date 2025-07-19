@@ -147,17 +147,21 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
         
         // Extract headers (first row)
         const headers = jsonData[0] as string[];
-        console.log('Found headers:', headers);
+        console.log('Raw headers found:', headers);
+        console.log('Headers length:', headers.length);
         
         // Create fuzzy column mapping
         const fuzzyMapping = createFuzzyMapping(headers);
         console.log('Fuzzy mapping created:', fuzzyMapping);
+        console.log('Mapped fields:', Object.values(fuzzyMapping));
         
         // Check if we found enough essential columns
         const essentialFields = ['companyName', 'totalInvestment', 'equityStake'];
         const foundEssentials = essentialFields.filter(field => 
           Object.values(fuzzyMapping).includes(field)
         );
+        console.log('Essential fields found:', foundEssentials);
+        console.log('Missing essentials:', essentialFields.filter(field => !foundEssentials.includes(field)));
         
         if (foundEssentials.length < essentialFields.length) {
           const missingEssentials = essentialFields.filter(field => 
