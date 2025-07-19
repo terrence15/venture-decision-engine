@@ -353,6 +353,16 @@ export function Dashboard() {
               >
                 Table View
               </Button>
+              {companies.length > 0 && apiKey && (
+                <Button
+                  onClick={() => runAnalysis(apiKey)}
+                  disabled={isAnalyzing}
+                  className="bg-gradient-to-r from-accent to-primary text-white shadow-glow"
+                  size="sm"
+                >
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze Portfolio'}
+                </Button>
+              )}
             </div>
           </div>
 
