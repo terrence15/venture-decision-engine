@@ -64,11 +64,14 @@ export async function conductComprehensiveAnalysis(
 ): Promise<ComprehensiveAnalysisResult> {
   
   console.log(`\n🚀 STARTING COMPREHENSIVE ANALYSIS FOR ${company.companyName.toUpperCase()}`);
+  console.log(`=== DEBUGGING COMPREHENSIVE ANALYSIS INTEGRATION ===`);
   console.log(`🔑 API Keys Status:`, {
     hasOpenAI: !!apiKey,
     hasPerplexity: !!perplexityApiKey,
-    openaiPreview: apiKey ? `${apiKey.substring(0, 8)}...` : 'none',
-    perplexityPreview: perplexityApiKey ? `${perplexityApiKey.substring(0, 8)}...` : 'none'
+    openaiLength: apiKey ? apiKey.length : 0,
+    perplexityLength: perplexityApiKey ? perplexityApiKey.length : 0,
+    openaiPreview: apiKey ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}` : 'none',
+    perplexityPreview: perplexityApiKey ? `${perplexityApiKey.substring(0, 8)}...${perplexityApiKey.substring(perplexityApiKey.length - 4)}` : 'none'
   });
   
   // Step 1: Check if we have enough data
@@ -96,18 +99,34 @@ export async function conductComprehensiveAnalysis(
 
   // Step 3: Conduct External Research (if available)
   let externalResearch = null;
-  if (perplexityApiKey) {
+  console.log(`🔍 EXTERNAL RESEARCH DECISION for ${company.companyName}:`, {
+    hasPerplexityKey: !!perplexityApiKey,
+    perplexityKeyValid: perplexityApiKey && perplexityApiKey.trim() !== '',
+    willConductResearch: !!(perplexityApiKey && perplexityApiKey.trim() !== '')
+  });
+
+  if (perplexityApiKey && perplexityApiKey.trim() !== '') {
     try {
       console.log(`🔍 CONDUCTING EXTERNAL RESEARCH for ${company.companyName}...`);
+      const researchStartTime = Date.now();
       externalResearch = await conductExternalResearch(company.companyName, perplexityApiKey);
+      const researchDuration = Date.now() - researchStartTime;
+      
       console.log(`✅ EXTERNAL RESEARCH COMPLETE for ${company.companyName}:`, {
+        duration: `${researchDuration}ms`,
         sourcesCount: externalResearch.sources.length,
-        sources: externalResearch.sources
+        sources: externalResearch.sources,
+        hasFundingData: !!externalResearch.fundingData && externalResearch.fundingData !== 'No external research - API key not provided',
+        hasHiringTrends: !!externalResearch.hiringTrends && externalResearch.hiringTrends !== 'No external research - API key not provided',
+        hasMarketPositioning: !!externalResearch.marketPositioning && externalResearch.marketPositioning !== 'No external research - API key not provided',
+        hasRecentNews: !!externalResearch.recentNews && externalResearch.recentNews !== 'No external research - API key not provided',
+        hasCompetitorActivity: !!externalResearch.competitorActivity && externalResearch.competitorActivity !== 'No external research - API key not provided'
       });
     } catch (error) {
       console.error(`⚠️  EXTERNAL RESEARCH FAILED for ${company.companyName}:`, {
         error: error,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack trace'
       });
       externalResearch = null;
     }
@@ -117,14 +136,29 @@ export async function conductComprehensiveAnalysis(
 
   // Step 4: Generate Business Analysis
   console.log(`📤 GENERATING BUSINESS ANALYSIS for ${company.companyName}...`);
+  console.log(`🔗 External Research Integration Status:`, {
+    hasExternalResearch: !!externalResearch,
+    externalResearchSources: externalResearch?.sources || [],
+    willPassToBusinessAnalysis: !!externalResearch
+  });
   
   try {
+    const analysisStartTime = Date.now();
     const businessAnalysis = await generateBusinessAnalysis(company, apiKey, externalResearch || undefined);
+    const analysisDuration = Date.now() - analysisStartTime;
+    
     console.log(`✅ BUSINESS ANALYSIS COMPLETE for ${company.companyName}:`, {
+      duration: `${analysisDuration}ms`,
       hasMarketAnalysis: !!businessAnalysis.marketAnalysis,
+      marketAnalysisLength: businessAnalysis.marketAnalysis.length,
       hasRecommendation: !!businessAnalysis.recommendation,
+      recommendationLength: businessAnalysis.recommendation.length,
       confidence: businessAnalysis.confidence,
-      timingBucket: businessAnalysis.timingBucket
+      timingBucket: businessAnalysis.timingBucket,
+      hasKeyRisks: !!businessAnalysis.keyRisks,
+      keyRisksLength: businessAnalysis.keyRisks.length,
+      hasSuggestedAction: !!businessAnalysis.suggestedAction,
+      suggestedActionLength: businessAnalysis.suggestedAction.length
     });
     
     // Step 5: Combine Financial Metrics + Business Analysis
@@ -132,8 +166,11 @@ export async function conductComprehensiveAnalysis(
     
     console.log(`🎯 COMPREHENSIVE ANALYSIS COMPLETE for ${company.companyName}:`, {
       reasoningLength: combinedReasoning.length,
+      financialSummaryLength: financialSummary.length,
+      marketAnalysisLength: businessAnalysis.marketAnalysis.length,
       hasExternalSources: !!externalResearch,
-      sourcesCount: externalResearch?.sources.length || 0
+      sourcesCount: externalResearch?.sources.length || 0,
+      externalSourcesString: externalResearch?.sources.join(', ') || 'Internal analysis only'
     });
     
     return {
@@ -151,7 +188,8 @@ export async function conductComprehensiveAnalysis(
     console.error(`❌ BUSINESS ANALYSIS ERROR for ${company.companyName}:`, {
       error: error,
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      errorStack: error instanceof Error ? error.stack : 'No stack trace'
+      errorStack: error instanceof Error ? error.stack : 'No stack trace',
+      errorName: error instanceof Error ? error.name : 'Unknown error type'
     });
     
     // Fallback with guaranteed financial metrics
