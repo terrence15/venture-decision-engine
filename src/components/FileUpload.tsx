@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+
+import { useCallback, useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ interface FileUploadProps {
 export function FileUpload({ onFileSelect }: FileUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -38,6 +40,11 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
       console.log('File selected:', e.target.files[0].name);
       handleFile(e.target.files[0]);
     }
+  };
+
+  const handleButtonClick = () => {
+    console.log('Button clicked, triggering file input');
+    fileInputRef.current?.click();
   };
 
   const handleFile = (file: File) => {
@@ -80,20 +87,21 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
             </p>
             
             <div className="space-y-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx"
+                onChange={handleFileInput}
+                className="hidden"
+              />
+              
               <Button
                 variant="outline"
-                className="relative overflow-hidden"
-                onClick={() => document.getElementById('file-input')?.click()}
+                onClick={handleButtonClick}
+                className="w-full sm:w-auto"
               >
                 <Upload className="mr-2 h-4 w-4" />
                 Select Excel File
-                <input
-                  id="file-input"
-                  type="file"
-                  accept=".xlsx"
-                  onChange={handleFileInput}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
               </Button>
               
               <p className="text-sm text-muted-foreground">
