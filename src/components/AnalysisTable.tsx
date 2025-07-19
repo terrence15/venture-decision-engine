@@ -35,6 +35,8 @@ interface AnalysisTableProps {
   companies: CompanyData[];
   onAnalyze: () => void;
   isAnalyzing: boolean;
+  analysisProgress?: number;
+  analysisStatus?: string;
 }
 
 export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTableProps) {
