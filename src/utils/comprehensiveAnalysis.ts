@@ -68,9 +68,12 @@ function validateDataSufficiency(company: CompanyData): boolean {
     company.additionalInvestmentRequested
   ];
   
-  const missingCriticalData = criticalFields.filter(field => 
-    field === null || field === undefined || field === '' || field === 0
-  ).length;
+  const missingCriticalData = criticalFields.filter(field => {
+    if (field === null || field === undefined) return true;
+    if (typeof field === 'string' && field === '') return true;
+    if (typeof field === 'number' && field === 0) return false; // 0 is valid for numbers
+    return !field; // catch other falsy values
+  }).length;
   
   console.log('Missing critical data count:', missingCriticalData);
   return missingCriticalData < 3; // More lenient threshold
@@ -138,16 +141,32 @@ FILL IN THIS TEMPLATE EXACTLY:
 
 {
   "reasoning": "The company has [EXACT REVENUE GROWTH]% YoY revenue growth and maintains a burn multiple of [EXACT BURN MULTIPLE]x. [SPECIFIC EXTERNAL VALIDATION from research]. However, [SPECIFIC RISK from data]. [INVESTMENT LOGIC based on metrics].",
-  "keyRisks": "[SPECIFIC EXTERNAL RISK from competitive/market data]; [SPECIFIC FINANCIAL RISK from Excel metrics].",
+  "keyRisks": "[MARKET/COMPETITIVE RISK with specific details]; [INVESTOR/DILUTION RISK based on runway and capital request].",
   "confidence": [1-5 number based on data quality],
   "suggestedAction": "[ONE SPECIFIC TACTICAL NEXT STEP]"
 }
 
+CRITICAL KEY RISKS REQUIREMENTS:
+- Focus on EXTERNAL market risks, not internal operational issues
+- Include competitive positioning threats and market dynamics
+- Address investor concerns like dilution, pricing power, market saturation
+- Use investor-specific language: "dilution risk", "pricing power", "market saturation", "capital efficiency"
+
+GOOD KEY RISKS EXAMPLES:
+- "Unclear pricing power in crowded market; potential dilution given tight runway"
+- "Market saturation risk as competitors raise larger rounds; runway pressures may force unfavorable terms"
+- "Competitive moats unclear given low barriers to entry; burn rate indicates capital efficiency concerns"
+
+BAD KEY RISKS (AVOID):
+- "Competitor XYZ's larger Series B may accelerate their market share gains"
+- "High burn multiple with low revenue growth threatens sustainability"
+- Generic operational risks or company-specific issues
+
 REQUIREMENTS:
 - Start reasoning with exact Excel figures
 - Include specific external research details  
-- Make risks specific and external-facing
-- No generic business language
+- Make risks MARKET-FOCUSED and INVESTOR-SPECIFIC
+- No generic business language or operational risks
 - Be decisive, not wishy-washy`;
 }
 
@@ -170,9 +189,23 @@ async function validateResponse(response: AnalysisResult, company: CompanyData):
     return false;
   }
   
-  // Check for specific risk content
+  // Check for specific risk content and market focus
   if (response.keyRisks.length < 50 || !response.keyRisks.includes(';')) {
     console.log('Key risks too generic or short - rejecting');
+    return false;
+  }
+  
+  // Reject generic operational risks
+  const operationalRiskTerms = ['competitor xyz', 'high burn multiple', 'threatens sustainability', 'market share gains'];
+  if (operationalRiskTerms.some(term => response.keyRisks.toLowerCase().includes(term))) {
+    console.log('Key risks contain operational/generic terms - rejecting');
+    return false;
+  }
+  
+  // Require investor-focused language
+  const investorTerms = ['dilution', 'pricing power', 'market saturation', 'capital efficiency', 'runway pressure', 'unfavorable terms'];
+  if (!investorTerms.some(term => response.keyRisks.toLowerCase().includes(term))) {
+    console.log('Key risks lack investor-specific language - rejecting');
     return false;
   }
   
