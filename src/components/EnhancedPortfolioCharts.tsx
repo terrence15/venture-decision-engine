@@ -152,7 +152,7 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topInvestments} margin={{ top: 5, right: 5, left: 5, bottom: 35 }}>
+              <BarChart data={topInvestments} margin={{ top: 5, right: 5, left: -10, bottom: 35 }}>
                 <XAxis 
                   dataKey="name" 
                   angle={-45}
@@ -165,7 +165,7 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
                 <YAxis 
                   fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
-                  width={30}
+                  width={15}
                 />
                 <Bar dataKey="investment" radius={[2, 2, 0, 0]} stroke="hsl(var(--border))" strokeWidth={1} />
                 <ChartTooltip content={<CustomTooltip />} />
@@ -186,7 +186,7 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart data={scatterData} margin={{ top: 5, right: 5, left: 25, bottom: 25 }}>
+              <ScatterChart data={scatterData} margin={{ top: 5, right: 5, left: 0, bottom: 25 }}>
                 <XAxis 
                   type="number" 
                   dataKey="x" 
@@ -200,7 +200,7 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
                   name="MOIC"
                   fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
-                  width={25}
+                  width={15}
                 />
                 <Scatter fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" strokeWidth={1} />
                 <ChartTooltip content={<CustomTooltip />} />
