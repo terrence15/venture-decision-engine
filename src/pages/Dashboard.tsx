@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
 import { AnalysisTable } from '@/components/AnalysisTable';
-import { ApiKeyInput } from '@/components/ApiKeyInput';
-import { PerplexityKeyInput } from '@/components/PerplexityKeyInput';
+import { CombinedApiKeyInput } from '@/components/CombinedApiKeyInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +28,6 @@ export function Dashboard() {
   const [companies, setCompanies] = useState<AnalyzedCompanyData[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showApiInput, setShowApiInput] = useState(false);
-  const [showPerplexityInput, setShowPerplexityInput] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [isParsingFile, setIsParsingFile] = useState(false);
@@ -73,52 +71,26 @@ export function Dashboard() {
       return;
     }
 
-    // Check for OpenAI API key first
+    // Check for OpenAI API key
     const storedApiKey = localStorage.getItem('openai_api_key');
     if (!storedApiKey) {
       setShowApiInput(true);
       return;
     }
 
-    // Then check for Perplexity API key (optional but recommended)
-    const perplexityKey = getPerplexityApiKey();
-    if (!perplexityKey) {
-      setShowPerplexityInput(true);
-      return;
-    }
-
+    // If OpenAI key exists, proceed with analysis
     runAnalysis(storedApiKey);
   };
 
-  const handleApiKeySubmit = async (apiKey: string) => {
-    localStorage.setItem('openai_api_key', apiKey);
+  const handleApiKeysSubmit = async (openaiKey: string, perplexityKey?: string) => {
+    localStorage.setItem('openai_api_key', openaiKey);
+    
+    if (perplexityKey) {
+      setPerplexityApiKey(perplexityKey);
+    }
+    
     setShowApiInput(false);
-    
-    // After OpenAI key, check for Perplexity key
-    const perplexityKey = getPerplexityApiKey();
-    if (!perplexityKey) {
-      setShowPerplexityInput(true);
-    } else {
-      await runAnalysis(apiKey);
-    }
-  };
-
-  const handlePerplexityKeySubmit = async (apiKey: string) => {
-    setPerplexityApiKey(apiKey);
-    setShowPerplexityInput(false);
-    
-    const openaiKey = localStorage.getItem('openai_api_key');
-    if (openaiKey) {
-      await runAnalysis(openaiKey);
-    }
-  };
-
-  const skipPerplexityResearch = async () => {
-    setShowPerplexityInput(false);
-    const openaiKey = localStorage.getItem('openai_api_key');
-    if (openaiKey) {
-      await runAnalysis(openaiKey);
-    }
+    await runAnalysis(openaiKey);
   };
 
   const runAnalysis = async (apiKey: string) => {
@@ -287,12 +259,12 @@ export function Dashboard() {
               analysisStatus={analysisStatus}
             />
             
-            {/* OpenAI API Key Input Modal */}
+            {/* Combined API Key Input Modal */}
             {showApiInput && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
-                  <ApiKeyInput 
-                    onApiKeySubmit={handleApiKeySubmit}
+                <div className="bg-background p-6 rounded-lg max-w-lg w-full mx-4">
+                  <CombinedApiKeyInput 
+                    onApiKeysSubmit={handleApiKeysSubmit}
                     isAnalyzing={isAnalyzing}
                   />
                   <button
@@ -301,32 +273,6 @@ export function Dashboard() {
                   >
                     Cancel
                   </button>
-                </div>
-              </div>
-            )}
-
-            {/* Perplexity API Key Input Modal */}
-            {showPerplexityInput && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
-                  <PerplexityKeyInput 
-                    onApiKeySubmit={handlePerplexityKeySubmit}
-                    isAnalyzing={isAnalyzing}
-                  />
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={skipPerplexityResearch}
-                      className="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                      Skip External Research
-                    </button>
-                    <button
-                      onClick={() => setShowPerplexityInput(false)}
-                      className="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                      Cancel
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
