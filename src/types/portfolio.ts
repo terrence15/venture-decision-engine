@@ -44,4 +44,10 @@ export interface EnhancedCompanyData {
   investmentDate?: string;
   currentValuation?: number;
   totalReturn?: number;
+  
+  // Financial metrics (moved from executive to main interface)
+  arrTtm?: number;
+  ebitdaMargin?: number;
+  topPerformer?: boolean;
+  valuationMethodology?: string;
 }

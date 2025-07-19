@@ -169,11 +169,11 @@ export function Dashboard() {
         exitActivity: company.exitActivity,
         barrierToEntry: company.barrierToEntry,
         additionalInvestmentRequested: company.additionalInvestmentRequested,
-        // Additional Excel fields
-        arrTtm: company.executive?.arrTtm,
-        ebitdaMargin: company.executive?.ebitdaMargin,
-        topPerformer: company.executive?.topPerformer,
-        valuationMethodology: company.executive?.valuationMethodology
+        // Additional Excel fields - now accessing correctly from main company object
+        arrTtm: company.arrTtm,
+        ebitdaMargin: company.ebitdaMargin,
+        topPerformer: company.topPerformer,
+        valuationMethodology: company.valuationMethodology
       }));
       
       const analyzedCompanies = await analyzePortfolio(
