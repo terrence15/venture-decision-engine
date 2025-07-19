@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
 import { AnalysisTable } from '@/components/AnalysisTable';
+import { ApiKeyInput } from '@/components/ApiKeyInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import { Building2, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { analyzePortfolio } from '@/utils/openaiAnalysis';
 
-// Mock data for demonstration
+// Mock data demonstrating sophisticated LLM analysis framework
 const mockCompanies = [
   {
     id: '1',
@@ -23,10 +26,12 @@ const mockCompanies = [
     additionalInvestmentRequested: 1500000,
     recommendation: 'Invest $1.2M of $1.5M request',
     timingBucket: 'Double Down',
-    reasoning: 'Strong revenue growth momentum with improving burn efficiency. TAM expansion indicates scalable opportunity. High exit activity provides favorable liquidity environment.',
+    reasoning: 'Company shows 145% YoY growth with recent $8M Series B led by Andreessen Horowitz, validating product-market fit in enterprise automation. LinkedIn data shows 40% headcount growth in Q3, particularly in sales roles, suggesting strong commercial momentum. However, elevated burn multiple (1.8x) requires monitoring, though justified by TAM expansion and proven unit economics. Strategic investment warranted given exit environment and defensible moat.',
     confidence: 4,
-    keyRisks: 'Competitive landscape intensifying with well-funded players entering market.',
-    suggestedAction: 'Schedule due diligence call to validate Q4 pipeline strength before commitment.'
+    keyRisks: 'Intensifying competition from Microsoft and Salesforce entering automation space; potential customer concentration risk with enterprise clients.',
+    suggestedAction: 'Deploy capital with quarterly burn monitoring and customer diversification milestones.',
+    externalSources: 'Crunchbase (Series B data), LinkedIn (hiring trends), TechCrunch coverage',
+    insufficientData: false
   },
   {
     id: '2',
@@ -43,10 +48,12 @@ const mockCompanies = [
     additionalInvestmentRequested: 3000000,
     recommendation: 'Bridge Capital Only - $800K',
     timingBucket: 'Bridge Capital Only',
-    reasoning: 'Massive TAM with strong IP moat, but concerning burn rate and slowing growth indicate execution challenges. Bridge to Series B fundraise.',
+    reasoning: 'Massive TAM (5/5) with proprietary dataset moat, but 28% growth deceleration and 3.2x burn multiple signal execution risk. Glassdoor reviews show 15% engineering turnover in Q3, though recent AWS partnership validates technical capabilities. Bridge capital justified to reach Series B milestones while monitoring unit economics and team stability.',
     confidence: 2,
-    keyRisks: 'Cash runway critical with unproven unit economics at scale.',
-    suggestedAction: 'Request detailed burn plan and milestone-based funding structure.'
+    keyRisks: 'Critical 12-month runway with unproven unit economics at scale; potential technical debt from rapid scaling.',
+    suggestedAction: 'Deploy $800K bridge with milestone-based releases tied to burn reduction and customer retention metrics.',
+    externalSources: 'Glassdoor (turnover data), AWS press release, PitchBook (sector analysis)',
+    insufficientData: false
   },
   {
     id: '3',
@@ -63,10 +70,34 @@ const mockCompanies = [
     additionalInvestmentRequested: 2200000,
     recommendation: 'Decline',
     timingBucket: 'Decline',
-    reasoning: 'Negative revenue growth combined with high burn multiple indicates fundamental business model issues. Limited exit opportunities in sector.',
+    reasoning: 'Declining revenue (-12% YoY) and deteriorating burn efficiency (4.1x) indicate fundamental model failure. LinkedIn shows 30% workforce reduction and CEO departure rumors on industry forums. Limited sustainability exits in logistics sector per PitchBook. Risk of total capital loss outweighs any recovery scenarios.',
     confidence: 5,
-    keyRisks: 'Potential total loss of investment within 12 months without major pivot.',
-    suggestedAction: 'Explore acqui-hire opportunities to preserve some value recovery.'
+    keyRisks: 'Imminent cash depletion within 8 months; potential total loss of $1.8M investment without viable pivot path.',
+    suggestedAction: 'Initiate acqui-hire discussions with strategic logistics players to recover partial value.',
+    externalSources: 'LinkedIn (workforce data), industry forums, PitchBook (exit comps)',
+    insufficientData: false
+  },
+  {
+    id: '4',
+    companyName: 'NeuroTech Analytics',
+    totalInvestment: 1200000,
+    equityStake: 12.5,
+    moic: null,
+    revenueGrowth: null,
+    burnMultiple: null,
+    runway: null,
+    tam: 4,
+    exitActivity: 'High',
+    barrierToEntry: 5,
+    additionalInvestmentRequested: 800000,
+    recommendation: 'Insufficient data to assess',
+    timingBucket: 'N/A',
+    reasoning: 'Missing critical inputs (growth, burn, runway metrics) prevents responsible investment evaluation. Strong TAM and exit activity suggest potential, but lack of performance visibility makes additional capital deployment highly speculative.',
+    confidence: 1,
+    keyRisks: 'Complete lack of visibility into operational metrics, cash efficiency, or unit economics makes investment assessment impossible.',
+    suggestedAction: 'Request updated financials, burn analysis, and growth KPIs before reassessing capital deployment.',
+    externalSources: 'Limited data available',
+    insufficientData: true
   }
 ];
 
@@ -74,6 +105,9 @@ export function Dashboard() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [companies, setCompanies] = useState(mockCompanies);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showApiInput, setShowApiInput] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const { toast } = useToast();
 
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
@@ -82,11 +116,64 @@ export function Dashboard() {
   };
 
   const handleAnalyze = () => {
+    // Check if we have a stored API key
+    const storedApiKey = localStorage.getItem('openai_api_key');
+    if (storedApiKey) {
+      runAnalysis(storedApiKey);
+    } else {
+      setShowApiInput(true);
+    }
+  };
+
+  const handleApiKeySubmit = async (apiKey: string) => {
+    // Store API key locally
+    localStorage.setItem('openai_api_key', apiKey);
+    setShowApiInput(false);
+    await runAnalysis(apiKey);
+  };
+
+  const runAnalysis = async (apiKey: string) => {
     setIsAnalyzing(true);
-    // Simulate AI analysis
-    setTimeout(() => {
+    setAnalysisProgress(0);
+    
+    try {
+      const rawCompanies = companies.map(company => ({
+        id: company.id,
+        companyName: company.companyName,
+        totalInvestment: company.totalInvestment,
+        equityStake: company.equityStake,
+        moic: company.moic,
+        revenueGrowth: company.revenueGrowth,
+        burnMultiple: company.burnMultiple,
+        runway: company.runway,
+        tam: company.tam,
+        exitActivity: company.exitActivity,
+        barrierToEntry: company.barrierToEntry,
+        additionalInvestmentRequested: company.additionalInvestmentRequested
+      }));
+      
+      const analyzedCompanies = await analyzePortfolio(
+        rawCompanies, 
+        apiKey,
+        setAnalysisProgress
+      );
+      
+      setCompanies(analyzedCompanies as any);
+      toast({
+        title: "Analysis Complete",
+        description: `Successfully analyzed ${analyzedCompanies.length} companies`,
+      });
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
       setIsAnalyzing(false);
-    }, 3000);
+      setAnalysisProgress(0);
+    }
   };
 
   const totalPortfolioValue = companies.reduce((sum, company) => sum + company.totalInvestment, 0);
@@ -179,6 +266,24 @@ export function Dashboard() {
               onAnalyze={handleAnalyze}
               isAnalyzing={isAnalyzing}
             />
+            
+            {/* API Key Input Modal */}
+            {showApiInput && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
+                  <ApiKeyInput 
+                    onApiKeySubmit={handleApiKeySubmit}
+                    isAnalyzing={isAnalyzing}
+                  />
+                  <button
+                    onClick={() => setShowApiInput(false)}
+                    className="mt-4 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -10,10 +10,10 @@ interface CompanyData {
   companyName: string;
   totalInvestment: number;
   equityStake: number;
-  moic: number;
-  revenueGrowth: number;
-  burnMultiple: number;
-  runway: number;
+  moic: number | null;
+  revenueGrowth: number | null;
+  burnMultiple: number | null;
+  runway: number | null;
   tam: number;
   exitActivity: string;
   barrierToEntry: number;
@@ -25,6 +25,9 @@ interface CompanyData {
   confidence?: number;
   keyRisks?: string;
   suggestedAction?: string;
+  // External Research Integration
+  externalSources?: string;
+  insufficientData?: boolean;
 }
 
 interface AnalysisTableProps {
@@ -123,11 +126,22 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       )}
                     </TableCell>
-                    <TableCell className="font-medium">{company.companyName}</TableCell>
+                    <TableCell className="font-medium">
+                      {company.companyName}
+                      {company.insufficientData && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          Insufficient Data
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell>{formatCurrency(company.totalInvestment)}</TableCell>
                     <TableCell>{formatPercentage(company.equityStake)}</TableCell>
-                    <TableCell>{company.moic.toFixed(1)}x</TableCell>
-                    <TableCell>{formatPercentage(company.revenueGrowth)}</TableCell>
+                    <TableCell>
+                      {company.moic !== null ? `${company.moic.toFixed(1)}x` : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {company.revenueGrowth !== null ? formatPercentage(company.revenueGrowth) : 'N/A'}
+                    </TableCell>
                     <TableCell>{formatCurrency(company.additionalInvestmentRequested)}</TableCell>
                     <TableCell>
                       {company.recommendation ? (
@@ -151,11 +165,15 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                               <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div>
                                   <span className="text-muted-foreground">Burn Multiple:</span>
-                                  <span className="ml-2 font-medium">{company.burnMultiple.toFixed(1)}x</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.burnMultiple !== null ? `${company.burnMultiple.toFixed(1)}x` : 'N/A'}
+                                  </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Runway:</span>
-                                  <span className="ml-2 font-medium">{company.runway} months</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.runway !== null ? `${company.runway} months` : 'N/A'}
+                                  </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">TAM:</span>
@@ -199,6 +217,13 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                               <div>
                                 <h4 className="font-semibold text-sm text-muted-foreground mb-2">Suggested Action</h4>
                                 <p className="text-sm font-medium leading-relaxed">{company.suggestedAction}</p>
+                              </div>
+                            )}
+                            
+                            {company.externalSources && !company.insufficientData && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">External Research Sources</h4>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{company.externalSources}</p>
                               </div>
                             )}
                           </div>
