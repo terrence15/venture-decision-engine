@@ -28,7 +28,8 @@ export function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [apiKey, setApiKey] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  
+  const [perplexityApiKey, setPerplexityApiKey] = useState<string>('');
+
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -149,6 +150,12 @@ export function Dashboard() {
     setAnalysisProgress(0);
     
     try {
+      console.log('Starting comprehensive portfolio analysis...');
+      console.log('API Keys available:', {
+        openai: !!apiKey,
+        perplexity: !!perplexityApiKey
+      });
+      
       const rawCompanies = companies.map(company => ({
         id: company.id,
         companyName: company.companyName,
@@ -161,12 +168,18 @@ export function Dashboard() {
         tam: company.tam,
         exitActivity: company.exitActivity,
         barrierToEntry: company.barrierToEntry,
-        additionalInvestmentRequested: company.additionalInvestmentRequested
+        additionalInvestmentRequested: company.additionalInvestmentRequested,
+        // Additional Excel fields
+        arrTtm: company.executive?.arrTtm,
+        ebitdaMargin: company.executive?.ebitdaMargin,
+        topPerformer: company.executive?.topPerformer,
+        valuationMethodology: company.executive?.valuationMethodology
       }));
       
       const analyzedCompanies = await analyzePortfolio(
         rawCompanies, 
         apiKey,
+        perplexityApiKey || undefined, // Pass Perplexity API key for external research
         setAnalysisProgress
       );
       
@@ -186,8 +199,8 @@ export function Dashboard() {
       
       setCompanies(fullyEnhancedCompanies);
       toast({
-        title: "Analysis Complete",
-        description: `Successfully analyzed ${fullyEnhancedCompanies.length} companies with enhanced data`,
+        title: "Comprehensive Analysis Complete",
+        description: `Successfully analyzed ${fullyEnhancedCompanies.length} companies with ${perplexityApiKey ? 'external research integration' : 'internal data only'}`,
       });
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -275,15 +288,28 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* API Key Input */}
-          <div className="flex items-center gap-3">
-            <Input
-              type="password"
-              placeholder="OpenAI API Key (for real-time data)"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-64 bg-secondary/50 border-border/50"
-            />
+          {/* Enhanced API Key Input Section */}
+          <div className="flex flex-col sm:flex-row items-start gap-3">
+            <div className="flex flex-col gap-2">
+              <Input
+                type="password"
+                placeholder="OpenAI API Key (required for analysis)"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="w-64 bg-secondary/50 border-border/50"
+              />
+              <Input
+                type="password"
+                placeholder="Perplexity API Key (optional, for external research)"
+                value={perplexityApiKey}
+                onChange={(e) => setPerplexityApiKey(e.target.value)}
+                className="w-64 bg-secondary/50 border-border/50"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground max-w-md">
+              <p>• OpenAI API: Required for AI investment analysis</p>
+              <p>• Perplexity API: Optional, enables real-time external research from Crunchbase, LinkedIn, TechCrunch, etc.</p>
+            </div>
           </div>
 
           {/* Portfolio Statistics Cards */}
@@ -378,7 +404,10 @@ export function Dashboard() {
                   className="bg-gradient-to-r from-accent to-primary text-white shadow-glow"
                   size="sm"
                 >
-                  {isAnalyzing ? 'Analyzing...' : 'Analyze Portfolio'}
+                  {isAnalyzing ? 
+                    `Analyzing... ${analysisProgress}%` : 
+                    `Analyze Portfolio ${perplexityApiKey ? '(+External Research)' : '(Internal Only)'}`
+                  }
                 </Button>
               )}
             </div>

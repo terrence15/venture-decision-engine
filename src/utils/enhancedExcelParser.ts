@@ -1,11 +1,68 @@
-
 import * as XLSX from 'xlsx';
 import { EnhancedCompanyData, ExecutiveInfo, RiskAssessment } from '@/types/portfolio';
 
-// Enhanced column mappings including CEO and executive information
+// Enhanced column mappings including all Excel fields
 const ENHANCED_COLUMN_MAPPINGS = {
   'COMPANY': 'companyName',
   'Company Name': 'companyName',
+  'Company': 'companyName',
+  
+  // Investment data
+  'Total Investment ($ in Thousands)': 'totalInvestment',
+  'Total Investment  \r\n($ in Thousands)': 'totalInvestment',
+  'Total Investment': 'totalInvestment',
+  'Equity Stake % (Fully Diluted)': 'equityStake',
+  'Equity Stake': 'equityStake',
+  'CA Equity Valuation ($ in Thousands)': 'currentValuation',
+  'CA Equity Valuation': 'currentValuation',
+  'Current Valuation': 'currentValuation',
+  'Valuation': 'valuation',
+  
+  // Performance metrics
+  'MOIC (Implied)': 'moic',
+  'Implied MOIC (x)': 'moic',
+  'Implied MOIC (x) ': 'moic',
+  'Implied MOIC': 'moic',
+  'TTM Revenue Growth': 'revenueGrowth',
+  'TTM Revenue Growth (%)': 'revenueGrowth',
+  'TTM Revnue Growth ': 'revenueGrowth',
+  'Revenue Growth': 'revenueGrowth',
+  'ARR $ (TTM)': 'arrTtm',
+  'ARR (TTM)': 'arrTtm',
+  'Annual Recurring Revenue': 'arrTtm',
+  
+  // Efficiency metrics
+  'Burn Multiple (Burn Rate / ARR)': 'burnMultiple',
+  'Burn Multiple (Net Burn/Net New ARR)': 'burnMultiple',
+  'Burn Multiple (Net Burn/Net New ARR) ': 'burnMultiple',
+  'Burn Multiple': 'burnMultiple',
+  'Runway (Months)': 'runway',
+  'Runway (Months) ': 'runway',
+  'Runway': 'runway',
+  'EBITDA Margin %': 'ebitdaMargin',
+  'EBITDA Margin': 'ebitdaMargin',
+  
+  // Market data
+  'TAM Rating (1–5) (Competitive + Growing Market)': 'tam',
+  'TAM \r\n(1-5, 5 being completely untapped and growing market)': 'tam',
+  'TAM': 'tam',
+  'Exit Activity in Sector (High / Moderate / Low)': 'exitActivity',
+  'Exit Activity in Sector (ie. High, Moderaate, Low)': 'exitActivity',
+  'Exit Activity': 'exitActivity',
+  'Barrier to Entry (1–5) (Advantage vs. New Firms to Enter)': 'barrierToEntry',
+  'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market)': 'barrierToEntry',
+  'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market) ': 'barrierToEntry',
+  'Barrier to Entry': 'barrierToEntry',
+  'Top 5 Performer in Industry? (Y/N)': 'topPerformer',
+  'Top 5 Industry Performer': 'topPerformer',
+  'Top Performer': 'topPerformer',
+  
+  // Investment request
+  'Additional Investment Request': 'additionalInvestmentRequested',
+  'Additional Investment Requested ($)': 'additionalInvestmentRequested',
+  'Additional Investment': 'additionalInvestmentRequested',
+  
+  // Executive and other data
   'CEO Name': 'ceoName',
   'CEO': 'ceoName',
   'Chief Executive Officer': 'ceoName',
@@ -20,36 +77,13 @@ const ENHANCED_COLUMN_MAPPINGS = {
   'Stage': 'fundingStage',
   'Investment Date': 'investmentDate',
   'Date Invested': 'investmentDate',
+  'Date of Latest Investment': 'investmentDate',
   'Last Funding Date': 'lastFundingDate',
   'Last Funding': 'lastFundingDate',
   'Management Score': 'managementScore',
   'Management Team Score': 'managementScore',
   'Leadership Score': 'managementScore',
-  'Current Valuation': 'currentValuation',
-  'Valuation': 'currentValuation',
-  'Company Valuation': 'currentValuation',
-  'Total Investment ($ in Thousands)': 'totalInvestment',
-  'Total Investment  \r\n($ in Thousands)': 'totalInvestment',
-  'Equity Stake % (Fully Diluted)': 'equityStake',
-  'MOIC (Implied)': 'moic',
-  'Implied MOIC (x)': 'moic',
-  'Implied MOIC (x) ': 'moic',
-  'TTM Revenue Growth': 'revenueGrowth',
-  'TTM Revnue Growth ': 'revenueGrowth',
-  'Burn Multiple (Burn Rate / ARR)': 'burnMultiple',
-  'Burn Multiple (Net Burn/Net New ARR)': 'burnMultiple',
-  'Burn Multiple (Net Burn/Net New ARR) ': 'burnMultiple',
-  'Runway (Months)': 'runway',
-  'Runway (Months) ': 'runway',
-  'TAM Rating (1–5) (Competitive + Growing Market)': 'tam',
-  'TAM \r\n(1-5, 5 being completely untapped and growing market)': 'tam',
-  'Exit Activity in Sector (High / Moderate / Low)': 'exitActivity',
-  'Exit Activity in Sector (ie. High, Moderaate, Low)': 'exitActivity',
-  'Barrier to Entry (1–5) (Advantage vs. New Firms to Enter)': 'barrierToEntry',
-  'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market)': 'barrierToEntry',
-  'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market) ': 'barrierToEntry',
-  'Additional Investment Request': 'additionalInvestmentRequested',
-  'Additional Investment Requested ($)': 'additionalInvestmentRequested'
+  'Valuation Methodology': 'valuationMethodology'
 };
 
 function findBestMatch(target: string, options: string[]): string | null {
@@ -109,7 +143,8 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
     'companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 
     'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 
     'additionalInvestmentRequested', 'ceoName', 'ceoExperience', 'industryCategory',
-    'fundingStage', 'investmentDate', 'lastFundingDate', 'managementScore', 'currentValuation'
+    'fundingStage', 'investmentDate', 'lastFundingDate', 'managementScore', 'currentValuation',
+    'arrTtm', 'ebitdaMargin', 'topPerformer', 'valuationMethodology'
   ];
   
   fieldsToMap.forEach(fieldName => {
@@ -166,6 +201,8 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
         const headers = jsonData[headerRowIndex] as string[];
         const columnMapping = createColumnMapping(headers);
         
+        console.log('Column mapping created:', columnMapping);
+        
         // Check for essential columns
         const essentialFields = ['companyName', 'totalInvestment', 'equityStake'];
         const foundEssentials = essentialFields.filter(field => 
@@ -191,7 +228,7 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
             id: `excel-${i}`,
             executive: {},
             riskAssessment: {
-              overallRiskScore: 50, // default
+              overallRiskScore: 50,
               riskFactors: []
             }
           };
@@ -211,9 +248,9 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
                   company.executive[fieldName] = String(value).trim();
                 }
               }
-              // Handle financial data
-              else if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'currentValuation'].includes(fieldName)) {
-                let cleanValue = String(value).replace(/[$,\s%]/g, '');
+              // Handle financial data with proper scaling
+              else if (['totalInvestment', 'currentValuation', 'additionalInvestmentRequested', 'arrTtm'].includes(fieldName)) {
+                let cleanValue = String(value).replace(/[$,\s]/g, '');
                 
                 if (cleanValue === '' || cleanValue === '-' || cleanValue === 'N/A') {
                   value = null;
@@ -222,39 +259,80 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
                   if (isNaN(parsedValue)) {
                     value = null;
                   } else {
-                    value = parsedValue;
-                    if (fieldName === 'totalInvestment' || fieldName === 'additionalInvestmentRequested') {
-                      value = parsedValue * 1000; // Scale from thousands
-                    } else if (fieldName === 'equityStake' && parsedValue < 1) {
-                      value = parsedValue * 100; // Convert to percentage
+                    // Scale from thousands to actual dollars for these fields
+                    value = parsedValue * 1000;
+                  }
+                }
+                company[fieldName] = value;
+              }
+              // Handle percentages
+              else if (['equityStake', 'revenueGrowth', 'ebitdaMargin'].includes(fieldName)) {
+                let cleanValue = String(value).replace(/[%\s]/g, '');
+                
+                if (cleanValue === '' || cleanValue === '-' || cleanValue === 'N/A') {
+                  value = null;
+                } else {
+                  const parsedValue = parseFloat(cleanValue);
+                  if (isNaN(parsedValue)) {
+                    value = null;
+                  } else {
+                    // Convert to percentage if needed
+                    if (fieldName === 'equityStake' && parsedValue < 1) {
+                      value = parsedValue * 100;
+                    } else {
+                      value = parsedValue;
                     }
                   }
                 }
                 company[fieldName] = value;
               }
-              // Handle ratings
+              // Handle multipliers and ratios
+              else if (['moic', 'burnMultiple'].includes(fieldName)) {
+                let cleanValue = String(value).replace(/[x\s]/g, '');
+                
+                if (cleanValue === '' || cleanValue === '-' || cleanValue === 'N/A') {
+                  value = null;
+                } else {
+                  const parsedValue = parseFloat(cleanValue);
+                  value = isNaN(parsedValue) ? null : parsedValue;
+                }
+                company[fieldName] = value;
+              }
+              // Handle runway (should be in months)
+              else if (fieldName === 'runway') {
+                let cleanValue = String(value).replace(/[^0-9.]/g, '');
+                const parsedValue = parseFloat(cleanValue);
+                company[fieldName] = isNaN(parsedValue) ? null : parsedValue;
+              }
+              // Handle ratings (1-5)
               else if (['tam', 'barrierToEntry'].includes(fieldName)) {
                 let cleanValue = String(value).replace(/[^0-9]/g, '');
                 company[fieldName] = parseInt(cleanValue) || 1;
               }
+              // Handle boolean fields
+              else if (fieldName === 'topPerformer') {
+                const stringValue = String(value).toLowerCase().trim();
+                company[fieldName] = stringValue === 'y' || stringValue === 'yes' || stringValue === 'true';
+              }
               // Handle other fields
               else {
-                company[fieldName] = typeof value === 'string' ? value : String(value);
+                company[fieldName] = typeof value === 'string' ? value.trim() : String(value);
               }
             }
           });
           
-          // Calculate additional metrics
+          // Calculate additional metrics if needed
+          if (company.totalInvestment && company.currentValuation && !company.moic) {
+            company.moic = company.currentValuation / company.totalInvestment;
+          }
+          
           if (company.totalInvestment && company.currentValuation) {
             company.totalReturn = company.currentValuation - company.totalInvestment;
-            if (!company.moic) {
-              company.moic = company.currentValuation / company.totalInvestment;
-            }
           }
           
           // Set default values for missing executive info
           if (!company.executive.ceoName) {
-            company.executive.ceoName = 'Not Available';
+            company.executive.ceoName = 'CEO TBD';
           }
           if (!company.executive.industryCategory) {
             company.executive.industryCategory = 'Technology';
@@ -263,14 +341,14 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
             company.executive.fundingStage = 'Series A';
           }
           if (!company.executive.managementScore) {
-            company.executive.managementScore = Math.floor(Math.random() * 40) + 60; // Random score 60-100
+            company.executive.managementScore = Math.floor(Math.random() * 40) + 60;
           }
           
-          // Calculate risk assessment
+          // Calculate risk assessment based on metrics
           let riskScore = 50;
-          if (company.burnMultiple > 3) riskScore += 20;
-          if (company.runway < 12) riskScore += 15;
-          if (company.revenueGrowth < 0) riskScore += 25;
+          if (company.burnMultiple && company.burnMultiple > 3) riskScore += 20;
+          if (company.runway && company.runway < 12) riskScore += 15;
+          if (company.revenueGrowth && company.revenueGrowth < 0) riskScore += 25;
           company.riskAssessment.overallRiskScore = Math.min(100, riskScore);
           
           if (company.companyName) {
@@ -282,9 +360,11 @@ export function parseEnhancedExcelFile(file: File): Promise<EnhancedCompanyData[
           throw new Error('No valid company data found in Excel file');
         }
         
+        console.log(`Parsed ${companies.length} companies with enhanced data:`, companies[0]);
         resolve(companies);
         
       } catch (error) {
+        console.error('Excel parsing error:', error);
         reject(error);
       }
     };
