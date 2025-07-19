@@ -1,3 +1,4 @@
+
 interface CompanyResearchData {
   companyName: string;
   totalInvestment: number;
@@ -40,7 +41,7 @@ export async function conductExternalResearch(
     
     try {
       const requestBody = {
-        model: 'pplx-7b-online',
+        model: 'sonar-reasoning',
         messages: [
           {
             role: 'system',
@@ -116,7 +117,7 @@ export async function conductExternalResearch(
 
   const finalResult = {
     companyName: company.companyName,
-    marketIntelligence: results[1] || 'Market analysis unavailable',
+    marketIntelligence: results[0] || 'Market analysis unavailable',
     competitiveLandscape: results[1] || 'Competitive data unavailable', 
     recentNews: results[2] || 'Recent news unavailable',
     fundingHistory: results[3] || 'Funding history unavailable',
@@ -149,7 +150,7 @@ export async function testPerplexityApiKey(apiKey: string): Promise<{ success: b
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'pplx-7b-online',
+        model: 'sonar-reasoning',
         messages: [
           {
             role: 'user',
