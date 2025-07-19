@@ -16,22 +16,37 @@ export interface RawCompanyData {
   additionalInvestmentRequested: number;
 }
 
-// Column mapping from Excel to our data structure
+// Updated column mapping with exact headers from Excel
 const COLUMN_MAPPINGS = {
   'Company Name': 'companyName',
-  'Total Investment to Date': 'totalInvestment',
-  'Equity Stake (FD %)': 'equityStake',
-  'MOIC': 'moic',
+  'Total Investment ($ in Thousands)': 'totalInvestment',
+  'Equity Stake % (Fully Diluted)': 'equityStake',
+  'MOIC (Implied)': 'moic',
   'TTM Revenue Growth': 'revenueGrowth',
-  'Burn Multiple': 'burnMultiple',
-  'Runway': 'runway',
-  'TAM (1–5)': 'tam',
-  'Exit Activity in Sector': 'exitActivity',
-  'Barrier to Entry (1–5)': 'barrierToEntry',
-  'Additional Investment Requested': 'additionalInvestmentRequested'
+  'Burn Multiple (Burn Rate / ARR)': 'burnMultiple',
+  'Runway (Months)': 'runway',
+  'TAM Rating (1–5) (Competitive + Growing Market)': 'tam',
+  'Exit Activity in Sector (High / Moderate / Low)': 'exitActivity',
+  'Barrier to Entry (1–5) (Advantage vs. New Firms to Enter)': 'barrierToEntry',
+  'Additional Investment Request': 'additionalInvestmentRequested'
 };
 
-// Fuzzy matching function to find similar column names
+// Enhanced keyword mappings for better fuzzy matching
+const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
+  'companyName': ['company', 'name'],
+  'totalInvestment': ['total', 'investment', 'thousands'],
+  'equityStake': ['equity', 'stake', 'fully', 'diluted', 'percent'],
+  'moic': ['moic', 'implied'],
+  'revenueGrowth': ['ttm', 'revenue', 'growth'],
+  'burnMultiple': ['burn', 'multiple', 'rate', 'arr'],
+  'runway': ['runway', 'months'],
+  'tam': ['tam', 'rating', 'competitive', 'growing', 'market'],
+  'exitActivity': ['exit', 'activity', 'sector', 'high', 'moderate', 'low'],
+  'barrierToEntry': ['barrier', 'entry', 'advantage', 'firms', 'enter'],
+  'additionalInvestmentRequested': ['additional', 'investment', 'request']
+};
+
+// Improved fuzzy matching function
 function findBestMatch(target: string, options: string[]): string | null {
   const normalize = (str: string) => {
     if (!str || typeof str !== 'string') return '';
@@ -40,85 +55,73 @@ function findBestMatch(target: string, options: string[]): string | null {
   
   const normalizedTarget = normalize(target);
   
-  // Enhanced keyword matching for better fuzzy matching
-  const keywordMappings: { [key: string]: string[] } = {
-    'companyname': ['company'],
-    'totalinvestment': ['total', 'investment', 'thousands'],
-    'equitystake': ['equity', 'stake', 'fully', 'diluted'],
-    'moic': ['moic', 'implied'],
-    'revenuegrowth': ['ttm', 'revenue', 'growth'],
-    'burnmultiple': ['burn', 'multiple', 'rate', 'arr'],
-    'runway': ['runway', 'months'],
-    'tam': ['tam', 'rating', 'competitive', 'growing', 'market'],
-    'exitactivity': ['exit', 'activity', 'sector', 'high', 'moderate', 'low'],
-    'barriertoentry': ['barrier', 'entry', 'advantage', 'firms', 'enter'],
-    'additionalinvestment': ['additional', 'investment', 'request']
-  };
-  
-  let bestMatch = null;
-  let bestScore = 0;
-  
+  // First try exact match
   for (const option of options) {
     if (!option || typeof option !== 'string') continue;
-    
-    const normalizedOption = normalize(option);
-    
-    // Check for exact match after normalization
-    if (normalizedTarget === normalizedOption) {
+    if (normalize(option) === normalizedTarget) {
+      console.log(`Exact match found: "${option}" for "${target}"`);
       return option;
-    }
-    
-    // Check keyword matching
-    const targetKeywords = keywordMappings[normalizedTarget] || [];
-    for (const keyword of targetKeywords) {
-      if (normalizedOption.includes(keyword)) {
-        const score = keyword.length / normalizedOption.length;
-        if (score > bestScore) {
-          bestScore = score;
-          bestMatch = option;
-        }
-      }
-    }
-    
-    // Check for substring match
-    if (normalizedTarget.includes(normalizedOption) || normalizedOption.includes(normalizedTarget)) {
-      const score = Math.min(normalizedTarget.length, normalizedOption.length) / Math.max(normalizedTarget.length, normalizedOption.length);
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = option;
-      }
-    }
-    
-    // Simple similarity score based on common characters
-    const commonChars = normalizedTarget.split('').filter(char => normalizedOption.includes(char)).length;
-    const score = commonChars / Math.max(normalizedTarget.length, normalizedOption.length);
-    
-    if (score > 0.4 && score > bestScore) {
-      bestScore = score;
-      bestMatch = option;
     }
   }
   
-  return bestScore > 0.3 ? bestMatch : null;
+  // Then try keyword matching
+  const targetField = Object.keys(COLUMN_MAPPINGS).find(key => 
+    COLUMN_MAPPINGS[key as keyof typeof COLUMN_MAPPINGS] === target
+  );
+  
+  if (targetField) {
+    const keywords = KEYWORD_MAPPINGS[target] || [];
+    
+    for (const option of options) {
+      if (!option || typeof option !== 'string') continue;
+      const normalizedOption = normalize(option);
+      
+      // Check if option contains all important keywords
+      const keywordMatches = keywords.filter(keyword => 
+        normalizedOption.includes(keyword)
+      );
+      
+      if (keywordMatches.length >= Math.min(2, keywords.length)) {
+        console.log(`Keyword match found: "${option}" for "${target}" (matched: ${keywordMatches.join(', ')})`);
+        return option;
+      }
+    }
+  }
+  
+  console.log(`No match found for "${target}"`);
+  return null;
 }
 
-// Create fuzzy column mapping
-function createFuzzyMapping(headers: string[]): { [key: string]: string } {
-  const fuzzyMapping: { [key: string]: string } = {};
+// Create column mapping
+function createColumnMapping(headers: string[]): { [key: string]: string } {
+  const mapping: { [key: string]: string } = {};
   
-  // Filter out undefined/null headers
   const validHeaders = headers.filter(header => header && typeof header === 'string');
-  console.log('Valid headers after filtering:', validHeaders);
+  console.log('Available headers:', validHeaders);
   
+  // First try exact matches
   Object.keys(COLUMN_MAPPINGS).forEach(expectedColumn => {
-    const match = findBestMatch(expectedColumn, validHeaders);
-    if (match) {
-      fuzzyMapping[match] = COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS];
-      console.log(`Mapped "${match}" → "${expectedColumn}"`);
+    const exactMatch = validHeaders.find(header => 
+      header.trim() === expectedColumn.trim()
+    );
+    
+    if (exactMatch) {
+      mapping[exactMatch] = COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS];
+      console.log(`Exact mapping: "${exactMatch}" → "${expectedColumn}"`);
+      return;
+    }
+    
+    // Fallback to fuzzy matching
+    const fieldName = COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS];
+    const fuzzyMatch = findBestMatch(fieldName, validHeaders);
+    if (fuzzyMatch) {
+      mapping[fuzzyMatch] = fieldName;
+      console.log(`Fuzzy mapping: "${fuzzyMatch}" → "${expectedColumn}"`);
     }
   });
   
-  return fuzzyMapping;
+  console.log('Final column mapping:', mapping);
+  return mapping;
 }
 
 export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
@@ -127,7 +130,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
     
     reader.onload = (e) => {
       try {
-        console.log('FileReader onload triggered');
+        console.log('Starting Excel file parsing...');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         
@@ -145,7 +148,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
           throw new Error('Excel file must contain at least a header row and one data row');
         }
         
-        // Find the actual header row (look through first 5 rows for the row with most filled cells)
+        // Find the header row
         let headerRowIndex = 0;
         let maxFilledCells = 0;
         
@@ -160,32 +163,26 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
         
         console.log(`Using row ${headerRowIndex + 1} as header row`);
         
-        // Extract headers from the identified header row
         const headers = jsonData[headerRowIndex] as string[];
-        console.log('Raw headers found:', headers);
-        console.log('Headers length:', headers.length);
+        console.log('Headers found:', headers);
         
-        // Create fuzzy column mapping
-        const fuzzyMapping = createFuzzyMapping(headers);
-        console.log('Fuzzy mapping created:', fuzzyMapping);
-        console.log('Mapped fields:', Object.values(fuzzyMapping));
+        // Create column mapping
+        const columnMapping = createColumnMapping(headers);
         
-        // Check if we found enough essential columns
+        // Check for essential columns
         const essentialFields = ['companyName', 'totalInvestment', 'equityStake'];
         const foundEssentials = essentialFields.filter(field => 
-          Object.values(fuzzyMapping).includes(field)
+          Object.values(columnMapping).includes(field)
         );
-        console.log('Essential fields found:', foundEssentials);
-        console.log('Missing essentials:', essentialFields.filter(field => !foundEssentials.includes(field)));
         
         if (foundEssentials.length < essentialFields.length) {
           const missingEssentials = essentialFields.filter(field => 
-            !Object.values(fuzzyMapping).includes(field)
+            !Object.values(columnMapping).includes(field)
           );
           throw new Error(`Could not find essential columns for: ${missingEssentials.join(', ')}. Available headers: ${headers.join(', ')}`);
         }
         
-        // Parse data rows (start from row after header)
+        // Parse data rows
         const companies: RawCompanyData[] = [];
         
         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
@@ -198,27 +195,36 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
             id: `excel-${i}`,
           };
           
-          // Map each column to our data structure using fuzzy mapping
+          // Map each column to our data structure
           headers.forEach((header, index) => {
-            const fieldName = fuzzyMapping[header];
+            const fieldName = columnMapping[header];
             if (fieldName && row[index] !== undefined && row[index] !== null) {
               let value = row[index];
               
+              console.log(`Processing ${fieldName} from column "${header}":`, value);
+              
               // Type conversions based on field
               if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested'].includes(fieldName)) {
-                // Clean the value for number parsing - remove commas, dollar signs, spaces, etc.
-                console.log(`Parsing ${fieldName}: original value =`, value, `(type: ${typeof value})`);
+                // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
-                console.log(`Parsing ${fieldName}: cleaned value =`, cleanValue);
+                console.log(`Cleaned value for ${fieldName}:`, cleanValue);
+                
                 // Handle empty strings or non-numeric values
                 if (cleanValue === '' || cleanValue === '-' || cleanValue === 'N/A') {
                   value = null;
                 } else {
                   const parsedValue = parseFloat(cleanValue);
-                  console.log(`Parsing ${fieldName}: parsed value =`, parsedValue);
-                  value = isNaN(parsedValue) ? null : parsedValue;
+                  if (isNaN(parsedValue)) {
+                    value = null;
+                  } else {
+                    value = parsedValue;
+                    // Scale investment amounts from thousands to actual dollars
+                    if (fieldName === 'totalInvestment' || fieldName === 'additionalInvestmentRequested') {
+                      value = parsedValue * 1000;
+                      console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
+                    }
+                  }
                 }
-                console.log(`Parsing ${fieldName}: final value =`, value);
               } else if (['tam', 'barrierToEntry'].includes(fieldName)) {
                 let cleanValue = String(value).replace(/[^0-9]/g, '');
                 value = parseInt(cleanValue) || 1;
@@ -227,6 +233,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               }
               
               company[fieldName] = value;
+              console.log(`Set ${fieldName} =`, value);
             }
           });
           
@@ -240,7 +247,8 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
           throw new Error('No valid company data found in Excel file');
         }
         
-        console.log(`Successfully parsed ${companies.length} companies from Excel`);
+        console.log(`Successfully parsed ${companies.length} companies`);
+        console.log('Sample company data:', companies[0]);
         resolve(companies);
         
       } catch (error) {

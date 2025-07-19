@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Download, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,17 +45,20 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     
     const variants = {
       1: { variant: "destructive" as const, label: "Very Low" },
-      2: { variant: "warning" as const, label: "Low" },
+      2: { variant: "secondary" as const, label: "Low" },
       3: { variant: "secondary" as const, label: "Medium" },
       4: { variant: "default" as const, label: "High" },
-      5: { variant: "success" as const, label: "Very High" }
+      5: { variant: "default" as const, label: "Very High" }
     };
     
     const config = variants[confidence as keyof typeof variants];
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return 'N/A';
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -68,6 +72,21 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
       return 'N/A';
     }
     return `${value.toFixed(1)}%`;
+  };
+
+  const formatNumber = (value: number | null | undefined, suffix: string = '') => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return 'N/A';
+    }
+    return `${value.toFixed(1)}${suffix}`;
+  };
+
+  const handleRowClick = (companyId: string) => {
+    try {
+      setExpandedRow(expandedRow === companyId ? null : companyId);
+    } catch (error) {
+      console.error('Error expanding row:', error);
+    }
   };
 
   return (
@@ -120,7 +139,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   <TableRow 
                     key={company.id}
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => setExpandedRow(expandedRow === company.id ? null : company.id)}
+                    onClick={() => handleRowClick(company.id)}
                   >
                     <TableCell>
                       {expandedRow === company.id ? (
@@ -139,12 +158,8 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                     </TableCell>
                     <TableCell>{formatCurrency(company.totalInvestment)}</TableCell>
                     <TableCell>{formatPercentage(company.equityStake)}</TableCell>
-                    <TableCell>
-                      {company.moic !== null ? `${company.moic.toFixed(1)}x` : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {company.revenueGrowth !== null ? formatPercentage(company.revenueGrowth) : 'N/A'}
-                    </TableCell>
+                    <TableCell>{formatNumber(company.moic, 'x')}</TableCell>
+                    <TableCell>{formatPercentage(company.revenueGrowth)}</TableCell>
                     <TableCell>{formatCurrency(company.additionalInvestmentRequested)}</TableCell>
                     <TableCell>
                       {company.recommendation ? (
@@ -169,26 +184,34 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                 <div>
                                   <span className="text-muted-foreground">Burn Multiple:</span>
                                   <span className="ml-2 font-medium">
-                                    {company.burnMultiple !== null ? `${company.burnMultiple.toFixed(1)}x` : 'N/A'}
+                                    {formatNumber(company.burnMultiple, 'x')}
                                   </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Runway:</span>
                                   <span className="ml-2 font-medium">
-                                    {company.runway !== null ? `${company.runway} months` : 'N/A'}
+                                    {company.runway !== null && company.runway !== undefined && !isNaN(company.runway) 
+                                      ? `${company.runway} months` 
+                                      : 'N/A'}
                                   </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">TAM:</span>
-                                  <span className="ml-2 font-medium">{company.tam}/5</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.tam || 'N/A'}/5
+                                  </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Barrier to Entry:</span>
-                                  <span className="ml-2 font-medium">{company.barrierToEntry}/5</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.barrierToEntry || 'N/A'}/5
+                                  </span>
                                 </div>
                                 <div className="col-span-2">
                                   <span className="text-muted-foreground">Exit Activity:</span>
-                                  <span className="ml-2 font-medium">{company.exitActivity}</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.exitActivity || 'N/A'}
+                                  </span>
                                 </div>
                               </div>
                             </div>
