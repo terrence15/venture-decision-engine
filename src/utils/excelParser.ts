@@ -31,6 +31,59 @@ const COLUMN_MAPPINGS = {
   'Additional Investment Requested': 'additionalInvestmentRequested'
 };
 
+// Fuzzy matching function to find similar column names
+function findBestMatch(target: string, options: string[]): string | null {
+  const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalizedTarget = normalize(target);
+  
+  let bestMatch = null;
+  let bestScore = 0;
+  
+  for (const option of options) {
+    const normalizedOption = normalize(option);
+    
+    // Check for exact match after normalization
+    if (normalizedTarget === normalizedOption) {
+      return option;
+    }
+    
+    // Check for substring match
+    if (normalizedTarget.includes(normalizedOption) || normalizedOption.includes(normalizedTarget)) {
+      const score = Math.min(normalizedTarget.length, normalizedOption.length) / Math.max(normalizedTarget.length, normalizedOption.length);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = option;
+      }
+    }
+    
+    // Simple similarity score based on common characters
+    const commonChars = normalizedTarget.split('').filter(char => normalizedOption.includes(char)).length;
+    const score = commonChars / Math.max(normalizedTarget.length, normalizedOption.length);
+    
+    if (score > 0.6 && score > bestScore) {
+      bestScore = score;
+      bestMatch = option;
+    }
+  }
+  
+  return bestScore > 0.5 ? bestMatch : null;
+}
+
+// Create fuzzy column mapping
+function createFuzzyMapping(headers: string[]): { [key: string]: string } {
+  const fuzzyMapping: { [key: string]: string } = {};
+  
+  Object.keys(COLUMN_MAPPINGS).forEach(expectedColumn => {
+    const match = findBestMatch(expectedColumn, headers);
+    if (match) {
+      fuzzyMapping[match] = COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS];
+      console.log(`Mapped "${match}" → "${expectedColumn}"`);
+    }
+  });
+  
+  return fuzzyMapping;
+}
+
 export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -56,14 +109,23 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
         
         // Extract headers (first row)
         const headers = jsonData[0] as string[];
+        console.log('Found headers:', headers);
         
-        // Validate required columns
-        const missingColumns = Object.keys(COLUMN_MAPPINGS).filter(
-          col => !headers.includes(col)
+        // Create fuzzy column mapping
+        const fuzzyMapping = createFuzzyMapping(headers);
+        console.log('Fuzzy mapping created:', fuzzyMapping);
+        
+        // Check if we found enough essential columns
+        const essentialFields = ['companyName', 'totalInvestment', 'equityStake'];
+        const foundEssentials = essentialFields.filter(field => 
+          Object.values(fuzzyMapping).includes(field)
         );
         
-        if (missingColumns.length > 0) {
-          throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
+        if (foundEssentials.length < essentialFields.length) {
+          const missingEssentials = essentialFields.filter(field => 
+            !Object.values(fuzzyMapping).includes(field)
+          );
+          throw new Error(`Could not find essential columns for: ${missingEssentials.join(', ')}. Available headers: ${headers.join(', ')}`);
         }
         
         // Parse data rows
@@ -79,9 +141,9 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
             id: `excel-${i}`,
           };
           
-          // Map each column to our data structure
+          // Map each column to our data structure using fuzzy mapping
           headers.forEach((header, index) => {
-            const fieldName = COLUMN_MAPPINGS[header as keyof typeof COLUMN_MAPPINGS];
+            const fieldName = fuzzyMapping[header];
             if (fieldName && row[index] !== undefined && row[index] !== null) {
               let value = row[index];
               
