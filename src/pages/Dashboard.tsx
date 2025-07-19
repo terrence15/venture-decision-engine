@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
@@ -171,10 +170,24 @@ export function Dashboard() {
         setAnalysisProgress
       );
       
-      setCompanies(analyzedCompanies as EnhancedCompanyData[]);
+      // Enhanced analysis with real-time data
+      console.log('Starting enhanced analysis with real-time data...');
+      const { enhanceCompaniesWithApiData } = await import('@/utils/enhanceCompanyData');
+      
+      const fullyEnhancedCompanies = await enhanceCompaniesWithApiData(
+        analyzedCompanies as EnhancedCompanyData[],
+        apiKey,
+        (current, total) => {
+          const progress = Math.round((current / total) * 100);
+          setAnalysisProgress(progress);
+          console.log(`Enhanced ${current}/${total} companies (${progress}%)`);
+        }
+      );
+      
+      setCompanies(fullyEnhancedCompanies);
       toast({
         title: "Analysis Complete",
-        description: `Successfully analyzed ${analyzedCompanies.length} companies`,
+        description: `Successfully analyzed ${fullyEnhancedCompanies.length} companies with enhanced data`,
       });
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -187,6 +200,11 @@ export function Dashboard() {
       setIsAnalyzing(false);
       setAnalysisProgress(0);
     }
+  };
+
+  const handleCompanyClick = (company: EnhancedCompanyData) => {
+    setSelectedCompany(company);
+    setIsModalOpen(true);
   };
 
   const clearFilters = () => {
@@ -374,10 +392,7 @@ export function Dashboard() {
                    <EnhancedCompanyCard
                      key={company.id}
                      company={company}
-                     onClick={() => {
-                       setSelectedCompany(company);
-                       setIsModalOpen(true);
-                     }}
+                     onClick={() => handleCompanyClick(company)}
                    />
                 ))
               ) : (
@@ -392,6 +407,7 @@ export function Dashboard() {
               companies={filteredCompanies}
               onAnalyze={handleAnalyze}
               isAnalyzing={isAnalyzing}
+              onCompanyClick={handleCompanyClick}
             />
           )}
             

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -40,23 +41,50 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
   const { toast } = useToast();
 
   useEffect(() => {
-    if (isOpen && apiKey) {
-      fetchEnhancedData();
+    if (isOpen && apiKey && company.companyName) {
+      // Check if we already have enhanced data
+      const hasEnhancedData = company.executive?.ceoName && 
+                             company.executive?.managementScore && 
+                             company.riskAssessment?.overallRiskScore;
+      
+      if (!hasEnhancedData) {
+        fetchEnhancedData();
+      } else {
+        // Use existing enhanced data
+        setEnhancedData({
+          ceoName: company.executive?.ceoName,
+          managementScore: company.executive?.managementScore,
+          overallRiskScore: company.riskAssessment?.overallRiskScore,
+          marketRiskScore: company.riskAssessment?.marketRiskScore,
+          keyStrengths: company.executive?.keyStrengths,
+          riskFactors: company.riskAssessment?.riskFactors,
+          recommendation: company.recommendation,
+          reasoning: company.reasoning,
+          currentValuation: company.currentValuation,
+          totalReturn: company.totalReturn,
+          lastFundingDate: company.executive?.lastFundingDate,
+          industryCategory: company.executive?.industryCategory,
+          fundingStage: company.executive?.fundingStage
+        });
+      }
     }
   }, [isOpen, company.companyName, apiKey]);
 
   const fetchEnhancedData = async () => {
-    if (!apiKey) return;
+    if (!apiKey || !company.companyName) return;
     
     setIsLoading(true);
     try {
+      console.log(`Fetching enhanced data for ${company.companyName}...`);
       const data = await getEnhancedCompanyData(company.companyName, apiKey);
       setEnhancedData(data);
+      console.log(`Enhanced data loaded for ${company.companyName}:`, data);
     } catch (error) {
+      console.error(`Failed to fetch enhanced data for ${company.companyName}:`, error);
       toast({
-        title: "Error",
-        description: "Failed to fetch enhanced company data",
-        variant: "destructive",
+        title: "Enhanced Data Unavailable",
+        description: "Using available company data. Enhanced analysis requires valid API key.",
+        variant: "default",
       });
     } finally {
       setIsLoading(false);
@@ -88,9 +116,20 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
     }).format(amount);
   };
 
+  // Use enhanced data if available, otherwise fall back to company data
+  const ceoName = enhancedData?.ceoName || company.executive?.ceoName || 'CEO TBD';
+  const managementScore = enhancedData?.managementScore || company.executive?.managementScore || 75;
+  const overallRiskScore = enhancedData?.overallRiskScore || company.riskAssessment?.overallRiskScore || 50;
+  const marketRiskScore = enhancedData?.marketRiskScore || company.riskAssessment?.marketRiskScore || 65;
+  const keyStrengths = enhancedData?.keyStrengths || company.executive?.keyStrengths || ['Strong management team', 'Market opportunity', 'Product-market fit'];
+  const riskFactors = enhancedData?.riskFactors || company.riskAssessment?.riskFactors || ['Market volatility', 'Competitive pressure', 'Regulatory uncertainty'];
   const currentValuation = enhancedData?.currentValuation || company.currentValuation || company.totalInvestment * (company.moic || 1);
   const totalReturn = enhancedData?.totalReturn || company.totalReturn || (currentValuation - company.totalInvestment);
   const recommendation = enhancedData?.recommendation || company.recommendation || 'Hold';
+  const reasoning = enhancedData?.reasoning || company.reasoning || 'Based on current market conditions and company performance.';
+  const industryCategory = enhancedData?.industryCategory || company.executive?.industryCategory || 'Technology';
+  const fundingStage = enhancedData?.fundingStage || company.executive?.fundingStage || 'Series A';
+  const lastFundingDate = enhancedData?.lastFundingDate || company.executive?.lastFundingDate || '2023-01-01';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -102,8 +141,7 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                 {company.companyName}
               </DialogTitle>
               <p className="text-lg text-muted-foreground mt-2">
-                {enhancedData?.industryCategory || company.executive?.industryCategory || 'Technology'} • 
-                {enhancedData?.fundingStage || company.executive?.fundingStage || 'Series A'}
+                {industryCategory} • {fundingStage}
               </p>
             </div>
             <Badge className={`text-lg px-4 py-2 ${getRecommendationColor(recommendation)} shadow-glow`}>
@@ -173,36 +211,26 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium">Overall Risk Score</span>
-                      <span className="text-sm font-bold">
-                        {enhancedData?.overallRiskScore || company.riskAssessment?.overallRiskScore || 50}/100
-                      </span>
+                      <span className="text-sm font-bold">{overallRiskScore}/100</span>
                     </div>
                     <div className="relative">
-                      <Progress 
-                        value={enhancedData?.overallRiskScore || company.riskAssessment?.overallRiskScore || 50} 
-                        className="h-3 bg-secondary/50"
-                      />
+                      <Progress value={overallRiskScore} className="h-3 bg-secondary/50" />
                       <div 
-                        className={`absolute top-0 left-0 h-3 rounded-full transition-all ${getRiskColor(enhancedData?.overallRiskScore || company.riskAssessment?.overallRiskScore || 50).bg}`}
-                        style={{ width: `${enhancedData?.overallRiskScore || company.riskAssessment?.overallRiskScore || 50}%` }}
+                        className={`absolute top-0 left-0 h-3 rounded-full transition-all ${getRiskColor(overallRiskScore).bg}`}
+                        style={{ width: `${overallRiskScore}%` }}
                       />
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium">Market Risk</span>
-                      <span className="text-sm font-bold">
-                        {enhancedData?.marketRiskScore || 65}/100
-                      </span>
+                      <span className="text-sm font-bold">{marketRiskScore}/100</span>
                     </div>
                     <div className="relative">
-                      <Progress 
-                        value={enhancedData?.marketRiskScore || 65} 
-                        className="h-3 bg-secondary/50"
-                      />
+                      <Progress value={marketRiskScore} className="h-3 bg-secondary/50" />
                       <div 
-                        className={`absolute top-0 left-0 h-3 rounded-full transition-all bg-gradient-to-r from-yellow-500 to-yellow-400`}
-                        style={{ width: `${enhancedData?.marketRiskScore || 65}%` }}
+                        className="absolute top-0 left-0 h-3 rounded-full transition-all bg-gradient-to-r from-yellow-500 to-yellow-400"
+                        style={{ width: `${marketRiskScore}%` }}
                       />
                     </div>
                   </div>
@@ -210,12 +238,7 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                 <div>
                   <h4 className="font-semibold mb-3 text-foreground">Risk Factors</h4>
                   <ul className="space-y-2">
-                    {(enhancedData?.riskFactors || [
-                      'Market volatility in specific sector',
-                      'Competitive pressure from established players',
-                      'Regulatory changes affecting business model',
-                      'Customer concentration risk'
-                    ]).map((factor: string, index: number) => (
+                    {riskFactors.map((factor: string, index: number) => (
                       <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-1.5 h-1.5 bg-warning rounded-full" />
                         {factor}
@@ -241,20 +264,14 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                     getRecommendationColor(recommendation).includes('red') ? 'text-destructive' : 'text-warning'}`}>
                     {recommendation.toUpperCase()}
                   </div>
-                  <p className="text-muted-foreground">
-                    {enhancedData?.reasoning || company.reasoning || 'Analysis based on current market conditions and company performance metrics.'}
-                  </p>
+                  <p className="text-muted-foreground">{reasoning}</p>
                 </div>
                 <Separator />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h4 className="font-semibold text-success mb-3">Strengths</h4>
                     <ul className="space-y-2">
-                      {(enhancedData?.keyStrengths || company.executive?.keyStrengths || [
-                        'Strong revenue growth trajectory',
-                        'Experienced management team',
-                        'Market-leading position'
-                      ]).map((strength: string, index: number) => (
+                      {keyStrengths.map((strength: string, index: number) => (
                         <li key={index} className="flex items-center gap-2 text-sm">
                           <TrendingUp className="w-3 h-3 text-success" />
                           {strength}
@@ -265,11 +282,7 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                   <div>
                     <h4 className="font-semibold text-warning mb-3">Concerns</h4>
                     <ul className="space-y-2">
-                      {(enhancedData?.riskFactors?.slice(0, 3) || [
-                        'High customer acquisition costs',
-                        'Competitive market pressures',
-                        'Regulatory uncertainties'
-                      ]).map((concern: string, index: number) => (
+                      {riskFactors.slice(0, 3).map((concern: string, index: number) => (
                         <li key={index} className="flex items-center gap-2 text-sm">
                           <TrendingDown className="w-3 h-3 text-warning" />
                           {concern}
@@ -296,27 +309,20 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Team Score</span>
-                    <span className="text-sm font-bold">
-                      {enhancedData?.managementScore || company.executive?.managementScore || 75}/100
-                    </span>
+                    <span className="text-sm font-bold">{managementScore}/100</span>
                   </div>
                   <div className="relative">
-                    <Progress 
-                      value={enhancedData?.managementScore || company.executive?.managementScore || 75} 
-                      className="h-2 bg-secondary/50"
-                    />
+                    <Progress value={managementScore} className="h-2 bg-secondary/50" />
                     <div 
                       className="absolute top-0 left-0 h-2 rounded-full bg-gradient-to-r from-accent to-primary transition-all"
-                      style={{ width: `${enhancedData?.managementScore || company.executive?.managementScore || 75}%` }}
+                      style={{ width: `${managementScore}%` }}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm">
                     <span className="font-medium">CEO: </span>
-                    <span className="text-muted-foreground">
-                      {enhancedData?.ceoName || company.executive?.ceoName || 'CEO TBD'}
-                    </span>
+                    <span className="text-muted-foreground">{ceoName}</span>
                   </div>
                   <div className="text-sm">
                     <span className="font-medium">Experience: </span>
@@ -328,11 +334,7 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                 <div>
                   <h4 className="font-medium mb-2">Key Strengths</h4>
                   <ul className="space-y-1">
-                    {(enhancedData?.keyStrengths?.slice(0, 3) || [
-                      'Proven track record in scaling',
-                      'Strong industry relationships',
-                      'Technical expertise'
-                    ]).map((strength: string, index: number) => (
+                    {keyStrengths.slice(0, 3).map((strength: string, index: number) => (
                       <li key={index} className="text-xs text-muted-foreground flex items-center gap-1">
                         <div className="w-1 h-1 bg-accent rounded-full" />
                         {strength}
@@ -362,9 +364,7 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                   <div>
                     <span className="text-muted-foreground">Last Funding:</span>
                   </div>
-                  <div className="font-medium">
-                    {enhancedData?.lastFundingDate || company.executive?.lastFundingDate || '2023-01-01'}
-                  </div>
+                  <div className="font-medium">{lastFundingDate}</div>
                   <div>
                     <span className="text-muted-foreground">Growth Rate:</span>
                   </div>
@@ -374,9 +374,7 @@ export function CompanyDetailModal({ company, isOpen, onClose, apiKey }: Company
                   <div>
                     <span className="text-muted-foreground">Stage:</span>
                   </div>
-                  <div className="font-medium">
-                    {enhancedData?.fundingStage || company.executive?.fundingStage || 'Series A'}
-                  </div>
+                  <div className="font-medium">{fundingStage}</div>
                 </div>
               </CardContent>
             </Card>

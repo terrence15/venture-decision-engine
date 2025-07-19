@@ -1,43 +1,23 @@
+
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, ChevronUp, Download, RefreshCw, ArrowUpDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-interface CompanyData {
-  id: string;
-  companyName: string;
-  totalInvestment: number;
-  equityStake: number;
-  moic: number | null;
-  revenueGrowth: number | null;
-  burnMultiple: number | null;
-  runway: number | null;
-  tam: number;
-  exitActivity: string;
-  barrierToEntry: number;
-  additionalInvestmentRequested: number;
-  recommendation?: string;
-  timingBucket?: string;
-  reasoning?: string;
-  confidence?: number;
-  keyRisks?: string;
-  suggestedAction?: string;
-  externalSources?: string;
-  insufficientData?: boolean;
-}
+import { EnhancedCompanyData } from '@/types/portfolio';
 
 interface EnhancedAnalysisTableProps {
-  companies: CompanyData[];
+  companies: EnhancedCompanyData[];
   onAnalyze: () => void;
   isAnalyzing: boolean;
+  onCompanyClick?: (company: EnhancedCompanyData) => void;
 }
 
 type SortField = 'companyName' | 'totalInvestment' | 'equityStake' | 'moic' | 'revenueGrowth' | 'additionalInvestmentRequested' | 'confidence';
 type SortDirection = 'asc' | 'desc';
 
-export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing }: EnhancedAnalysisTableProps) {
+export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing, onCompanyClick }: EnhancedAnalysisTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('companyName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -148,6 +128,11 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing }: Enh
     setExpandedRow(expandedRow === companyId ? null : companyId);
   };
 
+  const handleCompanyDetailClick = (company: EnhancedCompanyData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCompanyClick?.(company);
+  };
+
   const exportToCSV = () => {
     const headers = [
       'Company Name', 'Investment', 'Equity %', 'MOIC', 'Revenue Growth %', 
@@ -163,7 +148,7 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing }: Enh
       company.additionalInvestmentRequested,
       company.recommendation || '',
       company.confidence || '',
-      (company.keyRisks || '').replace(/,/g, ';') // Replace commas to avoid CSV issues
+      (company.keyRisks || '').replace(/,/g, ';')
     ]);
     
     const csvContent = [headers, ...csvData]
@@ -277,13 +262,14 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing }: Enh
                     Confidence {getSortIcon('confidence')}
                   </Button>
                 </TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedCompanies.map((company) => (
                 <>
                   <TableRow 
-                    key={company.id}
+                    key={`company-${company.id}`}
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={() => handleRowClick(company.id)}
                   >
@@ -315,11 +301,21 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing }: Enh
                     <TableCell>
                       {getConfidenceBadge(company.confidence)}
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => handleCompanyDetailClick(company, e)}
+                        className="text-xs"
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
                   </TableRow>
                   
                   {expandedRow === company.id && (
-                    <TableRow>
-                      <TableCell colSpan={9} className="bg-muted/20 p-6">
+                    <TableRow key={`expanded-${company.id}`}>
+                      <TableCell colSpan={10} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -355,6 +351,37 @@ export function EnhancedAnalysisTable({ companies, onAnalyze, isAnalyzing }: Enh
                                   <span className="text-muted-foreground">Exit Activity:</span>
                                   <span className="ml-2 font-medium">
                                     {company.exitActivity || 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Enhanced Executive Info */}
+                            <div>
+                              <h4 className="font-semibold text-sm text-muted-foreground mb-2">Leadership</h4>
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">CEO:</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.executive?.ceoName || 'CEO TBD'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Management Score:</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.executive?.managementScore || 'N/A'}/100
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Risk Score:</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.riskAssessment?.overallRiskScore || 'N/A'}/100
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Industry:</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.executive?.industryCategory || 'Technology'}
                                   </span>
                                 </div>
                               </div>

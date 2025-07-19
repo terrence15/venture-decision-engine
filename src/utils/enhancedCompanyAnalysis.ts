@@ -1,3 +1,4 @@
+
 interface EnhancedAnalysisResult {
   ceoName: string;
   ceoExperience: number;
@@ -49,6 +50,8 @@ Provide your analysis in the following JSON format:
 Be thorough in your research and provide realistic, data-driven assessments.`;
 
   try {
+    console.log(`Fetching enhanced data for ${companyName} using GPT-4.1...`);
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -56,7 +59,7 @@ Be thorough in your research and provide realistic, data-driven assessments.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-2024-11-20',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
@@ -68,12 +71,13 @@ Be thorough in your research and provide realistic, data-driven assessments.`;
           }
         ],
         temperature: 0.2,
-        max_tokens: 1500,
+        max_tokens: 2000,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('OpenAI API Error:', errorData);
       throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 
@@ -84,22 +88,26 @@ Be thorough in your research and provide realistic, data-driven assessments.`;
       throw new Error('No response content received from OpenAI');
     }
 
+    console.log(`Raw response for ${companyName}:`, content);
+
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error('Could not extract JSON from response:', content);
       throw new Error('Could not parse JSON response from OpenAI');
     }
 
     const analysis = JSON.parse(jsonMatch[0]);
+    console.log(`Parsed analysis for ${companyName}:`, analysis);
     
-    return {
+    const result = {
       ceoName: analysis.ceoName || 'CEO TBD',
       ceoExperience: parseInt(analysis.ceoExperience) || 10,
       managementScore: Math.min(100, Math.max(0, parseInt(analysis.managementScore) || 75)),
       overallRiskScore: Math.min(100, Math.max(0, parseInt(analysis.overallRiskScore) || 50)),
       marketRiskScore: Math.min(100, Math.max(0, parseInt(analysis.marketRiskScore) || 65)),
-      keyStrengths: analysis.keyStrengths || ['Strong management team', 'Market opportunity', 'Product-market fit'],
-      riskFactors: analysis.riskFactors || ['Market volatility', 'Competitive pressure', 'Regulatory uncertainty'],
+      keyStrengths: Array.isArray(analysis.keyStrengths) ? analysis.keyStrengths : ['Strong management team', 'Market opportunity', 'Product-market fit'],
+      riskFactors: Array.isArray(analysis.riskFactors) ? analysis.riskFactors : ['Market volatility', 'Competitive pressure', 'Regulatory uncertainty'],
       recommendation: analysis.recommendation || 'Hold',
       reasoning: analysis.reasoning || 'Based on current market conditions and company performance.',
       currentValuation: parseInt(analysis.currentValuation) || 1000000,
@@ -109,8 +117,11 @@ Be thorough in your research and provide realistic, data-driven assessments.`;
       fundingStage: analysis.fundingStage || 'Series A'
     };
 
+    console.log(`Enhanced data result for ${companyName}:`, result);
+    return result;
+
   } catch (error) {
-    console.error('Enhanced Company Analysis Error:', error);
+    console.error(`Enhanced Company Analysis Error for ${companyName}:`, error);
     throw new Error(error instanceof Error ? error.message : 'Failed to analyze company');
   }
 }
