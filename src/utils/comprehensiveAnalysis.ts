@@ -55,7 +55,7 @@ function checkMinimumViableInputs(company: CompanyData): boolean {
   ];
   
   const missingFields = criticalFields.filter(field => 
-    field.value === null || field.value === undefined || field.value === ''
+    field.value === null || field.value === undefined
   );
   
   console.log('Missing critical fields:', missingFields.map(f => f.field));
