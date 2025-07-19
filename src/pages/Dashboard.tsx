@@ -1,15 +1,16 @@
-
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
 import { AnalysisTable } from '@/components/AnalysisTable';
 import { ApiKeyInput } from '@/components/ApiKeyInput';
+import { PerplexityKeyInput } from '@/components/PerplexityKeyInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Building2, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { analyzePortfolio } from '@/utils/openaiAnalysis';
 import { parseExcelFile, RawCompanyData } from '@/utils/excelParser';
+import { getPerplexityApiKey, setPerplexityApiKey } from '@/utils/externalResearch';
 
 // Extended interface for analyzed companies
 interface AnalyzedCompanyData extends RawCompanyData {
@@ -28,7 +29,9 @@ export function Dashboard() {
   const [companies, setCompanies] = useState<AnalyzedCompanyData[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showApiInput, setShowApiInput] = useState(false);
+  const [showPerplexityInput, setShowPerplexityInput] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [isParsingFile, setIsParsingFile] = useState(false);
   const { toast } = useToast();
 
@@ -70,25 +73,58 @@ export function Dashboard() {
       return;
     }
 
-    // Check if we have a stored API key
+    // Check for OpenAI API key first
     const storedApiKey = localStorage.getItem('openai_api_key');
-    if (storedApiKey) {
-      runAnalysis(storedApiKey);
-    } else {
+    if (!storedApiKey) {
       setShowApiInput(true);
+      return;
     }
+
+    // Then check for Perplexity API key (optional but recommended)
+    const perplexityKey = getPerplexityApiKey();
+    if (!perplexityKey) {
+      setShowPerplexityInput(true);
+      return;
+    }
+
+    runAnalysis(storedApiKey);
   };
 
   const handleApiKeySubmit = async (apiKey: string) => {
-    // Store API key locally
     localStorage.setItem('openai_api_key', apiKey);
     setShowApiInput(false);
-    await runAnalysis(apiKey);
+    
+    // After OpenAI key, check for Perplexity key
+    const perplexityKey = getPerplexityApiKey();
+    if (!perplexityKey) {
+      setShowPerplexityInput(true);
+    } else {
+      await runAnalysis(apiKey);
+    }
+  };
+
+  const handlePerplexityKeySubmit = async (apiKey: string) => {
+    setPerplexityApiKey(apiKey);
+    setShowPerplexityInput(false);
+    
+    const openaiKey = localStorage.getItem('openai_api_key');
+    if (openaiKey) {
+      await runAnalysis(openaiKey);
+    }
+  };
+
+  const skipPerplexityResearch = async () => {
+    setShowPerplexityInput(false);
+    const openaiKey = localStorage.getItem('openai_api_key');
+    if (openaiKey) {
+      await runAnalysis(openaiKey);
+    }
   };
 
   const runAnalysis = async (apiKey: string) => {
     setIsAnalyzing(true);
     setAnalysisProgress(0);
+    setAnalysisStatus('Preparing analysis...');
     
     try {
       const rawCompanies = companies.map(company => ({
@@ -109,13 +145,18 @@ export function Dashboard() {
       const analyzedCompanies = await analyzePortfolio(
         rawCompanies, 
         apiKey,
-        setAnalysisProgress
+        (progress, status) => {
+          setAnalysisProgress(progress);
+          if (status) setAnalysisStatus(status);
+        }
       );
       
       setCompanies(analyzedCompanies as AnalyzedCompanyData[]);
       toast({
         title: "Analysis Complete",
-        description: `Successfully analyzed ${analyzedCompanies.length} companies`,
+        description: getPerplexityApiKey() 
+          ? `Successfully analyzed ${analyzedCompanies.length} companies with external research`
+          : `Successfully analyzed ${analyzedCompanies.length} companies (internal data only)`,
       });
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -127,6 +168,7 @@ export function Dashboard() {
     } finally {
       setIsAnalyzing(false);
       setAnalysisProgress(0);
+      setAnalysisStatus('');
     }
   };
 
@@ -150,7 +192,7 @@ export function Dashboard() {
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Upload your portfolio data to receive objective, risk-adjusted recommendations 
-                for capital deployment decisions backed by LLM analysis.
+                for capital deployment decisions backed by AI analysis and real-time market research.
               </p>
             </div>
             <FileUpload onFileSelect={handleFileUpload} />
@@ -241,9 +283,11 @@ export function Dashboard() {
               companies={companies}
               onAnalyze={handleAnalyze}
               isAnalyzing={isAnalyzing}
+              analysisProgress={analysisProgress}
+              analysisStatus={analysisStatus}
             />
             
-            {/* API Key Input Modal */}
+            {/* OpenAI API Key Input Modal */}
             {showApiInput && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                 <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
@@ -257,6 +301,32 @@ export function Dashboard() {
                   >
                     Cancel
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Perplexity API Key Input Modal */}
+            {showPerplexityInput && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
+                  <PerplexityKeyInput 
+                    onApiKeySubmit={handlePerplexityKeySubmit}
+                    isAnalyzing={isAnalyzing}
+                  />
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={skipPerplexityResearch}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Skip External Research
+                    </button>
+                    <button
+                      onClick={() => setShowPerplexityInput(false)}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

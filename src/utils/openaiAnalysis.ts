@@ -1,3 +1,6 @@
+
+import { conductExternalResearch, getPerplexityApiKey } from './externalResearch';
+
 interface CompanyData {
   id: string;
   companyName: string;
@@ -26,7 +29,8 @@ interface AnalysisResult {
 
 export async function analyzeCompanyWithOpenAI(
   company: CompanyData, 
-  apiKey: string
+  apiKey: string,
+  onProgress?: (status: string) => void
 ): Promise<AnalysisResult> {
   // Check for insufficient data (fail-safe logic)
   const criticalFields = [
@@ -55,8 +59,45 @@ export async function analyzeCompanyWithOpenAI(
     };
   }
 
+  // Conduct external research if Perplexity API key is available
+  let externalResearch = '';
+  let externalSources = 'Internal analysis only';
+  
+  const perplexityKey = getPerplexityApiKey();
+  if (perplexityKey) {
+    try {
+      onProgress?.(`Researching ${company.companyName}...`);
+      const research = await conductExternalResearch({
+        companyName: company.companyName,
+        totalInvestment: company.totalInvestment,
+        equityStake: company.equityStake,
+        additionalInvestmentRequested: company.additionalInvestmentRequested
+      }, perplexityKey);
+      
+      externalResearch = `
+EXTERNAL MARKET INTELLIGENCE:
+Market Position: ${research.marketIntelligence}
+Competitive Landscape: ${research.competitiveLandscape}
+Recent Developments: ${research.recentNews}
+Funding History: ${research.fundingHistory}
+      `;
+      
+      externalSources = research.sources.length > 0 
+        ? research.sources.join(', ') 
+        : 'Real-time web research conducted';
+        
+    } catch (error) {
+      console.error('External research failed:', error);
+      externalResearch = '\nEXTERNAL RESEARCH: Unable to conduct real-time research due to API limitations.';
+      externalSources = 'External research unavailable';
+    }
+  }
+
+  onProgress?.(`Analyzing ${company.companyName}...`);
+
   const prompt = `You are a venture capital investor evaluating whether to approve an additional capital request from a portfolio company. Use the provided performance, market, valuation, and competitive data to make an informed investment decision.
 
+INTERNAL PORTFOLIO DATA:
 Company: ${company.companyName}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
@@ -69,17 +110,19 @@ Exit Activity in Sector: ${company.exitActivity}
 Barrier to Entry: ${company.barrierToEntry}/5
 Additional Investment Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
 
-You must integrate internal Excel data with verified external market signals. Research this company using external sources like Crunchbase, LinkedIn, TechCrunch, and other credible business intelligence sources.
+${externalResearch}
+
+Integrate the internal performance data with external market signals to provide a comprehensive investment recommendation.
 
 Provide your analysis in the following JSON format:
 {
   "recommendation": "Specific capital amount decision (e.g., 'Invest $250K of $1M request', 'Decline', 'Bridge Capital Only - $500K')",
   "timingBucket": "One of: Double Down, Reinvest (3-12 Months), Hold (3-6 Months), Bridge Capital Only, Exit Opportunistically, Decline",
-  "reasoning": "2-4 sentences combining internal performance data with external market validation. Start with internal performance, follow with external signals, then flag downside risks, end with investment logic.",
-  "confidence": "Integer 1-5 where 5=complete internal+strong external validation, 3=solid internal but mixed external, 1=missing data",
-  "keyRisks": "1-2 sentences highlighting the most material threat, including at least one external-facing risk",
+  "reasoning": "2-4 sentences combining internal performance data with external market validation. Start with internal performance, reference external signals, flag downside risks, end with investment logic.",
+  "confidence": "Integer 1-5 where 5=strong internal+external validation, 3=solid internal but mixed external, 1=missing data",
+  "keyRisks": "1-2 sentences highlighting the most material threat, including external market risks",
   "suggestedAction": "1 tactical sentence with specific next step for the investment team",
-  "externalSources": "Brief list of research sources used (e.g., 'Crunchbase (funding data), LinkedIn (hiring trends), TechCrunch coverage')"
+  "externalSources": "Brief summary of external research sources or limitations"
 }
 
 Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasibility, and downside protection. Be objective and data-driven.`;
@@ -96,7 +139,7 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
         messages: [
           {
             role: 'system',
-            content: 'You are an experienced venture capital investor with deep expertise in portfolio management and capital allocation decisions. Provide objective, data-driven investment recommendations.'
+            content: 'You are an experienced venture capital investor with deep expertise in portfolio management and capital allocation decisions. Provide objective, data-driven investment recommendations that integrate both internal performance metrics and external market intelligence.'
           },
           {
             role: 'user',
@@ -135,7 +178,7 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
       confidence: Math.min(5, Math.max(1, parseInt(analysis.confidence) || 3)),
       keyRisks: analysis.keyRisks || 'Unable to assess risks with current information.',
       suggestedAction: analysis.suggestedAction || 'Request additional company data before proceeding.',
-      externalSources: analysis.externalSources || 'Limited external research available',
+      externalSources: analysis.externalSources || externalSources,
       insufficientData: false
     };
 
@@ -148,16 +191,19 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
 export async function analyzePortfolio(
   companies: CompanyData[], 
   apiKey: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number, status?: string) => void
 ): Promise<CompanyData[]> {
   const results: CompanyData[] = [];
   
   for (let i = 0; i < companies.length; i++) {
     const company = companies[i];
-    onProgress?.(((i + 1) / companies.length) * 100);
+    const baseProgress = (i / companies.length) * 100;
     
     try {
-      const analysis = await analyzeCompanyWithOpenAI(company, apiKey);
+      const analysis = await analyzeCompanyWithOpenAI(company, apiKey, (status) => {
+        onProgress?.(baseProgress, status);
+      });
+      
       results.push({
         ...company,
         recommendation: analysis.recommendation,
@@ -169,6 +215,8 @@ export async function analyzePortfolio(
         externalSources: analysis.externalSources,
         insufficientData: analysis.insufficientData
       } as any);
+      
+      onProgress?.(((i + 1) / companies.length) * 100, `Completed ${company.companyName}`);
       
       // Small delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -185,6 +233,8 @@ export async function analyzePortfolio(
         externalSources: 'Analysis incomplete',
         insufficientData: true
       } as any);
+      
+      onProgress?.(((i + 1) / companies.length) * 100, `Failed: ${company.companyName}`);
     }
   }
   
