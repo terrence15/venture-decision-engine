@@ -1,8 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
-import { AnalysisTable } from '@/components/AnalysisTable';
+import { EnhancedAnalysisTable } from '@/components/EnhancedAnalysisTable';
+import { SearchAndFilter } from '@/components/SearchAndFilter';
+import { PortfolioCharts } from '@/components/PortfolioCharts';
 import { ApiKeyInput } from '@/components/ApiKeyInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +32,68 @@ export function Dashboard() {
   const [showApiInput, setShowApiInput] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [isParsingFile, setIsParsingFile] = useState(false);
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    recommendation: [] as string[],
+    confidence: [] as string[],
+    investmentRange: ''
+  });
+  
   const { toast } = useToast();
+
+  // Filter and search logic
+  const filteredCompanies = useMemo(() => {
+    let filtered = companies;
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(company => 
+        company.companyName.toLowerCase().includes(term) ||
+        company.recommendation?.toLowerCase().includes(term) ||
+        company.keyRisks?.toLowerCase().includes(term) ||
+        company.reasoning?.toLowerCase().includes(term)
+      );
+    }
+
+    // Apply recommendation filter
+    if (filters.recommendation.length > 0) {
+      filtered = filtered.filter(company => 
+        filters.recommendation.includes(company.recommendation || 'Pending')
+      );
+    }
+
+    // Apply confidence filter
+    if (filters.confidence.length > 0) {
+      const confidenceMap = {
+        'Very Low': 1, 'Low': 2, 'Medium': 3, 'High': 4, 'Very High': 5
+      };
+      filtered = filtered.filter(company => {
+        const confidenceLevel = company.confidence;
+        const confidenceName = Object.entries(confidenceMap).find(([_, val]) => val === confidenceLevel)?.[0];
+        return confidenceName && filters.confidence.includes(confidenceName);
+      });
+    }
+
+    // Apply investment range filter
+    if (filters.investmentRange) {
+      const getInvestmentRange = (amount: number) => {
+        if (amount < 1000000) return 'Under $1M';
+        if (amount < 5000000) return '$1M - $5M';
+        if (amount < 10000000) return '$5M - $10M';
+        if (amount < 50000000) return '$10M - $50M';
+        return 'Over $50M';
+      };
+
+      filtered = filtered.filter(company => 
+        getInvestmentRange(company.totalInvestment) === filters.investmentRange
+      );
+    }
+
+    return filtered;
+  }, [companies, searchTerm, filters]);
 
   const handleFileUpload = async (file: File) => {
     setIsParsingFile(true);
@@ -128,6 +191,15 @@ export function Dashboard() {
       setIsAnalyzing(false);
       setAnalysisProgress(0);
     }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilters({
+      recommendation: [],
+      confidence: [],
+      investmentRange: ''
+    });
   };
 
   // Calculate metrics safely
@@ -236,9 +308,21 @@ export function Dashboard() {
               </Card>
             </div>
 
-            {/* Analysis Table */}
-            <AnalysisTable 
-              companies={companies}
+            {/* Portfolio Charts */}
+            {companies.length > 0 && <PortfolioCharts companies={companies} />}
+
+            {/* Search and Filter */}
+            <SearchAndFilter
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedFilters={filters}
+              onFilterChange={setFilters}
+              onClearFilters={clearFilters}
+            />
+
+            {/* Enhanced Analysis Table */}
+            <EnhancedAnalysisTable 
+              companies={filteredCompanies}
               onAnalyze={handleAnalyze}
               isAnalyzing={isAnalyzing}
             />
