@@ -39,6 +39,7 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
   };
 
   const handleFile = (file: File) => {
+    console.log('FileUpload: handleFile called with file:', file.name);
     setError(null);
     
     if (!file.name.endsWith('.xlsx')) {
@@ -51,6 +52,7 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
       return;
     }
     
+    console.log('FileUpload: calling onFileSelect with file:', file.name);
     onFileSelect(file);
   };
 

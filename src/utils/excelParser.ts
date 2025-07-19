@@ -90,6 +90,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
     
     reader.onload = (e) => {
       try {
+        console.log('FileReader onload triggered');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         
