@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, DollarSign, TrendingUp, AlertTriangle, Search } from 'lucide-react';
+import { Building2, DollarSign, TrendingUp, AlertTriangle, Search, Settings } from 'lucide-react';
 import { analyzePortfolio } from '@/utils/openaiAnalysis';
 import { parseEnhancedExcelFile } from '@/utils/enhancedExcelParser';
 import { EnhancedCompanyData } from '@/types/portfolio';
@@ -44,6 +44,37 @@ export function Dashboard() {
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
+
+  // Load stored API keys on component mount
+  useEffect(() => {
+    console.log('Dashboard mounted, loading API keys from localStorage...');
+    
+    try {
+      const storedOpenaiKey = localStorage.getItem('openai_api_key');
+      const storedPerplexityKey = localStorage.getItem('perplexity_api_key');
+      
+      console.log('Found stored keys:', {
+        openai: !!storedOpenaiKey,
+        perplexity: !!storedPerplexityKey,
+        openaiPreview: storedOpenaiKey ? `${storedOpenaiKey.substring(0, 8)}...` : 'none',
+        perplexityPreview: storedPerplexityKey ? `${storedPerplexityKey.substring(0, 8)}...` : 'none'
+      });
+      
+      if (storedOpenaiKey) {
+        setApiKey(storedOpenaiKey);
+      }
+      if (storedPerplexityKey) {
+        setPerplexityApiKey(storedPerplexityKey);
+      }
+    } catch (error) {
+      console.error('Error loading API keys from localStorage:', error);
+      toast({
+        title: "Storage Error", 
+        description: "Unable to load stored API keys. You may need to re-enter them.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
 
   // Enhanced search and filter logic
   const filteredCompanies = useMemo(() => {
@@ -122,6 +153,13 @@ export function Dashboard() {
   };
 
   const handleAnalyze = () => {
+    console.log('Analyze button clicked');
+    console.log('Current state:', {
+      companiesCount: companies.length,
+      hasOpenaiKey: !!apiKey,
+      hasPerplexityKey: !!perplexityApiKey
+    });
+
     if (companies.length === 0) {
       toast({
         title: "No Data Available",
@@ -131,25 +169,73 @@ export function Dashboard() {
       return;
     }
 
-    const storedOpenaiKey = localStorage.getItem('openai_api_key');
-    const storedPerplexityKey = localStorage.getItem('perplexity_api_key');
-    
-    if (storedOpenaiKey) {
-      runAnalysis(storedOpenaiKey, storedPerplexityKey || undefined);
-    } else {
+    if (!apiKey) {
+      console.log('No OpenAI API key found, showing API input modal');
       setShowApiInput(true);
+      return;
     }
+
+    console.log('Starting analysis with existing keys');
+    runAnalysis(apiKey, perplexityApiKey || undefined);
   };
 
   const handleApiKeySubmit = async (openaiKey: string, perplexityKey?: string) => {
-    localStorage.setItem('openai_api_key', openaiKey);
-    if (perplexityKey) {
-      localStorage.setItem('perplexity_api_key', perplexityKey);
+    console.log('API keys submitted:', {
+      openai: !!openaiKey,
+      perplexity: !!perplexityKey
+    });
+
+    try {
+      localStorage.setItem('openai_api_key', openaiKey);
+      if (perplexityKey) {
+        localStorage.setItem('perplexity_api_key', perplexityKey);
+      }
+      setApiKey(openaiKey);
+      setPerplexityApiKey(perplexityKey || '');
+      setShowApiInput(false);
+      
+      toast({
+        title: "API Keys Saved",
+        description: `OpenAI key saved${perplexityKey ? ' and Perplexity key saved' : ''}`,
+      });
+      
+      await runAnalysis(openaiKey, perplexityKey);
+    } catch (error) {
+      console.error('Error saving API keys:', error);
+      toast({
+        title: "Storage Error",
+        description: "Failed to save API keys. Please try again.",
+        variant: "destructive"
+      });
     }
-    setApiKey(openaiKey);
-    setPerplexityApiKey(perplexityKey || '');
-    setShowApiInput(false);
-    await runAnalysis(openaiKey, perplexityKey);
+  };
+
+  const handleManageApiKeys = () => {
+    console.log('Manual API key management triggered');
+    setShowApiInput(true);
+  };
+
+  const handleClearApiKeys = () => {
+    console.log('Clearing stored API keys');
+    
+    try {
+      localStorage.removeItem('openai_api_key');
+      localStorage.removeItem('perplexity_api_key');
+      setApiKey('');
+      setPerplexityApiKey('');
+      
+      toast({
+        title: "API Keys Cleared",
+        description: "All stored API keys have been removed",
+      });
+    } catch (error) {
+      console.error('Error clearing API keys:', error);
+      toast({
+        title: "Storage Error",
+        description: "Failed to clear API keys. Please try manually.",
+        variant: "destructive"
+      });
+    }
   };
 
   const runAnalysis = async (openaiKey: string, perplexityKey?: string) => {
@@ -295,27 +381,52 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* API Key Status */}
-          <div className="flex flex-col sm:flex-row items-start gap-3">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">OpenAI:</span>
-                <span className={`text-sm ${apiKey ? 'text-green-500' : 'text-muted-foreground'}`}>
-                  {apiKey ? 'Connected' : 'Not connected'}
-                </span>
+          {/* Enhanced API Key Status */}
+          <Card className="bg-gradient-to-r from-secondary/30 to-secondary/10 border-border/50">
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">OpenAI:</span>
+                    <Badge variant={apiKey ? "default" : "secondary"}>
+                      {apiKey ? `Connected (${apiKey.substring(0, 8)}...)` : 'Not connected'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Perplexity:</span>
+                    <Badge variant={perplexityApiKey ? "default" : "secondary"}>
+                      {perplexityApiKey ? `Connected (${perplexityApiKey.substring(0, 8)}...)` : 'Not connected'}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground max-w-md">
+                    <p>• OpenAI: Required for AI investment analysis</p>
+                    <p>• Perplexity: Optional, enables real-time research from Crunchbase, LinkedIn, TechCrunch</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManageApiKeys}
+                    className="flex items-center gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Manage Keys
+                  </Button>
+                  {(apiKey || perplexityApiKey) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearApiKeys}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      Clear Keys
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Perplexity:</span>
-                <span className={`text-sm ${perplexityApiKey ? 'text-green-500' : 'text-muted-foreground'}`}>
-                  {perplexityApiKey ? 'Connected (External Research)' : 'Not connected (Internal only)'}
-                </span>
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground max-w-md">
-              <p>• OpenAI: Required for AI investment analysis</p>
-              <p>• Perplexity: Optional, enables real-time research from Crunchbase, LinkedIn, TechCrunch</p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Portfolio Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
