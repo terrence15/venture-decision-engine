@@ -1,88 +1,74 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, ScatterChart, Scatter, Legend } from 'recharts';
 import { TrendingUp, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
 import { EnhancedCompanyData } from '@/types/portfolio';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  ScatterChart,
+  Scatter
+} from 'recharts';
 
 interface EnhancedPortfolioChartsProps {
   companies: EnhancedCompanyData[];
 }
 
-const chartConfig = {
-  investment: { label: "Investment ($M)" },
-  moic: { label: "MOIC" },
-  recommendation: { label: "Recommendation" },
-  company: { label: "Company" }
-};
-
-// Vibrant futuristic colors
-const CHART_COLORS = {
-  'Hold': '#10b981', // Neon Green
-  'Reinvest': '#3b82f6', // Electric Blue  
-  'Exit': '#ef4444', // Neon Red
-  'Monitor': '#f59e0b', // Electric Orange
-  'Pending': '#6b7280', // Muted Gray
-  'primary': '#06b6d4', // Cyan
-  'secondary': '#8b5cf6', // Purple
-  'accent': '#f43f5e' // Pink
-};
-
-const PIE_COLORS = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#06b6d4', '#8b5cf6'];
-
 export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsProps) {
-  // Recommendation distribution with proper colors
-  const recommendationData = companies.reduce((acc, company) => {
+  // Recommendation distribution data
+  const recommendationCounts = companies.reduce((acc, company) => {
     const rec = company.recommendation || 'Pending';
     acc[rec] = (acc[rec] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const pieData = Object.entries(recommendationData).map(([name, value], index) => ({
+  const pieData = Object.entries(recommendationCounts).map(([name, count]) => ({
     name,
-    value,
-    fill: CHART_COLORS[name as keyof typeof CHART_COLORS] || PIE_COLORS[index % PIE_COLORS.length]
+    count,
+    fill: name === 'Reinvest' ? '#10b981' : 
+          name === 'Hold' ? '#3b82f6' : 
+          name === 'Exit' ? '#ef4444' : 
+          name === 'Monitor' ? '#f59e0b' : '#6b7280'
   }));
 
-  // Top investments with company names
+  // Top investments data
   const topInvestments = companies
     .sort((a, b) => b.totalInvestment - a.totalInvestment)
-    .slice(0, 8)
+    .slice(0, 5)
     .map(company => ({
-      name: company.companyName.length > 12 ? 
-            company.companyName.substring(0, 12) + '...' : 
+      name: company.companyName.length > 8 ? 
+            company.companyName.substring(0, 8) + '...' : 
             company.companyName,
-      fullName: company.companyName,
-      investment: company.totalInvestment / 1000000,
-      moic: company.moic || 0,
-      ceo: company.executive?.ceoName || 'N/A',
-      fill: CHART_COLORS[company.recommendation as keyof typeof CHART_COLORS] || CHART_COLORS.primary
+      investment: Number((company.totalInvestment / 1000000).toFixed(1))
     }));
 
-  // Investment vs Returns scatter plot
+  // Investment vs Returns scatter data
   const scatterData = companies
-    .filter(c => c.moic !== null && c.moic !== undefined && c.totalInvestment > 0)
+    .filter(company => company.moic && company.totalInvestment)
     .map(company => ({
-      x: company.totalInvestment / 1000000,
+      x: Number((company.totalInvestment / 1000000).toFixed(1)),
       y: company.moic,
-      name: company.companyName,
-      ceo: company.executive?.ceoName || 'N/A',
-      recommendation: company.recommendation || 'Pending',
-      fill: CHART_COLORS[company.recommendation as keyof typeof CHART_COLORS] || CHART_COLORS.primary
+      name: company.companyName
     }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
       return (
-        <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-lg p-3 shadow-strong">
-          <p className="font-semibold text-foreground">{data.fullName || data.name}</p>
-          {data.ceo && <p className="text-sm text-muted-foreground">CEO: {data.ceo}</p>}
-          <p className="text-sm text-primary">
-            Investment: ${typeof data.investment === 'number' ? data.investment.toFixed(1) : data.x?.toFixed(1)}M
-          </p>
-          {data.moic && <p className="text-sm text-accent">MOIC: {data.moic.toFixed(1)}x</p>}
-          {data.y && <p className="text-sm text-accent">MOIC: {data.y.toFixed(1)}x</p>}
+        <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-lg p-2 shadow-lg">
+          <p className="font-medium text-foreground text-sm">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-xs" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+              {entry.name === 'investment' ? 'M' : entry.name === 'y' ? 'x' : ''}
+            </p>
+          ))}
         </div>
       );
     }
@@ -90,74 +76,69 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
       {/* Recommendation Distribution */}
-      <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
-        <CardHeader className="pb-2">
+      <Card className="shadow-elegant glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base gradient-text">
             <PieChartIcon className="h-4 w-4 text-primary" />
             Recommendation Distribution
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
+        <CardContent className="p-4">
+          <div className="w-full h-48 flex items-center justify-center">
+            <ResponsiveContainer width="95%" height="95%">
               <PieChart>
                 <Pie
                   data={pieData}
                   cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={85}
-                  paddingAngle={3}
-                  dataKey="value"
+                  cy="45%"
+                  outerRadius={60}
+                  dataKey="count"
+                  label={false}
                 >
                   {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} stroke={entry.fill} strokeWidth={2} />
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Pie>
                 <Legend 
-                  verticalAlign="bottom" 
-                  height={36}
+                  verticalAlign="bottom"
+                  height={24}
                   iconType="circle"
-                  wrapperStyle={{ fontSize: '12px', color: 'hsl(var(--foreground))' }}
-                />
-                <ChartTooltip 
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-lg p-3 shadow-strong">
-                          <p className="font-semibold text-foreground">{payload[0].name}</p>
-                          <p className="text-sm text-primary">Count: {payload[0].value}</p>
-                        </div>
-                      );
-                    }
-                    return null;
+                  wrapperStyle={{ 
+                    fontSize: '10px', 
+                    color: 'hsl(var(--foreground))',
+                    paddingTop: '8px'
                   }}
                 />
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-          </ChartContainer>
+          </div>
         </CardContent>
       </Card>
 
       {/* Top Investments */}
-      <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
-        <CardHeader className="pb-2">
+      <Card className="shadow-elegant glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base gradient-text">
             <BarChart3 className="h-4 w-4 text-primary" />
             Top Investments
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topInvestments} margin={{ top: 5, right: 5, left: -10, bottom: 35 }}>
+        <CardContent className="p-4">
+          <div className="w-full h-48">
+            <ResponsiveContainer width="95%" height="95%">
+              <BarChart 
+                data={topInvestments} 
+                margin={{ top: 10, right: 5, left: 5, bottom: 30 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                 <XAxis 
                   dataKey="name" 
                   angle={-45}
                   textAnchor="end"
-                  height={40}
+                  height={35}
                   fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
                   interval={0}
@@ -165,34 +146,46 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
                 <YAxis 
                   fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
-                  width={15}
+                  width={25}
+                  label={{ value: '$M', angle: 0, position: 'insideTopLeft', style: { fontSize: '8px' } }}
                 />
-                <Bar dataKey="investment" radius={[2, 2, 0, 0]} stroke="hsl(var(--border))" strokeWidth={1} />
-                <ChartTooltip content={<CustomTooltip />} />
+                <Bar 
+                  dataKey="investment" 
+                  fill="hsl(var(--primary))" 
+                  radius={[2, 2, 0, 0]} 
+                  stroke="hsl(var(--border))" 
+                  strokeWidth={0.5} 
+                />
+                <Tooltip content={<CustomTooltip />} />
               </BarChart>
             </ResponsiveContainer>
-          </ChartContainer>
+          </div>
         </CardContent>
       </Card>
 
       {/* Investment vs Returns */}
-      <Card className="shadow-strong glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
-        <CardHeader className="pb-2">
+      <Card className="shadow-elegant glow-effect bg-gradient-to-br from-card to-card/80 border-border/50">
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base gradient-text">
             <TrendingUp className="h-4 w-4 text-primary" />
             Investment vs Returns
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart data={scatterData} margin={{ top: 5, right: 5, left: 0, bottom: 25 }}>
+        <CardContent className="p-4">
+          <div className="w-full h-48">
+            <ResponsiveContainer width="95%" height="95%">
+              <ScatterChart 
+                data={scatterData} 
+                margin={{ top: 10, right: 5, left: 15, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                 <XAxis 
                   type="number" 
                   dataKey="x" 
                   name="Investment"
                   fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
+                  label={{ value: 'Investment ($M)', position: 'insideBottom', offset: -5, style: { fontSize: '8px' } }}
                 />
                 <YAxis 
                   type="number" 
@@ -200,13 +193,19 @@ export function EnhancedPortfolioCharts({ companies }: EnhancedPortfolioChartsPr
                   name="MOIC"
                   fontSize={9}
                   stroke="hsl(var(--muted-foreground))"
-                  width={15}
+                  width={20}
+                  label={{ value: 'MOIC', angle: -90, position: 'insideLeft', style: { fontSize: '8px' } }}
                 />
-                <Scatter fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" strokeWidth={1} />
-                <ChartTooltip content={<CustomTooltip />} />
+                <Scatter 
+                  fill="hsl(var(--accent))" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={1}
+                  r={4}
+                />
+                <Tooltip content={<CustomTooltip />} />
               </ScatterChart>
             </ResponsiveContainer>
-          </ChartContainer>
+          </div>
         </CardContent>
       </Card>
     </div>
