@@ -37,17 +37,47 @@ function findBestMatch(target: string, options: string[]): string | null {
     if (!str || typeof str !== 'string') return '';
     return str.toLowerCase().replace(/[^a-z0-9]/g, '');
   };
+  
   const normalizedTarget = normalize(target);
+  
+  // Enhanced keyword matching for better fuzzy matching
+  const keywordMappings: { [key: string]: string[] } = {
+    'companyname': ['company', 'name', 'firm', 'business'],
+    'totalinvestment': ['investment', 'invested', 'capital', 'funding', 'position', 'amount'],
+    'equitystake': ['equity', 'stake', 'ownership', 'share', 'percent', '%'],
+    'moic': ['moic', 'multiple', 'return', 'multiplier'],
+    'revenuegrowth': ['revenue', 'growth', 'sales', 'income'],
+    'burnmultiple': ['burn', 'multiple', 'efficiency'],
+    'runway': ['runway', 'months', 'cash'],
+    'tam': ['tam', 'market', 'addressable', 'size'],
+    'exitactivity': ['exit', 'activity', 'sector', 'ipo', 'acquisition'],
+    'barriertoentry': ['barrier', 'entry', 'competitive', 'moat', 'advantage'],
+    'additionalinvestment': ['additional', 'requested', 'ask', 'need', 'required']
+  };
   
   let bestMatch = null;
   let bestScore = 0;
   
   for (const option of options) {
+    if (!option || typeof option !== 'string') continue;
+    
     const normalizedOption = normalize(option);
     
     // Check for exact match after normalization
     if (normalizedTarget === normalizedOption) {
       return option;
+    }
+    
+    // Check keyword matching
+    const targetKeywords = keywordMappings[normalizedTarget] || [];
+    for (const keyword of targetKeywords) {
+      if (normalizedOption.includes(keyword)) {
+        const score = keyword.length / normalizedOption.length;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = option;
+        }
+      }
     }
     
     // Check for substring match
@@ -63,13 +93,13 @@ function findBestMatch(target: string, options: string[]): string | null {
     const commonChars = normalizedTarget.split('').filter(char => normalizedOption.includes(char)).length;
     const score = commonChars / Math.max(normalizedTarget.length, normalizedOption.length);
     
-    if (score > 0.6 && score > bestScore) {
+    if (score > 0.4 && score > bestScore) {
       bestScore = score;
       bestMatch = option;
     }
   }
   
-  return bestScore > 0.5 ? bestMatch : null;
+  return bestScore > 0.3 ? bestMatch : null;
 }
 
 // Create fuzzy column mapping
