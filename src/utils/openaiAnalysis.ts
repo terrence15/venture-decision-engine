@@ -1,4 +1,3 @@
-
 import { conductExternalResearch, getPerplexityApiKey } from './externalResearch';
 
 interface CompanyData {
@@ -32,6 +31,8 @@ export async function analyzeCompanyWithOpenAI(
   apiKey: string,
   onProgress?: (status: string) => void
 ): Promise<AnalysisResult> {
+  console.log('🤖 [OpenAI Analysis] Starting analysis for:', company.companyName);
+  
   // Check for insufficient data (fail-safe logic)
   const criticalFields = [
     company.moic,
@@ -46,7 +47,10 @@ export async function analyzeCompanyWithOpenAI(
     field === null || field === undefined || field === ''
   ).length;
   
+  console.log('📊 [OpenAI Analysis] Missing critical data fields:', missingCriticalData);
+  
   if (missingCriticalData >= 2) {
+    console.log('⚠️ [OpenAI Analysis] Insufficient data, returning early');
     return {
       recommendation: 'Insufficient data to assess',
       timingBucket: 'N/A',
@@ -64,15 +68,21 @@ export async function analyzeCompanyWithOpenAI(
   let externalSources = '';
   
   const perplexityKey = getPerplexityApiKey();
+  console.log('🔑 [OpenAI Analysis] Perplexity key check:', perplexityKey ? 'FOUND' : 'NOT FOUND');
+  
   if (perplexityKey) {
     try {
+      console.log('🔍 [OpenAI Analysis] Starting external research...');
       onProgress?.(`Researching ${company.companyName}...`);
+      
       const research = await conductExternalResearch({
         companyName: company.companyName,
         totalInvestment: company.totalInvestment,
         equityStake: company.equityStake,
         additionalInvestmentRequested: company.additionalInvestmentRequested
       }, perplexityKey);
+      
+      console.log('✅ [OpenAI Analysis] External research completed:', research);
       
       externalResearch = `
 EXTERNAL MARKET INTELLIGENCE:
@@ -87,11 +97,12 @@ Funding History: ${research.fundingHistory}
         : 'Real-time web research conducted (sources embedded in analysis)';
         
     } catch (error) {
-      console.error('External research failed:', error);
+      console.error('❌ [OpenAI Analysis] External research failed:', error);
       externalResearch = '\nEXTERNAL RESEARCH: Unable to conduct real-time research due to API limitations.';
       externalSources = 'External research failed - API error occurred';
     }
   } else {
+    console.log('⚠️ [OpenAI Analysis] No Perplexity key, skipping external research');
     externalResearch = '\nEXTERNAL RESEARCH: Not available - Perplexity API key not configured. Analysis based on internal portfolio data only.';
     externalSources = 'Internal analysis only - configure Perplexity API key to enable external market research';
   }
@@ -130,6 +141,8 @@ Provide your analysis in the following JSON format:
 
 Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasibility, and downside protection. Be objective and data-driven.`;
 
+  console.log('🤖 [OpenAI Analysis] Sending prompt to OpenAI...');
+
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -154,6 +167,8 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
       }),
     });
 
+    console.log('🤖 [OpenAI Analysis] OpenAI response status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
@@ -161,6 +176,8 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content;
+    
+    console.log('🤖 [OpenAI Analysis] OpenAI response content:', content);
     
     if (!content) {
       throw new Error('No response content received from OpenAI');
@@ -173,6 +190,7 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
     }
 
     const analysis = JSON.parse(jsonMatch[0]);
+    console.log('🤖 [OpenAI Analysis] Parsed analysis result:', analysis);
     
     return {
       recommendation: analysis.recommendation || 'Analysis incomplete',
@@ -186,7 +204,7 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
     };
 
   } catch (error) {
-    console.error('OpenAI API Error:', error);
+    console.error('❌ [OpenAI Analysis] OpenAI API Error:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to analyze company data');
   }
 }
