@@ -29,7 +29,7 @@ export function ApiKeyStatus({ onConfigureClick }: ApiKeyStatusProps) {
     const perplexityKey = getPerplexityApiKey();
     
     setOpenaiConnected(!!openaiKey);
-    setPerplexityConnected(!!perplexKey);
+    setPerplexityConnected(!!perplexityKey);
   };
 
   // Expose refresh function to parent
