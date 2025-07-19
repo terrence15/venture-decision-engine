@@ -33,7 +33,10 @@ const COLUMN_MAPPINGS = {
 
 // Fuzzy matching function to find similar column names
 function findBestMatch(target: string, options: string[]): string | null {
-  const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalize = (str: string) => {
+    if (!str || typeof str !== 'string') return '';
+    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
   const normalizedTarget = normalize(target);
   
   let bestMatch = null;
@@ -73,8 +76,12 @@ function findBestMatch(target: string, options: string[]): string | null {
 function createFuzzyMapping(headers: string[]): { [key: string]: string } {
   const fuzzyMapping: { [key: string]: string } = {};
   
+  // Filter out undefined/null headers
+  const validHeaders = headers.filter(header => header && typeof header === 'string');
+  console.log('Valid headers after filtering:', validHeaders);
+  
   Object.keys(COLUMN_MAPPINGS).forEach(expectedColumn => {
-    const match = findBestMatch(expectedColumn, headers);
+    const match = findBestMatch(expectedColumn, validHeaders);
     if (match) {
       fuzzyMapping[match] = COLUMN_MAPPINGS[expectedColumn as keyof typeof COLUMN_MAPPINGS];
       console.log(`Mapped "${match}" → "${expectedColumn}"`);
