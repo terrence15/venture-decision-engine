@@ -69,7 +69,7 @@ function validateDataSufficiency(company: CompanyData): boolean {
   ];
   
   const missingCriticalData = criticalFields.filter(field => 
-    field === null || field === undefined || field === '' || field === 0
+    field === null || field === undefined || field === 0
   ).length;
   
   console.log('Missing critical data count:', missingCriticalData);
