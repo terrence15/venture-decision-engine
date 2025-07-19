@@ -54,14 +54,14 @@ export async function analyzeCompanyWithOpenAI(
       confidence: 1,
       keyRisks: 'Lack of visibility into company performance, capital efficiency, or exit feasibility makes additional investment highly speculative.',
       suggestedAction: 'Request updated financials, capital plan, and growth KPIs before reassessing capital deployment.',
-      externalSources: 'Limited data available',
+      externalSources: 'Insufficient internal data - external research not conducted',
       insufficientData: true
     };
   }
 
   // Conduct external research if Perplexity API key is available
   let externalResearch = '';
-  let externalSources = 'Internal analysis only';
+  let externalSources = '';
   
   const perplexityKey = getPerplexityApiKey();
   if (perplexityKey) {
@@ -83,14 +83,17 @@ Funding History: ${research.fundingHistory}
       `;
       
       externalSources = research.sources.length > 0 
-        ? research.sources.join(', ') 
-        : 'Real-time web research conducted';
+        ? `Research sources: ${research.sources.join(', ')}` 
+        : 'Real-time web research conducted (sources embedded in analysis)';
         
     } catch (error) {
       console.error('External research failed:', error);
       externalResearch = '\nEXTERNAL RESEARCH: Unable to conduct real-time research due to API limitations.';
-      externalSources = 'External research unavailable';
+      externalSources = 'External research failed - API error occurred';
     }
+  } else {
+    externalResearch = '\nEXTERNAL RESEARCH: Not available - Perplexity API key not configured. Analysis based on internal portfolio data only.';
+    externalSources = 'Internal analysis only - configure Perplexity API key to enable external market research';
   }
 
   onProgress?.(`Analyzing ${company.companyName}...`);
@@ -178,7 +181,7 @@ Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasib
       confidence: Math.min(5, Math.max(1, parseInt(analysis.confidence) || 3)),
       keyRisks: analysis.keyRisks || 'Unable to assess risks with current information.',
       suggestedAction: analysis.suggestedAction || 'Request additional company data before proceeding.',
-      externalSources: analysis.externalSources || externalSources,
+      externalSources: externalSources,
       insufficientData: false
     };
 
