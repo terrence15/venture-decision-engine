@@ -255,8 +255,8 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                     value = null;
                   } else {
                     value = parsedValue;
-                    // Scale investment amounts from thousands to actual dollars
-                    if (fieldName === 'totalInvestment' || fieldName === 'additionalInvestmentRequested') {
+                    // Scale only totalInvestment from thousands to actual dollars
+                    if (fieldName === 'totalInvestment') {
                       value = parsedValue * 1000;
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
                     }
