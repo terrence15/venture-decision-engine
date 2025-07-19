@@ -3,6 +3,7 @@ import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
 import { AnalysisTable } from '@/components/AnalysisTable';
 import { CombinedApiKeyInput } from '@/components/CombinedApiKeyInput';
+import { ApiKeyStatus } from '@/components/ApiKeyStatus';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -74,6 +75,11 @@ export function Dashboard() {
     // Check for OpenAI API key
     const storedApiKey = localStorage.getItem('openai_api_key');
     if (!storedApiKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please configure your OpenAI API key first",
+        variant: "destructive",
+      });
       setShowApiInput(true);
       return;
     }
@@ -89,8 +95,19 @@ export function Dashboard() {
       setPerplexityApiKey(perplexityKey);
     }
     
+    // Refresh the API key status
+    if ((window as any).refreshApiKeyStatus) {
+      (window as any).refreshApiKeyStatus();
+    }
+    
     setShowApiInput(false);
-    await runAnalysis(openaiKey);
+    
+    toast({
+      title: "API Keys Configured",
+      description: perplexityKey 
+        ? "OpenAI and Perplexity API keys have been saved successfully"
+        : "OpenAI API key has been saved successfully",
+    });
   };
 
   const runAnalysis = async (apiKey: string) => {
@@ -156,6 +173,11 @@ export function Dashboard() {
       <Header />
       
       <main className="container mx-auto px-6 py-8">
+        {/* API Key Status - Always visible */}
+        <div className="mb-6">
+          <ApiKeyStatus onConfigureClick={() => setShowApiInput(true)} />
+        </div>
+
         {!uploadedFile ? (
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
@@ -258,24 +280,24 @@ export function Dashboard() {
               analysisProgress={analysisProgress}
               analysisStatus={analysisStatus}
             />
-            
-            {/* Combined API Key Input Modal */}
-            {showApiInput && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-background p-6 rounded-lg max-w-lg w-full mx-4">
-                  <CombinedApiKeyInput 
-                    onApiKeysSubmit={handleApiKeysSubmit}
-                    isAnalyzing={isAnalyzing}
-                  />
-                  <button
-                    onClick={() => setShowApiInput(false)}
-                    className="mt-4 text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+          </div>
+        )}
+        
+        {/* Combined API Key Input Modal - Always available */}
+        {showApiInput && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-background p-6 rounded-lg max-w-lg w-full mx-4">
+              <CombinedApiKeyInput 
+                onApiKeysSubmit={handleApiKeysSubmit}
+                isAnalyzing={isAnalyzing}
+              />
+              <button
+                onClick={() => setShowApiInput(false)}
+                className="mt-4 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </main>

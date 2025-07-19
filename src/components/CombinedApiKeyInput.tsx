@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Key, Search, AlertCircle, ExternalLink } from 'lucide-react';
+import { Key, Search, AlertCircle, ExternalLink, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,10 +17,12 @@ export function CombinedApiKeyInput({ onApiKeysSubmit, isAnalyzing }: CombinedAp
   const [openaiKey, setOpenaiKey] = useState('');
   const [perplexityKey, setPerplexityKey] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     
     if (!openaiKey.trim()) {
       setError('OpenAI API key is required');
@@ -37,11 +39,15 @@ export function CombinedApiKeyInput({ onApiKeysSubmit, isAnalyzing }: CombinedAp
       return;
     }
     
-    onApiKeysSubmit(openaiKey.trim(), perplexityKey.trim() || undefined);
+    setSuccess('API keys configured successfully!');
+    setTimeout(() => {
+      onApiKeysSubmit(openaiKey.trim(), perplexityKey.trim() || undefined);
+    }, 1000);
   };
 
-  const handleOpenAIOnlySubmit = () => {
+  const handleSaveOnly = () => {
     setError(null);
+    setSuccess(null);
     
     if (!openaiKey.trim()) {
       setError('OpenAI API key is required');
@@ -52,8 +58,16 @@ export function CombinedApiKeyInput({ onApiKeysSubmit, isAnalyzing }: CombinedAp
       setError('OpenAI API keys should start with "sk-"');
       return;
     }
+
+    if (perplexityKey.trim() && !perplexityKey.startsWith('pplx-')) {
+      setError('Perplexity API keys should start with "pplx-"');
+      return;
+    }
     
-    onApiKeysSubmit(openaiKey.trim());
+    setSuccess('Configuration saved!');
+    setTimeout(() => {
+      onApiKeysSubmit(openaiKey.trim(), perplexityKey.trim() || undefined);
+    }, 1000);
   };
 
   return (
@@ -63,7 +77,7 @@ export function CombinedApiKeyInput({ onApiKeysSubmit, isAnalyzing }: CombinedAp
           <Key className="h-6 w-6 text-primary" />
           <Search className="h-6 w-6 text-primary" />
         </div>
-        <CardTitle className="text-lg">Connect API Services</CardTitle>
+        <CardTitle className="text-lg">Configure API Services</CardTitle>
         <p className="text-sm text-muted-foreground">
           Connect your API keys to enable AI-powered portfolio analysis
         </p>
@@ -115,24 +129,22 @@ export function CombinedApiKeyInput({ onApiKeysSubmit, isAnalyzing }: CombinedAp
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
+          {success && (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700">{success}</AlertDescription>
+            </Alert>
+          )}
           
           <div className="space-y-2">
             <Button 
-              type="submit" 
-              className="w-full"
-              disabled={isAnalyzing || !openaiKey.trim()}
-            >
-              {isAnalyzing ? 'Analyzing Portfolio...' : 'Connect & Analyze with Full Research'}
-            </Button>
-            
-            <Button 
               type="button"
-              variant="outline"
               className="w-full"
               disabled={isAnalyzing || !openaiKey.trim()}
-              onClick={handleOpenAIOnlySubmit}
+              onClick={handleSaveOnly}
             >
-              Analyze with OpenAI Only
+              Save Configuration
             </Button>
           </div>
         </form>
