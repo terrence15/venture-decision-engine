@@ -20,20 +20,24 @@ export async function conductExternalResearch(
   companyName: string,
   apiKey: string
 ): Promise<ResearchResult> {
-  console.log(`Conducting external research for ${companyName}...`);
+  console.log(`🔍 STARTING EXTERNAL RESEARCH for ${companyName}...`);
   
   const researchQueries = [
-    `${companyName} recent funding rounds Series A B C funding news Crunchbase`,
-    `${companyName} LinkedIn hiring trends team growth headcount changes`,
-    `${companyName} market position competitors TechCrunch coverage recent news`,
-    `${companyName} Glassdoor reviews employee satisfaction leadership changes`,
-    `${companyName} product launches partnerships strategic updates press releases`
+    `${companyName} latest funding round Series A B C venture capital news 2024 2025`,
+    `${companyName} hiring trends LinkedIn employee growth headcount team expansion`,
+    `${companyName} market position competitors product launches partnerships TechCrunch`,
+    `${companyName} recent news press releases product updates customer wins`,
+    `${companyName} competitive landscape industry analysis market share`
   ];
 
   const results: string[] = [];
   const sources: string[] = [];
+  let successfulQueries = 0;
 
-  for (const query of researchQueries) {
+  for (let i = 0; i < researchQueries.length; i++) {
+    const query = researchQueries[i];
+    console.log(`📡 Research query ${i + 1}/5: ${query.substring(0, 50)}...`);
+    
     try {
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
@@ -46,7 +50,7 @@ export async function conductExternalResearch(
           messages: [
             {
               role: 'system',
-              content: 'You are a venture capital research analyst. Provide factual, objective information from credible sources like Crunchbase, LinkedIn, TechCrunch, company press releases, and PitchBook. Focus on funding, hiring trends, market positioning, and operational signals. Be concise and cite specific sources.'
+              content: 'You are a venture capital research analyst. Provide factual, objective information from credible sources like Crunchbase, LinkedIn, TechCrunch, company press releases, and PitchBook. Focus on recent developments (last 6 months), funding activity, hiring trends, and market positioning. Be concise and cite specific sources.'
             },
             {
               role: 'user',
@@ -54,8 +58,8 @@ export async function conductExternalResearch(
             }
           ],
           temperature: 0.1,
-          max_tokens: 300,
-          search_domain_filter: ['crunchbase.com', 'techcrunch.com', 'linkedin.com', 'pitchbook.com'],
+          max_tokens: 400,
+          search_domain_filter: ['crunchbase.com', 'techcrunch.com', 'linkedin.com', 'pitchbook.com', 'venturebeat.com'],
           search_recency_filter: 'month',
           return_related_questions: false,
           return_images: false
@@ -67,23 +71,33 @@ export async function conductExternalResearch(
         const content = data.choices[0]?.message?.content;
         if (content) {
           results.push(content);
+          successfulQueries++;
+          console.log(`✅ Query ${i + 1} successful:`, content.substring(0, 100) + '...');
+          
           // Extract source mentions
-          const sourceMatches = content.match(/(Crunchbase|TechCrunch|LinkedIn|PitchBook|AngelList|company blog|press release)/gi);
+          const sourceMatches = content.match(/(Crunchbase|TechCrunch|LinkedIn|PitchBook|AngelList|VentureBeat|company blog|press release|SEC filing)/gi);
           if (sourceMatches) {
             sources.push(...sourceMatches);
           }
+        } else {
+          console.log(`⚠️  Query ${i + 1} returned empty content`);
+          results.push('No relevant data found');
         }
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ Query ${i + 1} failed:`, response.status, errorText);
+        results.push('Research query failed');
       }
       
       // Rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
     } catch (error) {
-      console.error(`Research query failed for ${companyName}:`, error);
+      console.error(`❌ Research query ${i + 1} exception:`, error);
       results.push('Limited external data available');
     }
   }
 
-  return {
+  const researchResult = {
     fundingData: results[0] || 'No recent funding data found',
     hiringTrends: results[1] || 'No hiring trend data available',
     marketPositioning: results[2] || 'Limited market positioning data',
@@ -91,4 +105,12 @@ export async function conductExternalResearch(
     competitorActivity: results[4] || 'No competitor activity data',
     sources: [...new Set(sources)] // Remove duplicates
   };
+
+  console.log(`🏁 EXTERNAL RESEARCH COMPLETE for ${companyName}:`, {
+    successfulQueries: successfulQueries,
+    totalSources: researchResult.sources.length,
+    sources: researchResult.sources
+  });
+
+  return researchResult;
 }

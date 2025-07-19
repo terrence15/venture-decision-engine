@@ -32,8 +32,22 @@ interface ComprehensiveAnalysisResult {
   insufficientData: boolean;
 }
 
-// Minimum Viable Inputs (MVI) check
+// Enhanced MVI check with detailed logging
 function checkMinimumViableInputs(company: CompanyData): boolean {
+  console.log(`=== MVI Check for ${company.companyName} ===`);
+  console.log('Raw company data:', {
+    moic: company.moic,
+    revenueGrowth: company.revenueGrowth,
+    burnMultiple: company.burnMultiple,
+    runway: company.runway,
+    tam: company.tam,
+    exitActivity: company.exitActivity,
+    additionalInvestmentRequested: company.additionalInvestmentRequested,
+    arrTtm: company.arrTtm,
+    totalInvestment: company.totalInvestment,
+    equityStake: company.equityStake
+  });
+
   const criticalFields = [
     { field: 'moic', value: company.moic },
     { field: 'revenueGrowth', value: company.revenueGrowth },
@@ -49,9 +63,29 @@ function checkMinimumViableInputs(company: CompanyData): boolean {
     field.value === undefined || 
     field.value === '' || 
     (typeof field.value === 'number' && field.value === 0 && field.field !== 'additionalInvestmentRequested')
-  ).length;
+  );
   
-  return missingFields < 2; // Fail if 2+ critical fields missing
+  console.log('Missing critical fields:', missingFields.map(f => f.field));
+  console.log(`MVI Check Result: ${missingFields.length < 2 ? 'PASS' : 'FAIL'} (${missingFields.length}/7 missing)`);
+  
+  return missingFields.length < 2; // Fail if 2+ critical fields missing
+}
+
+// Validate AI response contains Excel data
+function validateResponseUsesExcelData(response: string, company: CompanyData): boolean {
+  const hasExcelReference = 
+    (company.revenueGrowth && response.includes(company.revenueGrowth.toString())) ||
+    (company.burnMultiple && response.includes(company.burnMultiple.toString())) ||
+    (company.arrTtm && response.includes((company.arrTtm / 1000000).toFixed(1))) ||
+    (company.moic && response.includes(company.moic.toString())) ||
+    (company.runway && response.includes(company.runway.toString()));
+  
+  console.log(`Excel data validation for ${company.companyName}: ${hasExcelReference ? 'PASS' : 'FAIL'}`);
+  if (!hasExcelReference) {
+    console.log('AI response does not contain Excel figures:', response.substring(0, 200));
+  }
+  
+  return hasExcelReference;
 }
 
 // Standardized fallback response
@@ -74,103 +108,116 @@ export async function conductComprehensiveAnalysis(
   perplexityApiKey?: string
 ): Promise<ComprehensiveAnalysisResult> {
   
-  console.log(`Starting comprehensive analysis for ${company.companyName}...`);
+  console.log(`\n=== STARTING COMPREHENSIVE ANALYSIS FOR ${company.companyName.toUpperCase()} ===`);
+  console.log('API Keys available:', {
+    openai: !!apiKey,
+    perplexity: !!perplexityApiKey
+  });
   
   // Step 1: Check Minimum Viable Inputs
   if (!checkMinimumViableInputs(company)) {
-    console.log(`Insufficient data for ${company.companyName}, returning fallback response`);
+    console.log(`❌ INSUFFICIENT DATA: ${company.companyName} failed MVI check`);
     return generateFallbackResponse();
   }
+
+  console.log(`✅ MVI PASSED: ${company.companyName} has sufficient data for analysis`);
 
   // Step 2: Conduct External Research (if Perplexity API available)
   let externalResearch = null;
   if (perplexityApiKey) {
     try {
+      console.log(`🔍 STARTING EXTERNAL RESEARCH for ${company.companyName}...`);
       externalResearch = await conductExternalResearch(company.companyName, perplexityApiKey);
+      console.log(`✅ EXTERNAL RESEARCH COMPLETE for ${company.companyName}:`, {
+        fundingData: externalResearch.fundingData.substring(0, 100) + '...',
+        sources: externalResearch.sources
+      });
     } catch (error) {
-      console.error(`External research failed for ${company.companyName}:`, error);
+      console.error(`❌ EXTERNAL RESEARCH FAILED for ${company.companyName}:`, error);
     }
+  } else {
+    console.log(`⚠️  NO PERPLEXITY KEY: Skipping external research for ${company.companyName}`);
   }
 
-  // Step 3: Build comprehensive prompt with Excel data integration
-  const prompt = `You are a venture capital investor making live recommendations. You must integrate internal Excel data with verified external market signals in every field.
+  // Step 3: Build comprehensive prompt with STRICT Excel data requirements
+  const prompt = `You are a venture capital partner making LIVE CAPITAL ALLOCATION decisions. You MUST integrate exact figures from our internal Excel portfolio data with external market intelligence to generate tactical investment recommendations.
+
+❗ CRITICAL REQUIREMENT: Your reasoning MUST start with specific Excel figures. Generic responses will be rejected.
 
 COMPANY: ${company.companyName}
 
-INTERNAL EXCEL DATA:
+📊 INTERNAL EXCEL PORTFOLIO DATA (USE EXACT FIGURES):
 - Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
-- Equity Stake (Fully Diluted): ${company.equityStake}%
-- Implied MOIC: ${company.moic}x
-- TTM Revenue Growth: ${company.revenueGrowth}%
+- Current Equity Stake: ${company.equityStake}%
+- Current Implied MOIC: ${company.moic}x
+- TTM Revenue Growth Rate: ${company.revenueGrowth}%
 - ARR (TTM): ${company.arrTtm ? `$${(company.arrTtm / 1000000).toFixed(1)}M` : 'Not Available'}
-- Burn Multiple: ${company.burnMultiple}x
-- Runway: ${company.runway} months
+- Net Burn Multiple: ${company.burnMultiple}x (Burn Rate / Net New ARR)
+- Current Runway: ${company.runway} months
 - EBITDA Margin: ${company.ebitdaMargin ? `${company.ebitdaMargin}%` : 'Not Available'}
-- TAM Rating: ${company.tam}/5
-- Exit Activity in Sector: ${company.exitActivity}
-- Barrier to Entry: ${company.barrierToEntry}/5
-- Top 5 Industry Performer: ${company.topPerformer ? 'Yes' : 'No'}
-- Additional Investment Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
+- TAM Assessment: ${company.tam}/5 (Market Size & Growth Potential)
+- Exit Environment: ${company.exitActivity}
+- Competitive Moat: ${company.barrierToEntry}/5 (Barrier to Entry)
+- Top Quartile Performer: ${company.topPerformer ? 'Yes' : 'No'}
+- Capital Request: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
 
 ${externalResearch ? `
-EXTERNAL RESEARCH DATA:
-- Funding Intelligence: ${externalResearch.fundingData}
-- Hiring Trends: ${externalResearch.hiringTrends}
-- Market Positioning: ${externalResearch.marketPositioning}
-- Recent News: ${externalResearch.recentNews}
-- Competitor Activity: ${externalResearch.competitorActivity}
-- Research Sources: ${externalResearch.sources.join(', ')}
-` : 'EXTERNAL RESEARCH: Limited external data available'}
+🔍 EXTERNAL MARKET INTELLIGENCE:
+• Funding Environment: ${externalResearch.fundingData}
+• Team Growth Signals: ${externalResearch.hiringTrends}
+• Market Position: ${externalResearch.marketPositioning}
+• Recent Developments: ${externalResearch.recentNews}
+• Competitive Landscape: ${externalResearch.competitorActivity}
+• Validated Sources: ${externalResearch.sources.join(', ')}
+` : '🔍 EXTERNAL RESEARCH: Limited external validation available (no Perplexity API)'}
 
-SCORING WEIGHTS (Internal Model):
-- Implied MOIC: 20%
-- TTM Revenue Growth: 15%
-- Burn Multiple: 15%
-- Runway Post-Investment: 10%
-- Exit Activity in Sector: 10%
-- TAM: 10%
-- Barrier to Entry: 10%
-- Fund Dilution Exposure: 10%
+🎯 DECISION FRAMEWORK (Portfolio Management Model):
+• Revenue Growth > 50% YoY = Strong Growth Signal
+• Burn Multiple < 1.5x = Capital Efficient | > 2.5x = Concerning
+• MOIC > 1.5x = Attractive Returns | < 1.0x = Underwater
+• Runway < 6 months = Urgent | > 18 months = Comfortable
+• Exit Activity "High" = Favorable Exit Environment
+• TAM Score 4-5 = Large Addressable Market
+• Barrier to Entry ≥ 4 = Defensible Position
 
-UPSIDE SIGNAL GUIDELINES:
-- TTM Revenue Growth > 50% YoY = Strong
-- TAM Score 4-5 = Large/Expanding market
-- Exit Activity "High" or "Moderate + recent comps" = Favorable
-- MOIC > 1.7x = Attractive
-- Burn Multiple < 1.5x = Efficient
-- Barrier to Entry ≥ 4 = Defensible moat
+⚠️  MANDATORY OUTPUT REQUIREMENTS:
+1. REASONING must start with: "The company has [specific Excel metric] and..." 
+2. Include at least 2 exact figures from Excel data in first sentence
+3. Reference external validation if available
+4. End with tactical capital deployment decision
 
-DOWNSIDE RISK GUIDELINES:
-- Burn Multiple > 2.5x = Inefficient
-- Runway < 6 months = Concerning
-- Exit Activity "Low" with no peer comps = Weak
-- TTM Growth < 25% YoY = Weak
-- Equity Stake < 5% = Dilution risk
-
-MANDATORY OUTPUT FORMAT - Follow this structure exactly:
-
+REQUIRED JSON OUTPUT FORMAT:
 {
-  "recommendation": "Specific capital amount decision (e.g., 'Invest $250K of $1M request', 'Invest full $500K', 'Bridge Capital Only - $150K', 'Decline')",
+  "recommendation": "Specific capital decision with exact dollar amount (e.g., 'Invest $250K of $1M request', 'Bridge $150K pending Series B traction', 'Decline - redirect capital to top performers')",
   "timingBucket": "One of: Double Down, Reinvest (3-12 Months), Hold (3-6 Months), Bridge Capital Only, Exit Opportunistically, Decline",
-  "reasoning": "MUST follow 4-part structure: (1) Start with internal performance stat using actual Excel data (ARR, growth %, burn multiple), (2) Follow with external validation from research (funding, hiring, reviews), (3) Flag specific downside risks (runway, competition, market), (4) End with investment logic and specific capital amount justification",
-  "confidence": "Integer 1-5 where 5=complete internal+strong external validation, 3=solid internal but mixed external, 1=missing data",
-  "keyRisks": "Must include at least 1 external-facing risk from research (competitor activity, hiring issues, market saturation, etc.)",
-  "suggestedAction": "Tactical + specific next step: request updated CAC/LTV, monitor hiring funnel, diligence Series B interest, review cohort retention, etc.",
-  "externalSources": "List actual research sources used: Crunchbase, LinkedIn, TechCrunch, etc."
+  "reasoning": "MUST start with Excel data: 'The company has grown ARR by [X]% YoY with a burn multiple of [Y]x, indicating [assessment].' Then add external validation and tactical rationale. Must be 3-4 sentences ending with specific capital amount justification.",
+  "confidence": "Integer 1-5 (5=strong Excel data + external validation, 3=solid Excel + mixed external, 1=weak data/external conflicts)",
+  "keyRisks": "Must include 1+ external market risk from research (e.g., 'increasing competitive pressure from [competitor]', 'talent acquisition challenges in current market', 'category saturation risk'). Cannot be purely Excel-derived.",
+  "suggestedAction": "Tactical next steps tied to data gaps: 'Deploy $[amount] with monthly [specific metric] reporting; reassess post-[specific milestone]'",
+  "externalSources": "List research sources used: ${externalResearch?.sources.join(', ') || 'Limited external validation'}"
 }
 
-CRITICAL REQUIREMENTS:
-1. Use EXACT figures from Excel data in reasoning (don't approximate)
-2. Cite specific external research findings if available
-3. Each field must blend internal Excel data WITH external insights
-4. Capital recommendation must specify exact dollar amounts
-5. Confidence score based on data completeness AND external validation strength
+🚨 VALIDATION CHECKLIST BEFORE RESPONDING:
+✓ Reasoning starts with specific Excel figures (growth %, burn multiple, etc.)
+✓ Exact capital amount specified in recommendation  
+✓ External risk identified (not just Excel metrics)
+✓ Tactical action tied to specific reporting requirements
+✓ All figures match the Excel data provided above
 
 Generate investment recommendation now:`;
 
+  console.log(`📤 SENDING ANALYSIS REQUEST TO OPENAI for ${company.companyName}...`);
+  console.log('Prompt length:', prompt.length);
+  console.log('Key Excel figures being sent:', {
+    revenueGrowth: company.revenueGrowth,
+    burnMultiple: company.burnMultiple,
+    moic: company.moic,
+    runway: company.runway,
+    investment: company.totalInvestment,
+    request: company.additionalInvestmentRequested
+  });
+
   try {
-    console.log(`Sending comprehensive analysis request for ${company.companyName}...`);
-    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -182,7 +229,7 @@ Generate investment recommendation now:`;
         messages: [
           {
             role: 'system',
-            content: 'You are an experienced venture capital partner with deep expertise in portfolio management. You have access to comprehensive business databases and must provide investment recommendations that integrate internal performance data with external market signals. Always follow the exact output format specified and use precise figures from the provided data.'
+            content: 'You are a senior venture capital partner with 15+ years of portfolio management experience. You make data-driven investment decisions using precise financial metrics and external market intelligence. You MUST use exact figures from Excel data in every response. Generic responses will be rejected.'
           },
           {
             role: 'user',
@@ -196,7 +243,7 @@ Generate investment recommendation now:`;
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('OpenAI API Error:', errorData);
+      console.error('❌ OPENAI API ERROR:', errorData);
       throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
     }
 
@@ -207,19 +254,25 @@ Generate investment recommendation now:`;
       throw new Error('No response content received from OpenAI');
     }
 
-    console.log(`Raw comprehensive analysis for ${company.companyName}:`, content);
+    console.log(`📥 RAW AI RESPONSE for ${company.companyName}:`, content);
 
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('Could not extract JSON from response:', content);
+      console.error('❌ JSON PARSING FAILED for response:', content);
       throw new Error('Could not parse JSON response from OpenAI');
     }
 
     const analysis = JSON.parse(jsonMatch[0]);
-    console.log(`Parsed comprehensive analysis for ${company.companyName}:`, analysis);
+    console.log(`📊 PARSED ANALYSIS for ${company.companyName}:`, analysis);
     
-    return {
+    // Validate response uses Excel data
+    const usesExcelData = validateResponseUsesExcelData(analysis.reasoning || '', company);
+    if (!usesExcelData) {
+      console.warn(`⚠️  QUALITY WARNING: AI response may not be using Excel data effectively`);
+    }
+
+    const result = {
       recommendation: analysis.recommendation || 'Analysis incomplete',
       timingBucket: analysis.timingBucket || 'Hold (3-6 Months)',
       reasoning: analysis.reasoning || 'Analysis could not be completed with available data.',
@@ -230,8 +283,16 @@ Generate investment recommendation now:`;
       insufficientData: false
     };
 
+    console.log(`✅ ANALYSIS COMPLETE for ${company.companyName}:`, {
+      recommendation: result.recommendation,
+      confidence: result.confidence,
+      usedExcelData: usesExcelData
+    });
+
+    return result;
+
   } catch (error) {
-    console.error(`Comprehensive Analysis Error for ${company.companyName}:`, error);
+    console.error(`❌ COMPREHENSIVE ANALYSIS ERROR for ${company.companyName}:`, error);
     throw new Error(error instanceof Error ? error.message : 'Failed to analyze company data');
   }
 }
