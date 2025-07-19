@@ -206,9 +206,18 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               
               // Type conversions based on field
               if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested'].includes(fieldName)) {
-                value = parseFloat(value) || null;
+                // Clean the value for number parsing - remove commas, dollar signs, spaces, etc.
+                let cleanValue = String(value).replace(/[$,\s%]/g, '');
+                // Handle empty strings or non-numeric values
+                if (cleanValue === '' || cleanValue === '-' || cleanValue === 'N/A') {
+                  value = null;
+                } else {
+                  const parsedValue = parseFloat(cleanValue);
+                  value = isNaN(parsedValue) ? null : parsedValue;
+                }
               } else if (['tam', 'barrierToEntry'].includes(fieldName)) {
-                value = parseInt(value) || 1;
+                let cleanValue = String(value).replace(/[^0-9]/g, '');
+                value = parseInt(cleanValue) || 1;
               } else if (typeof value !== 'string') {
                 value = String(value);
               }
