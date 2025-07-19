@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
@@ -8,114 +9,67 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Building2, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { analyzePortfolio } from '@/utils/openaiAnalysis';
+import { parseExcelFile, RawCompanyData } from '@/utils/excelParser';
 
-// Mock data demonstrating sophisticated LLM analysis framework
-const mockCompanies = [
-  {
-    id: '1',
-    companyName: 'TechFlow Solutions',
-    totalInvestment: 2500000,
-    equityStake: 15.2,
-    moic: 2.3,
-    revenueGrowth: 145.0,
-    burnMultiple: 1.8,
-    runway: 18,
-    tam: 4,
-    exitActivity: 'High',
-    barrierToEntry: 3,
-    additionalInvestmentRequested: 1500000,
-    recommendation: 'Invest $1.2M of $1.5M request',
-    timingBucket: 'Double Down',
-    reasoning: 'Company shows 145% YoY growth with recent $8M Series B led by Andreessen Horowitz, validating product-market fit in enterprise automation. LinkedIn data shows 40% headcount growth in Q3, particularly in sales roles, suggesting strong commercial momentum. However, elevated burn multiple (1.8x) requires monitoring, though justified by TAM expansion and proven unit economics. Strategic investment warranted given exit environment and defensible moat.',
-    confidence: 4,
-    keyRisks: 'Intensifying competition from Microsoft and Salesforce entering automation space; potential customer concentration risk with enterprise clients.',
-    suggestedAction: 'Deploy capital with quarterly burn monitoring and customer diversification milestones.',
-    externalSources: 'Crunchbase (Series B data), LinkedIn (hiring trends), TechCrunch coverage',
-    insufficientData: false
-  },
-  {
-    id: '2',
-    companyName: 'DataVault Inc',
-    totalInvestment: 4200000,
-    equityStake: 22.8,
-    moic: 1.1,
-    revenueGrowth: 28.5,
-    burnMultiple: 3.2,
-    runway: 12,
-    tam: 5,
-    exitActivity: 'Moderate',
-    barrierToEntry: 4,
-    additionalInvestmentRequested: 3000000,
-    recommendation: 'Bridge Capital Only - $800K',
-    timingBucket: 'Bridge Capital Only',
-    reasoning: 'Massive TAM (5/5) with proprietary dataset moat, but 28% growth deceleration and 3.2x burn multiple signal execution risk. Glassdoor reviews show 15% engineering turnover in Q3, though recent AWS partnership validates technical capabilities. Bridge capital justified to reach Series B milestones while monitoring unit economics and team stability.',
-    confidence: 2,
-    keyRisks: 'Critical 12-month runway with unproven unit economics at scale; potential technical debt from rapid scaling.',
-    suggestedAction: 'Deploy $800K bridge with milestone-based releases tied to burn reduction and customer retention metrics.',
-    externalSources: 'Glassdoor (turnover data), AWS press release, PitchBook (sector analysis)',
-    insufficientData: false
-  },
-  {
-    id: '3',
-    companyName: 'GreenLogistics Co',
-    totalInvestment: 1800000,
-    equityStake: 18.5,
-    moic: 0.8,
-    revenueGrowth: -12.3,
-    burnMultiple: 4.1,
-    runway: 8,
-    tam: 3,
-    exitActivity: 'Low',
-    barrierToEntry: 2,
-    additionalInvestmentRequested: 2200000,
-    recommendation: 'Decline',
-    timingBucket: 'Decline',
-    reasoning: 'Declining revenue (-12% YoY) and deteriorating burn efficiency (4.1x) indicate fundamental model failure. LinkedIn shows 30% workforce reduction and CEO departure rumors on industry forums. Limited sustainability exits in logistics sector per PitchBook. Risk of total capital loss outweighs any recovery scenarios.',
-    confidence: 5,
-    keyRisks: 'Imminent cash depletion within 8 months; potential total loss of $1.8M investment without viable pivot path.',
-    suggestedAction: 'Initiate acqui-hire discussions with strategic logistics players to recover partial value.',
-    externalSources: 'LinkedIn (workforce data), industry forums, PitchBook (exit comps)',
-    insufficientData: false
-  },
-  {
-    id: '4',
-    companyName: 'NeuroTech Analytics',
-    totalInvestment: 1200000,
-    equityStake: 12.5,
-    moic: null,
-    revenueGrowth: null,
-    burnMultiple: null,
-    runway: null,
-    tam: 4,
-    exitActivity: 'High',
-    barrierToEntry: 5,
-    additionalInvestmentRequested: 800000,
-    recommendation: 'Insufficient data to assess',
-    timingBucket: 'N/A',
-    reasoning: 'Missing critical inputs (growth, burn, runway metrics) prevents responsible investment evaluation. Strong TAM and exit activity suggest potential, but lack of performance visibility makes additional capital deployment highly speculative.',
-    confidence: 1,
-    keyRisks: 'Complete lack of visibility into operational metrics, cash efficiency, or unit economics makes investment assessment impossible.',
-    suggestedAction: 'Request updated financials, burn analysis, and growth KPIs before reassessing capital deployment.',
-    externalSources: 'Limited data available',
-    insufficientData: true
-  }
-];
+// Extended interface for analyzed companies
+interface AnalyzedCompanyData extends RawCompanyData {
+  recommendation?: string;
+  timingBucket?: string;
+  reasoning?: string;
+  confidence?: number;
+  keyRisks?: string;
+  suggestedAction?: string;
+  externalSources?: string;
+  insufficientData?: boolean;
+}
 
 export function Dashboard() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [companies, setCompanies] = useState(mockCompanies);
+  const [companies, setCompanies] = useState<AnalyzedCompanyData[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showApiInput, setShowApiInput] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [isParsingFile, setIsParsingFile] = useState(false);
   const { toast } = useToast();
 
-  const handleFileUpload = (file: File) => {
-    setUploadedFile(file);
-    // In a real app, this would parse the Excel file
-    console.log('File uploaded:', file.name);
+  const handleFileUpload = async (file: File) => {
+    setIsParsingFile(true);
+    try {
+      console.log('Parsing Excel file:', file.name);
+      const parsedCompanies = await parseExcelFile(file);
+      
+      setCompanies(parsedCompanies);
+      setUploadedFile(file);
+      
+      toast({
+        title: "File Uploaded Successfully",
+        description: `Loaded ${parsedCompanies.length} companies from your Excel file`,
+      });
+      
+      console.log('Parsed companies:', parsedCompanies);
+      
+    } catch (error) {
+      console.error('File parsing failed:', error);
+      toast({
+        title: "File Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to parse Excel file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsParsingFile(false);
+    }
   };
 
   const handleAnalyze = () => {
+    if (companies.length === 0) {
+      toast({
+        title: "No Data Available",
+        description: "Please upload an Excel file with company data first",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check if we have a stored API key
     const storedApiKey = localStorage.getItem('openai_api_key');
     if (storedApiKey) {
@@ -158,7 +112,7 @@ export function Dashboard() {
         setAnalysisProgress
       );
       
-      setCompanies(analyzedCompanies as any);
+      setCompanies(analyzedCompanies as AnalyzedCompanyData[]);
       toast({
         title: "Analysis Complete",
         description: `Successfully analyzed ${analyzedCompanies.length} companies`,
@@ -176,9 +130,11 @@ export function Dashboard() {
     }
   };
 
-  const totalPortfolioValue = companies.reduce((sum, company) => sum + company.totalInvestment, 0);
-  const totalRequested = companies.reduce((sum, company) => sum + company.additionalInvestmentRequested, 0);
-  const avgMOIC = companies.reduce((sum, company) => sum + company.moic, 0) / companies.length;
+  // Calculate metrics safely
+  const totalPortfolioValue = companies.reduce((sum, company) => sum + (company.totalInvestment || 0), 0);
+  const totalRequested = companies.reduce((sum, company) => sum + (company.additionalInvestmentRequested || 0), 0);
+  const validMOICs = companies.filter(company => company.moic !== null && company.moic !== undefined);
+  const avgMOIC = validMOICs.length > 0 ? validMOICs.reduce((sum, company) => sum + company.moic!, 0) / validMOICs.length : 0;
   const highRiskCount = companies.filter(company => company.confidence && company.confidence <= 2).length;
 
   return (
@@ -198,9 +154,27 @@ export function Dashboard() {
               </p>
             </div>
             <FileUpload onFileSelect={handleFileUpload} />
+            {isParsingFile && (
+              <div className="mt-4 text-center">
+                <p className="text-muted-foreground">Parsing Excel file...</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
+            {/* File Info Card */}
+            <Card className="shadow-soft">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Loaded from:</p>
+                    <p className="font-medium">{uploadedFile.name}</p>
+                  </div>
+                  <Badge variant="outline">{companies.length} companies</Badge>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="shadow-soft">
@@ -239,7 +213,9 @@ export function Dashboard() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{avgMOIC.toFixed(1)}x</div>
+                  <div className="text-2xl font-bold">
+                    {avgMOIC > 0 ? `${avgMOIC.toFixed(1)}x` : 'N/A'}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Portfolio multiple
                   </p>
