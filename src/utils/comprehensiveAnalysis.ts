@@ -88,12 +88,18 @@ export async function conductComprehensiveAnalysis(
     }
   }
 
-  // Step 3: Build the original working prompt that produced specific results
-  const prompt = `Analyze this portfolio company for investment decisions:
+  // Step 3: Build enhanced prompt with mandatory metrics-first format
+  const prompt = `You are a senior VC partner analyzing portfolio companies. You MUST follow this exact format:
+
+MANDATORY REQUIREMENT: Your reasoning MUST start with the exact financial metrics from the data provided below. Use this template:
+
+"[Company Name] has [X%] YoY revenue growth and maintains a burn multiple of [Y]x, with [Z] months of runway remaining and a current MOIC of [A]x based on our $[B]M investment representing [C]% equity stake."
+
+If any metric is null/unavailable, state "not available" but still lead with the available metrics.
 
 COMPANY: ${company.companyName}
 
-FINANCIAL METRICS:
+EXACT FINANCIAL DATA YOU MUST REFERENCE:
 • Total Investment: $${(company.totalInvestment / 1000000).toFixed(1)}M
 • Current Equity Stake: ${company.equityStake}%
 • Revenue Growth (YoY): ${company.revenueGrowth !== null ? company.revenueGrowth + '%' : 'Not available'}
@@ -114,27 +120,29 @@ EXTERNAL MARKET RESEARCH:
 • Competitive Landscape: ${externalResearch.competitorActivity}
 ` : ''}
 
-ANALYSIS REQUIREMENTS:
-You are a senior VC partner making investment decisions. Provide a specific, data-driven analysis that:
+CRITICAL INSTRUCTIONS:
+1. MANDATORY: Start your reasoning with the exact financial metrics template above
+2. Reference specific competitors and market conditions from external research
+3. Provide concrete investment recommendations with dollar amounts
+4. Focus on external market risks, not internal operational issues
+5. Use specific industry benchmarks and comparisons
+6. Cite the exact numbers provided in your analysis
 
-1. STARTS with the exact financial metrics (e.g., "The company has X% YoY revenue growth and maintains a burn multiple of Yx")
-2. References specific competitors and market conditions when possible
-3. Provides concrete investment recommendations with dollar amounts
-4. Focuses on external market risks, not internal operational issues
-5. Uses specific industry benchmarks and comparisons
+EXAMPLE OF REQUIRED OPENING FORMAT:
+"BabyQuip has 1.6% YoY revenue growth and maintains a burn multiple of 3.4x, with 18 months of runway remaining and a current MOIC of 0.8x based on our $2.1M investment representing 15% equity stake."
 
 Return your analysis in this exact JSON format:
 {
   "recommendation": "Specific investment recommendation with dollar amount",
   "timingBucket": "One of: Reinvest, Double Down, Bridge, Hold, Decline",
-  "reasoning": "Start with specific company metrics, then provide detailed investment rationale citing exact numbers",
+  "reasoning": "MUST start with exact financial metrics template, then provide detailed investment rationale",
   "confidence": "Integer 1-5",
   "keyRisks": "Focus on external market risks with specific industry examples",
   "suggestedAction": "Concrete next steps with specific dollar amounts and timeframes",
   "externalSources": "List research sources used"
 }`;
 
-  console.log(`📤 SENDING ANALYSIS REQUEST TO OPENAI for ${company.companyName}...`);
+  console.log(`📤 SENDING ENHANCED ANALYSIS REQUEST TO OPENAI for ${company.companyName}...`);
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -148,14 +156,14 @@ Return your analysis in this exact JSON format:
         messages: [
           {
             role: 'system',
-            content: 'You are a senior venture capital partner with 15+ years experience in portfolio management. Provide specific, data-driven investment analysis using exact metrics from the company data. Reference specific competitors, market conditions, and industry benchmarks. Always start your reasoning with the company\'s exact financial metrics.'
+            content: 'You are a senior venture capital partner with 15+ years experience. You MUST start every analysis by citing the exact financial metrics provided in the data. Never provide generic analysis - always lead with specific numbers: "Company X has Y% revenue growth and Z burn multiple..." This is a mandatory requirement that cannot be ignored.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.2,
+        temperature: 0.1,
         max_tokens: 1500,
       }),
     });
@@ -185,6 +193,14 @@ Return your analysis in this exact JSON format:
     const analysis = JSON.parse(jsonMatch[0]);
     console.log(`📊 PARSED ANALYSIS for ${company.companyName}:`, analysis);
     
+    // Validate that reasoning starts with financial metrics
+    const reasoning = analysis.reasoning || '';
+    const hasMetrics = reasoning.includes('revenue growth') || reasoning.includes('burn multiple') || reasoning.includes('MOIC');
+    
+    if (!hasMetrics) {
+      console.warn(`⚠️  Response may not include financial metrics for ${company.companyName}`);
+    }
+    
     const result = {
       recommendation: analysis.recommendation || 'Hold - Analysis incomplete',
       timingBucket: analysis.timingBucket || 'Hold',
@@ -196,7 +212,7 @@ Return your analysis in this exact JSON format:
       insufficientData: false
     };
 
-    console.log(`✅ ANALYSIS COMPLETE for ${company.companyName}`);
+    console.log(`✅ ENHANCED ANALYSIS COMPLETE for ${company.companyName}`);
     return result;
 
   } catch (error) {
