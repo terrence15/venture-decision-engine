@@ -1,4 +1,3 @@
-
 interface CompanyResearchData {
   companyName: string;
   totalInvestment: number;
@@ -41,7 +40,7 @@ export async function conductExternalResearch(
     
     try {
       const requestBody = {
-        model: 'llama-3.1-sonar-small-128k-online',
+        model: 'pplx-7b-online',
         messages: [
           {
             role: 'system',
@@ -139,7 +138,6 @@ export function setPerplexityApiKey(apiKey: string): void {
   localStorage.setItem('perplexity_api_key', apiKey);
 }
 
-// Add a test function to validate the API key
 export async function testPerplexityApiKey(apiKey: string): Promise<{ success: boolean; error?: string }> {
   console.log('🧪 [Perplexity Research] Testing API key:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NO KEY');
   
@@ -151,7 +149,7 @@ export async function testPerplexityApiKey(apiKey: string): Promise<{ success: b
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online',
+        model: 'pplx-7b-online',
         messages: [
           {
             role: 'user',
