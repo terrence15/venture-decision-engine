@@ -140,7 +140,7 @@ export function EnhancedCompanyCard({ company, onClick }: EnhancedCompanyCardPro
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              <span>{company.investmentDate || company.executive?.investmentDate || '2023'}</span>
+              <span>{company.investmentDate || '2023'}</span>
             </div>
             <div className="flex items-center gap-1">
               <User className="h-3 w-3" />
