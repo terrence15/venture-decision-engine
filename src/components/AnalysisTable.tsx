@@ -19,6 +19,7 @@ interface CompanyData {
   exitActivity: string;
   barrierToEntry: number;
   additionalInvestmentRequested: number;
+  industry: string;
   // AI Generated Fields
   recommendation?: string;
   timingBucket?: string;
@@ -126,6 +127,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
               <TableRow>
                 <TableHead className="w-8"></TableHead>
                 <TableHead className="min-w-[200px]">Company</TableHead>
+                <TableHead>Industry</TableHead>
                 <TableHead>Investment</TableHead>
                 <TableHead>Equity</TableHead>
                 <TableHead>MOIC</TableHead>
@@ -158,6 +160,11 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {company.industry || 'N/A'}
+                      </span>
+                    </TableCell>
                     <TableCell>{formatCurrency(company.totalInvestment)}</TableCell>
                     <TableCell>{formatPercentage(company.equityStake)}</TableCell>
                     <TableCell>{formatNumber(company.moic, 'x')}</TableCell>
@@ -177,7 +184,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={9} className="bg-muted/20 p-6">
+                      <TableCell colSpan={10} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>

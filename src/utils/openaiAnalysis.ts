@@ -13,6 +13,7 @@ interface CompanyData {
   exitActivity: string;
   barrierToEntry: number;
   additionalInvestmentRequested: number;
+  industry: string;
 }
 
 interface AnalysisResult {
@@ -79,7 +80,8 @@ export async function analyzeCompanyWithOpenAI(
         companyName: company.companyName,
         totalInvestment: company.totalInvestment,
         equityStake: company.equityStake,
-        additionalInvestmentRequested: company.additionalInvestmentRequested
+        additionalInvestmentRequested: company.additionalInvestmentRequested,
+        industry: company.industry
       }, perplexityKey);
       
       console.log('✅ [OpenAI Analysis] External research completed:', research);
@@ -113,6 +115,7 @@ Funding History: ${research.fundingHistory}
 
 INTERNAL PORTFOLIO DATA:
 Company: ${company.companyName}
+Industry: ${company.industry || 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
 Current MOIC: ${company.moic}x

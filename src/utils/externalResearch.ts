@@ -4,6 +4,7 @@ interface CompanyResearchData {
   totalInvestment: number;
   equityStake: number;
   additionalInvestmentRequested: number;
+  industry: string;
 }
 
 interface ExternalResearchResult {
@@ -23,12 +24,22 @@ export async function conductExternalResearch(
   console.log('🔑 [Perplexity Research] API Key present:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NO KEY');
   console.log('🔑 [Perplexity Research] API Key format valid:', apiKey?.startsWith('pplx-'));
 
-  const queries = [
+  // Enhanced industry-specific queries
+  const hasIndustry = company.industry && company.industry.trim() !== '' && company.industry.toLowerCase() !== 'n/a';
+  
+  const queries = hasIndustry ? [
+    `${company.industry} sector M&A activity IPO exits investment trends 2024 2023`,
+    `${company.companyName} ${company.industry} competitive analysis market position funding`,
+    `${company.industry} market growth forecasts burn rate revenue growth benchmarks`,
+    `${company.companyName} ${company.industry} recent news partnerships funding history`
+  ] : [
     `${company.companyName} startup funding rounds investment news 2024 2023`,
     `${company.companyName} competitive analysis market position industry trends`,
     `${company.companyName} recent news product launches partnerships exits`,
     `${company.companyName} venture capital funding history valuation`
   ];
+  
+  console.log('🏭 [Perplexity Research] Industry-enhanced queries:', hasIndustry ? 'YES' : 'NO', 'Industry:', company.industry);
 
   console.log('📝 [Perplexity Research] Prepared queries:', queries);
 

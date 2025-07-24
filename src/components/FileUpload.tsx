@@ -115,6 +115,7 @@ export function FileUpload({ onFileSelect }: FileUploadProps) {
         <p className="font-medium">Required columns:</p>
         <ul className="grid grid-cols-2 gap-1 text-xs">
           <li>• Company Name</li>
+          <li>• Industry</li>
           <li>• Total Investment to Date</li>
           <li>• Equity Stake (FD %)</li>
           <li>• MOIC</li>

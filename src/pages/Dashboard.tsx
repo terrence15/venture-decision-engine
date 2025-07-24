@@ -128,7 +128,8 @@ export function Dashboard() {
         tam: company.tam,
         exitActivity: company.exitActivity,
         barrierToEntry: company.barrierToEntry,
-        additionalInvestmentRequested: company.additionalInvestmentRequested
+        additionalInvestmentRequested: company.additionalInvestmentRequested,
+        industry: company.industry || 'N/A'
       }));
       
       const analyzedCompanies = await analyzePortfolio(

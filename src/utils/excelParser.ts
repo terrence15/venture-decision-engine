@@ -14,6 +14,7 @@ export interface RawCompanyData {
   exitActivity: string;
   barrierToEntry: number;
   additionalInvestmentRequested: number;
+  industry: string;
 }
 
 // Updated column mapping with exact headers from Excel
@@ -41,7 +42,10 @@ const COLUMN_MAPPINGS = {
   'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market)': 'barrierToEntry',
   'Barrier to Entry (1-5, 5 being the best because it\'s diffcult for potential competitors to enter the market) ': 'barrierToEntry',
   'Additional Investment Request': 'additionalInvestmentRequested',
-  'Additional Investment Requested ($)': 'additionalInvestmentRequested'
+  'Additional Investment Requested ($)': 'additionalInvestmentRequested',
+  'Industry': 'industry',
+  'Industry Sector': 'industry',
+  'Sector': 'industry'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -56,7 +60,8 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'tam': ['tam', 'rating', 'competitive', 'growing', 'market'],
   'exitActivity': ['exit', 'activity', 'sector', 'high', 'moderate', 'low'],
   'barrierToEntry': ['barrier', 'entry', 'advantage', 'firms', 'enter'],
-  'additionalInvestmentRequested': ['additional', 'investment', 'request']
+  'additionalInvestmentRequested': ['additional', 'investment', 'request'],
+  'industry': ['industry', 'sector']
 };
 
 // Improved fuzzy matching function
@@ -138,7 +143,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
