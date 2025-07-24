@@ -60,6 +60,37 @@ function shouldTriggerResearch(company: CompanyResearchData): ResearchTriggers {
   };
 }
 
+// Enhanced industry mapping for broader search terms
+function normalizeIndustry(industry: string): { primary: string; keywords: string[] } {
+  const normalized = industry.toLowerCase().trim();
+  
+  // Industry keyword mapping for better search results
+  const industryMap: Record<string, { primary: string; keywords: string[] }> = {
+    'fintech': { primary: 'fintech', keywords: ['financial technology', 'digital banking', 'payments'] },
+    'saas': { primary: 'software as a service', keywords: ['SaaS', 'cloud software', 'B2B software'] },
+    'enterprise saas': { primary: 'enterprise software', keywords: ['B2B software', 'business software', 'SaaS'] },
+    'healthtech': { primary: 'digital health', keywords: ['health technology', 'telemedicine', 'medical software'] },
+    'biotech': { primary: 'biotechnology', keywords: ['life sciences', 'pharmaceutical', 'medical research'] },
+    'edtech': { primary: 'education technology', keywords: ['e-learning', 'online education', 'learning platforms'] },
+    'e-commerce': { primary: 'ecommerce', keywords: ['online retail', 'digital commerce', 'marketplace'] },
+    'ai': { primary: 'artificial intelligence', keywords: ['machine learning', 'AI technology', 'automation'] },
+    'cybersecurity': { primary: 'cybersecurity', keywords: ['information security', 'data protection', 'security software'] }
+  };
+  
+  // Check for exact matches first
+  for (const [key, value] of Object.entries(industryMap)) {
+    if (normalized.includes(key)) {
+      return value;
+    }
+  }
+  
+  // Default to original industry with basic keyword expansion
+  return {
+    primary: industry,
+    keywords: [industry, `${industry} sector`, `${industry} market`]
+  };
+}
+
 interface ExternalResearchResult {
   companyName: string;
   marketIntelligence: string;
@@ -81,15 +112,15 @@ export async function conductExternalResearch(
   const triggers = shouldTriggerResearch(company);
   console.log('🎯 [Perplexity Research] Research triggers:', triggers);
 
-  // If no significant triggers, return minimal research
-  if (!Object.values(triggers).some(Boolean)) {
-    console.log('⏭️ [Perplexity Research] No significant triggers found, skipping external research');
+  // Industry is the primary trigger - always research if industry is provided
+  if (!triggers.hasIndustry && !Object.values(triggers).some(Boolean)) {
+    console.log('⏭️ [Perplexity Research] No industry or significant triggers found, skipping external research');
     return {
       companyName: company.companyName,
-      marketIntelligence: 'External market research skipped - insufficient trigger conditions',
-      competitiveLandscape: 'Competitive analysis skipped - no specific triggers identified',
-      recentNews: 'Recent news research skipped - minimal risk indicators',
-      fundingHistory: 'Funding research skipped - standard investment parameters',
+      marketIntelligence: 'External market research skipped - no industry specified',
+      competitiveLandscape: 'Competitive analysis skipped - no industry context available',
+      recentNews: 'Recent news research skipped - insufficient company context',
+      fundingHistory: 'Funding research skipped - no specific triggers identified',
       sources: []
     };
   }
@@ -220,28 +251,40 @@ Provide concise, factual information focused on recent developments, funding act
 function constructResearchQueries(company: CompanyResearchData, triggers: ResearchTriggers): string[] {
   const queries: string[] = [];
   
-  // Priority 1: Industry-specific research if available
+  // Industry-centric approach: Always prioritize industry research when available
   if (triggers.hasIndustry) {
+    const industryData = normalizeIndustry(company.industry);
+    console.log('🏷️ [Perplexity Research] Normalized industry data:', industryData);
+    
+    // Tiered industry queries: specific → general → sector-level
     queries.push(
-      `${company.industry} sector M&A activity IPO exits investment trends 2024 2023`,
-      `${company.companyName} ${company.industry} competitive analysis market position funding`,
-      `${company.industry} market growth forecasts burn rate revenue growth benchmarks`
+      // Broad industry trends and market data
+      `${industryData.primary} market trends investment funding venture capital 2024`,
+      // Company-specific with industry context  
+      `${company.companyName} ${industryData.primary} competitive landscape market position`,
+      // Industry benchmarks and metrics
+      `${industryData.keywords[0]} startup metrics burn rate revenue growth benchmarks`,
+      // Recent industry activity and exits
+      `${industryData.primary} M&A IPO exits recent deals investment activity`
+    );
+  } else {
+    // Fallback queries when no industry specified
+    queries.push(
+      `${company.companyName} funding rounds valuation recent investment activity`,
+      `${company.companyName} competitive analysis market position recent news`,
+      `startup funding trends venture capital investment 2024`,
+      `${company.companyName} partnerships business model revenue growth`
     );
   }
   
-  // Priority 2: High investment or exit activity research
-  if (triggers.highAdditionalInvestment || triggers.hasExitActivity) {
-    queries.push(`${company.companyName} funding rounds valuation recent investment activity`);
+  // Additional context-specific queries based on triggers
+  if (triggers.highAdditionalInvestment) {
+    queries.push(`${company.companyName} Series A B C funding bridge round additional investment`);
   }
   
-  // Priority 3: TAM and market size research for significant markets
-  if (triggers.significantTAM) {
-    const industryContext = triggers.hasIndustry ? company.industry : 'startup';
-    queries.push(`${industryContext} total addressable market size growth trends competitive landscape`);
+  if (triggers.hasExitActivity && company.exitActivity) {
+    queries.push(`${company.companyName} ${company.exitActivity} IPO acquisition exit strategy`);
   }
-  
-  // Priority 4: General company research
-  queries.push(`${company.companyName} recent news partnerships funding history`);
   
   // Limit to 4 queries to avoid rate limiting
   return queries.slice(0, 4);
