@@ -154,6 +154,32 @@ ANALYSIS PROTOCOL:
 - If external data is insufficient, state this explicitly rather than making assumptions
 - Integrate approved source insights into reasoning and risk assessment where available
 
+CRITICAL INVESTOR INTEREST LOGIC (GATING VARIABLE):
+The "Investor Interest / Ability to Raise Capital" score is NOT a soft modifier - it's a critical feasibility gate that can override positive financial metrics:
+
+CONDITIONAL INVESTMENT RULES:
+- IF Investor Interest ≤ 2 AND Additional Investment Requested > $3M:
+  * Apply "All-or-Nothing" threshold logic - high risk of stranded capital
+  * Consider "Conditional Investment" recommendations (e.g., "Invest $2M only if remaining $8M committed by others within 30 days")
+  * Flag "bagholder risk" - we bear disproportionate risk without syndicate support
+  * Question: Is our capital catalytic or just hopeful?
+
+- IF Investor Interest = 1 (only us interested):
+  * HEAVILY downweight confidence regardless of financial metrics
+  * Add "syndicate risk" and "round fragility" to keyRisks
+  * Suggest: "Wait for lead investor confirmation" or "Seek co-investors before committing"
+  * If use-of-funds is binary (needs full amount), flag as "round unlikely to close"
+
+- IF Investor Interest = 4-5 (competitive/oversubscribed):
+  * Increase confidence and support partial commitments
+  * Consider rightsizing participation: "Partial participation sufficient in competitive round"
+  * Lower urgency to overcommit capital
+
+ROUND FEASIBILITY ASSESSMENT:
+- Evaluate if the capital need is modular vs binary (can company succeed with partial funding?)
+- If binary funding need + low investor interest = flag as "round fragility risk"
+- Apply minimum raise success likelihood: "Would this raise succeed without our anchor?"
+
 PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
 Industry: ${company.industry || 'Not specified'}
@@ -185,12 +211,12 @@ CRITICAL REQUIREMENTS:
 
 Provide your analysis in the following JSON format:
 {
-  "recommendation": "Specific capital amount decision based on financial performance (e.g., 'Invest $250K of $1M request', 'Decline', 'Bridge Capital Only - $500K')",
-  "timingBucket": "One of: Double Down, Reinvest (3-12 Months), Hold (3-6 Months), Bridge Capital Only, Exit Opportunistically, Decline",
-  "reasoning": "2-4 sentences starting with financial analysis, incorporating relevant external market context WITH EXPLICIT SOURCE CITATIONS when external data influences decision, and concluding with investment logic",
-  "confidence": "Integer 1-5 where 5=strong financial+external validation+high investor interest, 3=solid financial metrics, 1=insufficient data or concerning metrics with low interest",
-  "keyRisks": "1-2 sentences highlighting material threats based on financial data and available market conditions WITH SOURCE CITATIONS where relevant", 
-  "suggestedAction": "1 tactical sentence with specific next step incorporating both performance and market timing",
+  "recommendation": "Enhanced recommendations based on investor interest logic: 'Invest $X', 'Conditional Investment - $X if remaining $Y committed by others within 30 days', 'Bridge Capital Only - $X', 'Wait for Co-Lead', 'Decline due to syndicate risk', etc.",
+  "timingBucket": "Enhanced options: 'Double Down', 'Conditional Investment', 'Bridge Only Pending Syndicate', 'Wait for Co-Lead', 'Reinvest (3-12 Months)', 'Hold (3-6 Months)', 'Exit Opportunistically', 'Decline'",
+  "reasoning": "2-4 sentences starting with financial analysis, incorporating CRITICAL investor interest assessment and round feasibility, with explicit source citations when external data influences decision. Must address whether our capital is catalytic or hopeful.",
+  "confidence": "Integer 1-5 where 5=strong financial+external validation+high investor interest (4-5), 3=solid metrics+moderate interest, 1=low investor interest (1-2) regardless of other metrics or insufficient data",
+  "keyRisks": "1-2 sentences highlighting material threats, MUST include 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
+  "suggestedAction": "1 tactical sentence focusing on syndicate building, co-investor validation, or conditional deployment triggers when investor interest is low",
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],
