@@ -13,6 +13,7 @@ interface CompanyData {
   equityStake: number;
   moic: number | null;
   revenueGrowth: number | null;
+  projectedRevenueGrowth: number | null;
   burnMultiple: number | null;
   runway: number | null;
   tam: number;
@@ -141,7 +142,8 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>Investment</TableHead>
                 <TableHead>Equity</TableHead>
                 <TableHead>MOIC</TableHead>
-                <TableHead>Revenue Growth</TableHead>
+                <TableHead>TTM Growth</TableHead>
+                <TableHead>Projected Growth</TableHead>
                 <TableHead>Requested</TableHead>
                 <TableHead>Investor Interest</TableHead>
                 <TableHead>Recommendation</TableHead>
@@ -180,6 +182,22 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                     <TableCell>{formatPercentage(company.equityStake)}</TableCell>
                     <TableCell>{formatNumber(company.moic, 'x')}</TableCell>
                     <TableCell>{formatPercentage(company.revenueGrowth)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {formatPercentage(company.projectedRevenueGrowth)}
+                        {company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined && (
+                          <Badge variant={
+                            company.projectedRevenueGrowth >= 100 ? 'default' :
+                            company.projectedRevenueGrowth >= 50 ? 'secondary' :
+                            company.projectedRevenueGrowth < 25 ? 'destructive' : 'outline'
+                          } className="text-xs">
+                            {company.projectedRevenueGrowth >= 100 ? 'Hyper' :
+                             company.projectedRevenueGrowth >= 50 ? 'Strong' :
+                             company.projectedRevenueGrowth < 25 ? 'Caution' : 'Moderate'}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{formatCurrency(company.additionalInvestmentRequested)}</TableCell>
                     <TableCell>
                       {company.investorInterest ? (
@@ -207,7 +225,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={11} className="bg-muted/20 p-6">
+                      <TableCell colSpan={12} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -239,12 +257,18 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                     {company.barrierToEntry || 'N/A'}/5
                                   </span>
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">Investor Interest:</span>
-                                  <span className="ml-2 font-medium">
-                                    {company.investorInterest || 'N/A'}/5
-                                  </span>
-                                </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Projected Growth:</span>
+                                   <span className="ml-2 font-medium">
+                                     {formatPercentage(company.projectedRevenueGrowth)}
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Investor Interest:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.investorInterest || 'N/A'}/5
+                                   </span>
+                                 </div>
                                 <div className="col-span-2">
                                   <span className="text-muted-foreground">Exit Activity:</span>
                                   <span className="ml-2 font-medium">

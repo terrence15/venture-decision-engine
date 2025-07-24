@@ -7,6 +7,7 @@ interface CompanyData {
   equityStake: number;
   moic: number | null;
   revenueGrowth: number | null;
+  projectedRevenueGrowth: number | null;
   burnMultiple: number | null;
   runway: number | null;
   tam: number;
@@ -180,20 +181,40 @@ ROUND FEASIBILITY ASSESSMENT:
 - If binary funding need + low investor interest = flag as "round fragility risk"
 - Apply minimum raise success likelihood: "Would this raise succeed without our anchor?"
 
+PROJECTED REVENUE GROWTH INTEGRATION LOGIC:
+The "Projected Revenue Growth (Next 12 Months)" is a critical forward-looking momentum signal that must be weighted against external validation signals:
+
+GROWTH MOMENTUM INTERPRETATION:
+- Above 100% = Hyper-growth stage signal (justify larger follow-ons if externally validated)
+- Above 50% = Strong forward momentum (positive indicator if supported by market interest)
+- Below 25% = Caution flag unless paired with profitability or defensibility
+- Must be cross-referenced with TTM performance for credibility assessment
+
+CREDIBILITY VALIDATION RULES:
+- High projected growth (>50%) + High investor interest (4-5) = Validate optimistic projections and consider increased investment
+- High projected growth (>100%) + Low investor interest (1-2) = RED FLAG - aggressive projections lack external validation, downweight confidence significantly
+- Low projected growth (<25%) + High burn multiple = Flag capital efficiency concerns and execution risk
+
+CAPITAL RECOMMENDATION INTEGRATION:
+- Use projected growth to justify investment sizing: strong validated growth can support larger commitments
+- Flag disconnects: if projections are ambitious but investor interest is low, question if growth targets are realistic
+- Consider runway needs: aggressive growth projections require adequate execution timeline and capital efficiency
+
 PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
 Industry: ${company.industry || 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
 Current MOIC: ${company.moic}x
-TTM Revenue Growth: ${company.revenueGrowth}%
-Burn Multiple: ${company.burnMultiple}x
-Runway: ${company.runway} months
+TTM Revenue Growth: ${company.revenueGrowth !== null ? `${company.revenueGrowth}%` : 'Not provided'}
+Projected Revenue Growth (Next 12 Months): ${company.projectedRevenueGrowth !== null ? `${company.projectedRevenueGrowth}%` : 'Not provided'}
+Burn Multiple: ${company.burnMultiple !== null ? `${company.burnMultiple}x` : 'Not provided'}
+Runway: ${company.runway !== null ? `${company.runway} months` : 'Not provided'}
 TAM Score: ${company.tam}/5
 Exit Activity in Sector: ${company.exitActivity}
 Barrier to Entry: ${company.barrierToEntry}/5
 Additional Investment Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
-Investor Interest / Ability to Raise Capital: ${company.investorInterest || 'Not specified'}/5
+Investor Interest / Ability to Raise Capital: ${company.investorInterest !== null ? `${company.investorInterest}/5` : 'Not provided'}
 
 ${externalResearch}
 

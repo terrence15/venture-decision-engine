@@ -123,6 +123,7 @@ export function Dashboard() {
         equityStake: company.equityStake,
         moic: company.moic,
         revenueGrowth: company.revenueGrowth,
+        projectedRevenueGrowth: company.projectedRevenueGrowth,
         burnMultiple: company.burnMultiple,
         runway: company.runway,
         tam: company.tam,

@@ -8,6 +8,7 @@ export interface RawCompanyData {
   equityStake: number;
   moic: number | null;
   revenueGrowth: number | null;
+  projectedRevenueGrowth: number | null;
   burnMultiple: number | null;
   runway: number | null;
   tam: number;
@@ -49,7 +50,11 @@ const COLUMN_MAPPINGS = {
   'Sector': 'industry',
   'Investor Interest / Ability to Raise Capital': 'investorInterest',
   'Investor Interest': 'investorInterest',
-  'Ability to Raise Capital': 'investorInterest'
+  'Ability to Raise Capital': 'investorInterest',
+  'Projected Revenue Growth (Next 12 Months)': 'projectedRevenueGrowth',
+  'Projected Revenue Growth': 'projectedRevenueGrowth',
+  'Forward Revenue Growth': 'projectedRevenueGrowth',
+  'Revenue Growth Projection': 'projectedRevenueGrowth'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -59,6 +64,7 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'equityStake': ['equity', 'stake', 'fully', 'diluted', 'percent'],
   'moic': ['moic', 'implied'],
   'revenueGrowth': ['ttm', 'revenue', 'growth'],
+  'projectedRevenueGrowth': ['projected', 'revenue', 'growth', '12', 'months', 'forward'],
   'burnMultiple': ['burn', 'multiple', 'rate', 'arr'],
   'runway': ['runway', 'months'],
   'tam': ['tam', 'rating', 'competitive', 'growing', 'market'],
@@ -148,7 +154,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -251,7 +257,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -276,9 +282,9 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       console.log(`Converted equity stake from ${parsedValue} to ${value}%`);
                     }
                     // Convert revenue growth from decimal to percentage if needed
-                    else if (fieldName === 'revenueGrowth' && parsedValue < 10) {
+                    else if ((fieldName === 'revenueGrowth' || fieldName === 'projectedRevenueGrowth') && parsedValue < 10) {
                       value = parsedValue * 100;
-                      console.log(`Converted revenue growth from ${parsedValue} to ${value}%`);
+                      console.log(`Converted ${fieldName} from ${parsedValue} to ${value}%`);
                     }
                   }
                 }
