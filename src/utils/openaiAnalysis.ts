@@ -16,6 +16,8 @@ interface CompanyData {
   additionalInvestmentRequested: number;
   industry: string;
   investorInterest: number | null;
+  preMoneyValuation: number | null;
+  postMoneyValuation: number | null;
   revenue?: number;
   monthlyBurn?: number;
   currentValuation?: number;
@@ -56,7 +58,9 @@ export async function analyzeCompanyWithOpenAI(
     company.tam,
     company.exitActivity,
     company.additionalInvestmentRequested,
-    company.investorInterest
+    company.investorInterest,
+    company.preMoneyValuation,
+    company.postMoneyValuation
   ];
   
   const missingCriticalData = criticalFields.filter(field => 
@@ -70,10 +74,10 @@ export async function analyzeCompanyWithOpenAI(
     return {
       recommendation: 'Insufficient data to assess',
       timingBucket: 'N/A',
-      reasoning: 'Missing critical inputs (e.g., growth, burn, TAM, exit environment), which prevents a responsible investment recommendation. Recommend holding until updated data is provided.',
+      reasoning: 'Missing critical inputs (e.g., growth, burn, TAM, exit environment, valuations), which prevents a responsible investment recommendation. Recommend holding until updated data is provided.',
       confidence: 1,
-      keyRisks: 'Lack of visibility into company performance, capital efficiency, or exit feasibility makes additional investment highly speculative.',
-      suggestedAction: 'Request updated financials, capital plan, and growth KPIs before reassessing capital deployment.',
+      keyRisks: 'Lack of visibility into company performance, capital efficiency, valuation trajectory, or exit feasibility makes additional investment highly speculative.',
+      suggestedAction: 'Request updated financials, capital plan, growth KPIs, and current round valuation data before reassessing capital deployment.',
       externalSources: 'Insufficient internal data - external research not conducted',
       insufficientData: true,
       externalInsights: {
@@ -200,6 +204,29 @@ CAPITAL RECOMMENDATION INTEGRATION:
 - Flag disconnects: if projections are ambitious but investor interest is low, question if growth targets are realistic
 - Consider runway needs: aggressive growth projections require adequate execution timeline and capital efficiency
 
+VALUATION-BASED DECISION FRAMEWORK:
+The Pre-Money and Post-Money Valuation data must drive sophisticated capital deployment decisions:
+
+OWNERSHIP & DILUTION ANALYSIS:
+- Calculate ownership preservation: Compare current equity stake vs. new round dilution impact
+- Assess return compression: Determine required exit valuation for 3x+ returns on new capital at post-money pricing
+- Flag overpricing: If markup exceeds growth fundamentals (revenue, market traction), caution against follow-on participation
+
+VALUATION JUSTIFICATION RULES:
+- High markup (>2.5x from implied previous round) + Strong growth (>50% TTM + >50% projected) + High investor interest (4-5) = Validate premium pricing
+- High markup (>3x) + Weak growth (<25% TTM or projected) + Low investor interest (1-2) = RED FLAG for overpricing, recommend decline
+- Reasonable markup (<2x) + Moderate growth + Competitive interest = Support pro-rata or increased participation
+
+STRATEGIC ROUND ANALYSIS:
+- Higher post-money valuations create greater exit pressure and strategic risk
+- Low-quality rounds at inflated valuations should reduce confidence and flag "deadweight pricing" risk
+- Consider if valuation is hype-driven vs. fundamentals-driven based on growth metrics and market validation
+
+RETURN COMPRESSION MATH:
+- Calculate new cost basis at post-money valuation
+- Determine minimum exit valuation needed for acceptable returns (3x+ target)
+- If exit requirements seem unrealistic given TAM and market conditions, flag as overpriced participation
+
 PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
 Industry: ${company.industry || 'Not specified'}
@@ -215,6 +242,8 @@ Exit Activity in Sector: ${company.exitActivity}
 Barrier to Entry: ${company.barrierToEntry}/5
 Additional Investment Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
 Investor Interest / Ability to Raise Capital: ${company.investorInterest !== null ? `${company.investorInterest}/5` : 'Not provided'}
+Pre-Money Valuation: ${company.preMoneyValuation !== null ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
+Post-Money Valuation: ${company.postMoneyValuation !== null ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
 
 ${externalResearch}
 
@@ -232,12 +261,12 @@ CRITICAL REQUIREMENTS:
 
 Provide your analysis in the following JSON format:
 {
-  "recommendation": "Enhanced recommendations based on investor interest logic: 'Invest $X', 'Conditional Investment - $X if remaining $Y committed by others within 30 days', 'Bridge Capital Only - $X', 'Wait for Co-Lead', 'Decline due to syndicate risk', etc.",
+  "recommendation": "Enhanced recommendations incorporating valuation analysis: 'Invest $X at fair valuation', 'Decline due to overpricing', 'Pro-rata only - valuation stretch', 'Conditional Investment - $X if terms include downside protection', 'Bridge Capital Only - $X pending reasonable valuation', 'Wait for Co-Lead', 'Decline due to syndicate risk', etc.",
   "timingBucket": "Enhanced options: 'Double Down', 'Conditional Investment', 'Bridge Only Pending Syndicate', 'Wait for Co-Lead', 'Reinvest (3-12 Months)', 'Hold (3-6 Months)', 'Exit Opportunistically', 'Decline'",
-  "reasoning": "2-4 sentences starting with financial analysis, incorporating CRITICAL investor interest assessment and round feasibility, with explicit source citations when external data influences decision. Must address whether our capital is catalytic or hopeful.",
-  "confidence": "Integer 1-5 where 5=strong financial+external validation+high investor interest (4-5), 3=solid metrics+moderate interest, 1=low investor interest (1-2) regardless of other metrics or insufficient data",
-  "keyRisks": "1-2 sentences highlighting material threats, MUST include 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
-  "suggestedAction": "1 tactical sentence focusing on syndicate building, co-investor validation, or conditional deployment triggers when investor interest is low",
+  "reasoning": "2-4 sentences starting with financial analysis, incorporating CRITICAL valuation assessment (markup vs. growth fundamentals), investor interest, and round feasibility. Must address ownership dilution impact, return compression risk, and whether valuation is justified by traction. Include explicit source citations when external data influences decision.",
+  "confidence": "Integer 1-5 where 5=strong financial+reasonable valuation+external validation+high investor interest, 3=solid metrics+fair valuation+moderate interest, 1=overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",
+  "keyRisks": "1-2 sentences highlighting material threats, MUST include valuation-specific risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
+  "suggestedAction": "1 tactical sentence focusing on valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on pricing and interest levels",
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],

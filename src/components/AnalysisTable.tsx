@@ -22,6 +22,8 @@ interface CompanyData {
   additionalInvestmentRequested: number;
   industry: string;
   investorInterest: number | null;
+  preMoneyValuation: number | null;
+  postMoneyValuation: number | null;
   // AI Generated Fields
   recommendation?: string;
   timingBucket?: string;
@@ -144,6 +146,8 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>MOIC</TableHead>
                 <TableHead>TTM Growth</TableHead>
                 <TableHead>Projected Growth</TableHead>
+                <TableHead>Pre-Money</TableHead>
+                <TableHead>Post-Money</TableHead>
                 <TableHead>Requested</TableHead>
                 <TableHead>Investor Interest</TableHead>
                 <TableHead>Recommendation</TableHead>
@@ -198,6 +202,30 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                         )}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
+                          ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
+                          : 'N/A'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">
+                          {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
+                            ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
+                            : 'N/A'}
+                        </span>
+                        {company.preMoneyValuation && company.postMoneyValuation && (
+                          <Badge variant={
+                            (company.postMoneyValuation / company.preMoneyValuation) >= 3 ? 'destructive' :
+                            (company.postMoneyValuation / company.preMoneyValuation) >= 2 ? 'secondary' : 'outline'
+                          } className="text-xs">
+                            {((company.postMoneyValuation / company.preMoneyValuation)).toFixed(1)}x
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{formatCurrency(company.additionalInvestmentRequested)}</TableCell>
                     <TableCell>
                       {company.investorInterest ? (
@@ -225,7 +253,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={12} className="bg-muted/20 p-6">
+                      <TableCell colSpan={14} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -267,6 +295,27 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                    <span className="text-muted-foreground">Investor Interest:</span>
                                    <span className="ml-2 font-medium">
                                      {company.investorInterest || 'N/A'}/5
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Pre-Money:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
+                                       ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Post-Money:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
+                                       ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                     {company.preMoneyValuation && company.postMoneyValuation && (
+                                       <Badge variant="outline" className="ml-1 text-xs">
+                                         {((company.postMoneyValuation / company.preMoneyValuation)).toFixed(1)}x markup
+                                       </Badge>
+                                     )}
                                    </span>
                                  </div>
                                 <div className="col-span-2">

@@ -17,6 +17,8 @@ export interface RawCompanyData {
   additionalInvestmentRequested: number;
   industry: string;
   investorInterest: number | null;
+  preMoneyValuation: number | null;
+  postMoneyValuation: number | null;
 }
 
 // Updated column mapping with exact headers from Excel
@@ -54,7 +56,15 @@ const COLUMN_MAPPINGS = {
   'Projected Revenue Growth (Next 12 Months)': 'projectedRevenueGrowth',
   'Projected Revenue Growth': 'projectedRevenueGrowth',
   'Forward Revenue Growth': 'projectedRevenueGrowth',
-  'Revenue Growth Projection': 'projectedRevenueGrowth'
+  'Revenue Growth Projection': 'projectedRevenueGrowth',
+  'Pre-Money Valuation ($)': 'preMoneyValuation',
+  'Pre-Money Valuation': 'preMoneyValuation',
+  'Pre Money Valuation': 'preMoneyValuation',
+  'PreMoney Valuation': 'preMoneyValuation',
+  'Post-Money Valuation ($)': 'postMoneyValuation',
+  'Post-Money Valuation': 'postMoneyValuation',
+  'Post Money Valuation': 'postMoneyValuation',
+  'PostMoney Valuation': 'postMoneyValuation'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -72,7 +82,9 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'barrierToEntry': ['barrier', 'entry', 'advantage', 'firms', 'enter'],
   'additionalInvestmentRequested': ['additional', 'investment', 'request'],
   'industry': ['industry', 'sector'],
-  'investorInterest': ['investor', 'interest', 'ability', 'raise', 'capital']
+  'investorInterest': ['investor', 'interest', 'ability', 'raise', 'capital'],
+  'preMoneyValuation': ['pre', 'money', 'valuation'],
+  'postMoneyValuation': ['post', 'money', 'valuation']
 };
 
 // Improved fuzzy matching function
@@ -154,7 +166,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -257,7 +269,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -275,6 +287,16 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                     if (fieldName === 'totalInvestment') {
                       value = parsedValue * 1000;
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
+                    }
+                    // Scale valuation fields based on magnitude (handle millions)
+                    else if (['preMoneyValuation', 'postMoneyValuation'].includes(fieldName)) {
+                      // If value is less than 1000, assume it's in millions and convert to dollars
+                      if (parsedValue < 1000) {
+                        value = parsedValue * 1000000;
+                        console.log(`Scaled ${fieldName} from ${parsedValue}M to ${value}`);
+                      } else {
+                        value = parsedValue;
+                      }
                     }
                     // Convert equity stake from decimal to percentage if needed
                     else if (fieldName === 'equityStake' && parsedValue < 1) {
