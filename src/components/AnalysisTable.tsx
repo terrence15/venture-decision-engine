@@ -30,6 +30,15 @@ interface CompanyData {
   // External Research Integration
   externalSources?: string;
   insufficientData?: boolean;
+  // Enhanced external attribution
+  externalInsights?: {
+    marketContext: string[];
+    competitivePosition: string[];
+    fundingEnvironment: string[];
+    industryTrends: string[];
+  };
+  researchQuality?: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
+  sourceAttributions?: string[];
 }
 
 interface AnalysisTableProps {
@@ -255,7 +264,64 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                               </div>
                             )}
                             
-                            {company.externalSources && !company.insufficientData && (
+                            {company.externalInsights && !company.insufficientData && (
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-semibold text-sm text-muted-foreground">External Market Intelligence</h4>
+                                  {company.researchQuality && (
+                                    <Badge variant={
+                                      company.researchQuality === 'comprehensive' ? 'default' :
+                                      company.researchQuality === 'limited' ? 'secondary' :
+                                      company.researchQuality === 'minimal' ? 'outline' : 'destructive'
+                                    } className="text-xs">
+                                      {company.researchQuality}
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                {company.externalInsights.marketContext.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Market Context:</p>
+                                    <ul className="text-xs space-y-1">
+                                      {company.externalInsights.marketContext.map((insight, i) => (
+                                        <li key={i} className="text-foreground">• {insight}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                
+                                {company.externalInsights.competitivePosition.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Competitive Position:</p>
+                                    <ul className="text-xs space-y-1">
+                                      {company.externalInsights.competitivePosition.map((insight, i) => (
+                                        <li key={i} className="text-foreground">• {insight}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                
+                                {company.externalInsights.fundingEnvironment.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Funding Environment:</p>
+                                    <ul className="text-xs space-y-1">
+                                      {company.externalInsights.fundingEnvironment.map((insight, i) => (
+                                        <li key={i} className="text-foreground">• {insight}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                
+                                {company.sourceAttributions && company.sourceAttributions.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Sources Referenced:</p>
+                                    <p className="text-xs text-muted-foreground">{company.sourceAttributions.join(', ')}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {company.externalSources && !company.externalInsights && !company.insufficientData && (
                               <div>
                                 <h4 className="font-semibold text-sm text-muted-foreground mb-2">External Research Sources</h4>
                                 <p className="text-xs text-muted-foreground leading-relaxed">{company.externalSources}</p>

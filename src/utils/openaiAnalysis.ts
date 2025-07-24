@@ -28,6 +28,15 @@ interface AnalysisResult {
   suggestedAction: string;
   externalSources: string;
   insufficientData: boolean;
+  // Enhanced external attribution
+  externalInsights: {
+    marketContext: string[];
+    competitivePosition: string[];
+    fundingEnvironment: string[];
+    industryTrends: string[];
+  };
+  researchQuality: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
+  sourceAttributions: string[];
 }
 
 export async function analyzeCompanyWithOpenAI(
@@ -63,13 +72,22 @@ export async function analyzeCompanyWithOpenAI(
       keyRisks: 'Lack of visibility into company performance, capital efficiency, or exit feasibility makes additional investment highly speculative.',
       suggestedAction: 'Request updated financials, capital plan, and growth KPIs before reassessing capital deployment.',
       externalSources: 'Insufficient internal data - external research not conducted',
-      insufficientData: true
+      insufficientData: true,
+      externalInsights: {
+        marketContext: [],
+        competitivePosition: [],
+        fundingEnvironment: [],
+        industryTrends: []
+      },
+      researchQuality: 'unavailable' as const,
+      sourceAttributions: []
     };
   }
 
   // Conduct external research if Perplexity API key is available and triggers are met
   let externalResearch = '';
   let externalSources = '';
+  let research: any = null;
   
   const perplexityKey = getPerplexityApiKey();
   console.log('🔑 [OpenAI Analysis] Perplexity key check:', perplexityKey ? 'FOUND' : 'NOT FOUND');
@@ -79,7 +97,7 @@ export async function analyzeCompanyWithOpenAI(
       console.log('🔍 [OpenAI Analysis] Starting external research with trigger evaluation...');
       onProgress?.(`Researching ${company.companyName}...`);
       
-      const research = await conductExternalResearch({
+      research = await conductExternalResearch({
         companyName: company.companyName,
         totalInvestment: company.totalInvestment,
         equityStake: company.equityStake,
@@ -94,11 +112,17 @@ export async function analyzeCompanyWithOpenAI(
       console.log('✅ [OpenAI Analysis] External research completed:', research);
       
       externalResearch = `
-EXTERNAL MARKET INTELLIGENCE (APPROVED SOURCES ONLY):
-Market Intelligence: ${research.marketIntelligence}
-Competitive Landscape: ${research.competitiveLandscape}
-Recent Market Activity: ${research.recentNews}
-Funding Environment: ${research.fundingHistory}
+EXTERNAL MARKET INTELLIGENCE (${research.researchQuality.toUpperCase()} QUALITY):
+
+STRUCTURED INSIGHTS WITH SOURCE ATTRIBUTION:
+Market Context: ${research.structuredInsights.marketContext.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No market insights available'}
+
+Competitive Position: ${research.structuredInsights.competitivePosition.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No competitive insights available'}
+
+Funding Environment: ${research.structuredInsights.fundingEnvironment.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No funding insights available'}
+
+Industry Trends: ${research.structuredInsights.industryTrends.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No trend insights available'}
+
 Research Sources: ${research.sources.join(', ') || 'Limited external data available'}
       `;
       
@@ -148,18 +172,26 @@ CRITICAL REQUIREMENTS:
 1. Base capital recommendation primarily on financial metrics above
 2. Use external market context to enhance reasoning and risk assessment where available
 3. If external data contradicts financial performance, explain discrepancy and prioritize actual company data
-4. Clearly distinguish between data-driven insights and market-context observations
-5. If insufficient external data, acknowledge this limitation explicitly
+4. EXPLICITLY CITE external sources when they influence your decision (use format: "per [Source]")
+5. Clearly distinguish between data-driven insights and market-context observations
+6. If insufficient external data, acknowledge this limitation explicitly
 
 Provide your analysis in the following JSON format:
 {
   "recommendation": "Specific capital amount decision based on financial performance (e.g., 'Invest $250K of $1M request', 'Decline', 'Bridge Capital Only - $500K')",
   "timingBucket": "One of: Double Down, Reinvest (3-12 Months), Hold (3-6 Months), Bridge Capital Only, Exit Opportunistically, Decline",
-  "reasoning": "2-4 sentences starting with financial analysis, incorporating relevant external market context, and concluding with investment logic",
+  "reasoning": "2-4 sentences starting with financial analysis, incorporating relevant external market context WITH EXPLICIT SOURCE CITATIONS when external data influences decision, and concluding with investment logic",
   "confidence": "Integer 1-5 where 5=strong financial+external validation, 3=solid financial but limited external, 1=insufficient data",
-  "keyRisks": "1-2 sentences highlighting material threats based on financial data and available market conditions", 
+  "keyRisks": "1-2 sentences highlighting material threats based on financial data and available market conditions WITH SOURCE CITATIONS where relevant", 
   "suggestedAction": "1 tactical sentence with specific next step incorporating both performance and market timing",
-  "externalSources": "Brief summary of external research quality and limitations"
+  "externalSources": "Brief summary of external research quality and limitations",
+  "externalInsights": {
+    "marketContext": ["List key market insights that influenced analysis"],
+    "competitivePosition": ["List competitive insights that influenced analysis"], 
+    "fundingEnvironment": ["List funding insights that influenced analysis"],
+    "industryTrends": ["List trend insights that influenced analysis"]
+  },
+  "sourceAttributions": ["List specific sources that were cited in reasoning or risks"]
 }
 
 Think like a VC partner prioritizing financial fundamentals while incorporating market intelligence responsibly.`;
@@ -223,7 +255,16 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
       keyRisks: analysis.keyRisks || 'Unable to assess risks with current information.',
       suggestedAction: analysis.suggestedAction || 'Request additional company data before proceeding.',
       externalSources: externalSources,
-      insufficientData: false
+      insufficientData: false,
+      // Enhanced external attribution
+      externalInsights: analysis.externalInsights || {
+        marketContext: [],
+        competitivePosition: [],
+        fundingEnvironment: [],
+        industryTrends: []
+      },
+      researchQuality: research?.researchQuality || 'unavailable',
+      sourceAttributions: analysis.sourceAttributions || []
     };
 
   } catch (error) {
@@ -275,7 +316,15 @@ export async function analyzePortfolio(
         keyRisks: 'Unable to complete analysis due to technical issues.',
         suggestedAction: 'Retry analysis or conduct manual review.',
         externalSources: 'Analysis incomplete',
-        insufficientData: true
+        insufficientData: true,
+        externalInsights: {
+          marketContext: [],
+          competitivePosition: [],
+          fundingEnvironment: [],
+          industryTrends: []
+        },
+        researchQuality: 'unavailable' as const,
+        sourceAttributions: []
       } as any);
       
       onProgress?.(((i + 1) / companies.length) * 100, `Failed: ${company.companyName}`);

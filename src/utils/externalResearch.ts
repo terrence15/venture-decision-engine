@@ -98,6 +98,14 @@ interface ExternalResearchResult {
   recentNews: string;
   fundingHistory: string;
   sources: string[];
+  // Enhanced attribution fields
+  structuredInsights: {
+    marketContext: { insight: string; source: string; }[];
+    competitivePosition: { insight: string; source: string; }[];
+    fundingEnvironment: { insight: string; source: string; }[];
+    industryTrends: { insight: string; source: string; }[];
+  };
+  researchQuality: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
 }
 
 export async function conductExternalResearch(
@@ -121,7 +129,14 @@ export async function conductExternalResearch(
       competitiveLandscape: 'Competitive analysis skipped - no industry context available',
       recentNews: 'Recent news research skipped - insufficient company context',
       fundingHistory: 'Funding research skipped - no specific triggers identified',
-      sources: []
+      sources: [],
+      structuredInsights: {
+        marketContext: [],
+        competitivePosition: [],
+        fundingEnvironment: [],
+        industryTrends: []
+      },
+      researchQuality: 'unavailable' as const
     };
   }
 
@@ -235,13 +250,18 @@ Provide concise, factual information focused on recent developments, funding act
     }
   }
 
+  // Parse structured insights from results
+  const structuredInsights = parseStructuredInsights(results, allSources);
+  
   const finalResult = {
     companyName: company.companyName,
     marketIntelligence: results[0] || 'Market analysis unavailable',
     competitiveLandscape: results[1] || 'Competitive data unavailable', 
     recentNews: results[2] || 'Recent news unavailable',
     fundingHistory: results[3] || 'Funding history unavailable',
-    sources: [...new Set(allSources)].slice(0, 5) // Dedupe and limit sources
+    sources: [...new Set(allSources)].slice(0, 5), // Dedupe and limit sources
+    structuredInsights,
+    researchQuality: determineResearchQuality(results, allSources)
   };
 
   console.log('🏁 [Perplexity Research] Final research result:', finalResult);
@@ -303,6 +323,61 @@ function validateSources(content: string): { hasForbiddenSources: boolean; detec
   });
   
   return { hasForbiddenSources, detectedSources };
+}
+
+function parseStructuredInsights(results: string[], sources: string[]): {
+  marketContext: { insight: string; source: string; }[];
+  competitivePosition: { insight: string; source: string; }[];
+  fundingEnvironment: { insight: string; source: string; }[];
+  industryTrends: { insight: string; source: string; }[];
+} {
+  const insights = {
+    marketContext: [] as { insight: string; source: string; }[],
+    competitivePosition: [] as { insight: string; source: string; }[],
+    fundingEnvironment: [] as { insight: string; source: string; }[],
+    industryTrends: [] as { insight: string; source: string; }[]
+  };
+
+  // Extract key insights from each result with source attribution
+  results.forEach((result, index) => {
+    if (!result || result.includes('unavailable') || result.includes('failed')) return;
+    
+    const sentences = result.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    const relevantSource = sources[index] || 'External research';
+    
+    sentences.forEach(sentence => {
+      const trimmed = sentence.trim();
+      if (trimmed.length < 30) return;
+      
+      // Categorize insights based on content keywords
+      if (trimmed.match(/market|industry|sector|demand|growth|size/i)) {
+        insights.marketContext.push({ insight: trimmed, source: relevantSource });
+      } else if (trimmed.match(/competitor|competitive|rival|comparison|versus/i)) {
+        insights.competitivePosition.push({ insight: trimmed, source: relevantSource });
+      } else if (trimmed.match(/funding|investment|capital|raised|valuation|round/i)) {
+        insights.fundingEnvironment.push({ insight: trimmed, source: relevantSource });
+      } else if (trimmed.match(/trend|future|outlook|forecast|direction/i)) {
+        insights.industryTrends.push({ insight: trimmed, source: relevantSource });
+      }
+    });
+  });
+
+  // Limit to top 3 insights per category
+  Object.keys(insights).forEach(key => {
+    insights[key as keyof typeof insights] = insights[key as keyof typeof insights].slice(0, 3);
+  });
+
+  return insights;
+}
+
+function determineResearchQuality(results: string[], sources: string[]): 'comprehensive' | 'limited' | 'minimal' | 'unavailable' {
+  const validResults = results.filter(r => r && !r.includes('unavailable') && !r.includes('failed')).length;
+  const sourcesCount = sources.length;
+  
+  if (validResults >= 3 && sourcesCount >= 2) return 'comprehensive';
+  if (validResults >= 2 && sourcesCount >= 1) return 'limited';
+  if (validResults >= 1) return 'minimal';
+  return 'unavailable';
 }
 
 export function getPerplexityApiKey(): string | null {
