@@ -14,6 +14,9 @@ interface CompanyData {
   barrierToEntry: number;
   additionalInvestmentRequested: number;
   industry: string;
+  revenue?: number;
+  monthlyBurn?: number;
+  currentValuation?: number;
 }
 
 interface AnalysisResult {
@@ -64,7 +67,7 @@ export async function analyzeCompanyWithOpenAI(
     };
   }
 
-  // Conduct external research if Perplexity API key is available
+  // Conduct external research if Perplexity API key is available and triggers are met
   let externalResearch = '';
   let externalSources = '';
   
@@ -73,7 +76,7 @@ export async function analyzeCompanyWithOpenAI(
   
   if (perplexityKey) {
     try {
-      console.log('🔍 [OpenAI Analysis] Starting external research...');
+      console.log('🔍 [OpenAI Analysis] Starting external research with trigger evaluation...');
       onProgress?.(`Researching ${company.companyName}...`);
       
       const research = await conductExternalResearch({
@@ -81,39 +84,51 @@ export async function analyzeCompanyWithOpenAI(
         totalInvestment: company.totalInvestment,
         equityStake: company.equityStake,
         additionalInvestmentRequested: company.additionalInvestmentRequested,
-        industry: company.industry
+        industry: company.industry,
+        tam: company.tam,
+        revenue: company.revenue,
+        burnMultiple: company.burnMultiple,
+        exitActivity: company.exitActivity
       }, perplexityKey);
       
       console.log('✅ [OpenAI Analysis] External research completed:', research);
       
       externalResearch = `
-EXTERNAL MARKET INTELLIGENCE:
-Market Position: ${research.marketIntelligence}
+EXTERNAL MARKET INTELLIGENCE (APPROVED SOURCES ONLY):
+Market Intelligence: ${research.marketIntelligence}
 Competitive Landscape: ${research.competitiveLandscape}
-Recent Developments: ${research.recentNews}
-Funding History: ${research.fundingHistory}
+Recent Market Activity: ${research.recentNews}
+Funding Environment: ${research.fundingHistory}
+Research Sources: ${research.sources.join(', ') || 'Limited external data available'}
       `;
       
       externalSources = research.sources.length > 0 
-        ? `Research sources: ${research.sources.join(', ')}` 
-        : 'Real-time web research conducted (sources embedded in analysis)';
+        ? `Approved research sources: ${research.sources.join(', ')}` 
+        : 'External research conducted with limited source availability';
         
     } catch (error) {
       console.error('❌ [OpenAI Analysis] External research failed:', error);
-      externalResearch = '\nEXTERNAL RESEARCH: Unable to conduct real-time research due to API limitations.';
-      externalSources = 'External research failed - API error occurred';
+      externalResearch = '\nEXTERNAL RESEARCH: Unable to conduct research from approved sources due to API limitations.';
+      externalSources = 'External research failed - API error or source restrictions';
     }
   } else {
     console.log('⚠️ [OpenAI Analysis] No Perplexity key, skipping external research');
-    externalResearch = '\nEXTERNAL RESEARCH: Not available - Perplexity API key not configured. Analysis based on internal portfolio data only.';
-    externalSources = 'Internal analysis only - configure Perplexity API key to enable external market research';
+    externalResearch = '\nEXTERNAL RESEARCH: Not available - configure Perplexity API key to enable market research from approved sources.';
+    externalSources = 'Internal analysis only - external market research requires Perplexity API configuration';
   }
 
   onProgress?.(`Analyzing ${company.companyName}...`);
 
-  const prompt = `You are a venture capital investor evaluating whether to approve an additional capital request from a portfolio company. Use the provided performance, market, valuation, and competitive data to make an informed investment decision.
+  const prompt = `You are an expert venture capital investor evaluating whether to approve an additional capital request from a portfolio company. Your analysis must be grounded in the Excel financial data with external market insights used only as supporting context.
 
-INTERNAL PORTFOLIO DATA:
+ANALYSIS PROTOCOL:
+- Excel financial data is the PRIMARY source of truth for all investment decisions
+- External research provides market color and sector context ONLY  
+- Never hallucinate or invent market data not provided in external research
+- If external data is insufficient, state this explicitly rather than making assumptions
+- Integrate approved source insights into reasoning and risk assessment where available
+
+PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
 Industry: ${company.industry || 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
@@ -129,20 +144,25 @@ Additional Investment Requested: $${(company.additionalInvestmentRequested / 100
 
 ${externalResearch}
 
-Integrate the internal performance data with external market signals to provide a comprehensive investment recommendation.
+CRITICAL REQUIREMENTS:
+1. Base capital recommendation primarily on financial metrics above
+2. Use external market context to enhance reasoning and risk assessment where available
+3. If external data contradicts financial performance, explain discrepancy and prioritize actual company data
+4. Clearly distinguish between data-driven insights and market-context observations
+5. If insufficient external data, acknowledge this limitation explicitly
 
 Provide your analysis in the following JSON format:
 {
-  "recommendation": "Specific capital amount decision (e.g., 'Invest $250K of $1M request', 'Decline', 'Bridge Capital Only - $500K')",
+  "recommendation": "Specific capital amount decision based on financial performance (e.g., 'Invest $250K of $1M request', 'Decline', 'Bridge Capital Only - $500K')",
   "timingBucket": "One of: Double Down, Reinvest (3-12 Months), Hold (3-6 Months), Bridge Capital Only, Exit Opportunistically, Decline",
-  "reasoning": "2-4 sentences combining internal performance data with external market validation. Start with internal performance, reference external signals, flag downside risks, end with investment logic.",
-  "confidence": "Integer 1-5 where 5=strong internal+external validation, 3=solid internal but mixed external, 1=missing data",
-  "keyRisks": "1-2 sentences highlighting the most material threat, including external market risks",
-  "suggestedAction": "1 tactical sentence with specific next step for the investment team",
-  "externalSources": "Brief summary of external research sources or limitations"
+  "reasoning": "2-4 sentences starting with financial analysis, incorporating relevant external market context, and concluding with investment logic",
+  "confidence": "Integer 1-5 where 5=strong financial+external validation, 3=solid financial but limited external, 1=insufficient data",
+  "keyRisks": "1-2 sentences highlighting material threats based on financial data and available market conditions", 
+  "suggestedAction": "1 tactical sentence with specific next step incorporating both performance and market timing",
+  "externalSources": "Brief summary of external research quality and limitations"
 }
 
-Think like a VC partner. Consider MOIC potential, growth efficiency, exit feasibility, and downside protection. Be objective and data-driven.`;
+Think like a VC partner prioritizing financial fundamentals while incorporating market intelligence responsibly.`;
 
   console.log('🤖 [OpenAI Analysis] Sending prompt to OpenAI...');
 
