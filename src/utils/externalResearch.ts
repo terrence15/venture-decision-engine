@@ -1,24 +1,16 @@
 
-// Approved sources for external research
+// Approved sources for external research (limited to top 10 for Perplexity API domain filter)
 const APPROVED_SOURCES = [
   'techcrunch.com',
-  'crunchbase.com',
+  'crunchbase.com', 
   'cbinsights.com',
-  'mckinsey.com',
-  'bcg.com',
-  'bain.com',
-  'deloitte.com',
-  'pwc.com',
   'reuters.com',
   'bloomberg.com',
   'finance.yahoo.com',
-  'finance.google.com',
   'sec.gov',
   'linkedin.com',
   'dealroom.co',
-  'statista.com',
-  'ssrn.com',
-  'nber.org'
+  'statista.com'
 ];
 
 // Forbidden sources that must not be accessed
