@@ -129,7 +129,8 @@ export function Dashboard() {
         exitActivity: company.exitActivity,
         barrierToEntry: company.barrierToEntry,
         additionalInvestmentRequested: company.additionalInvestmentRequested,
-        industry: company.industry || 'N/A'
+        industry: company.industry || 'N/A',
+        investorInterest: company.investorInterest
       }));
       
       const analyzedCompanies = await analyzePortfolio(

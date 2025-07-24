@@ -20,6 +20,7 @@ interface CompanyData {
   barrierToEntry: number;
   additionalInvestmentRequested: number;
   industry: string;
+  investorInterest: number | null;
   // AI Generated Fields
   recommendation?: string;
   timingBucket?: string;
@@ -142,6 +143,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>MOIC</TableHead>
                 <TableHead>Revenue Growth</TableHead>
                 <TableHead>Requested</TableHead>
+                <TableHead>Investor Interest</TableHead>
                 <TableHead>Recommendation</TableHead>
                 <TableHead>Confidence</TableHead>
               </TableRow>
@@ -180,6 +182,18 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                     <TableCell>{formatPercentage(company.revenueGrowth)}</TableCell>
                     <TableCell>{formatCurrency(company.additionalInvestmentRequested)}</TableCell>
                     <TableCell>
+                      {company.investorInterest ? (
+                        <Badge variant={
+                          company.investorInterest >= 4 ? 'default' :
+                          company.investorInterest >= 3 ? 'secondary' : 'destructive'
+                        }>
+                          {company.investorInterest}/5
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {company.recommendation ? (
                         <span className="font-medium text-foreground">{company.recommendation}</span>
                       ) : (
@@ -193,7 +207,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={10} className="bg-muted/20 p-6">
+                      <TableCell colSpan={11} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -223,6 +237,12 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                   <span className="text-muted-foreground">Barrier to Entry:</span>
                                   <span className="ml-2 font-medium">
                                     {company.barrierToEntry || 'N/A'}/5
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Investor Interest:</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.investorInterest || 'N/A'}/5
                                   </span>
                                 </div>
                                 <div className="col-span-2">

@@ -14,6 +14,7 @@ interface CompanyData {
   barrierToEntry: number;
   additionalInvestmentRequested: number;
   industry: string;
+  investorInterest: number | null;
   revenue?: number;
   monthlyBurn?: number;
   currentValuation?: number;
@@ -53,7 +54,8 @@ export async function analyzeCompanyWithOpenAI(
     company.burnMultiple || company.runway,
     company.tam,
     company.exitActivity,
-    company.additionalInvestmentRequested
+    company.additionalInvestmentRequested,
+    company.investorInterest
   ];
   
   const missingCriticalData = criticalFields.filter(field => 
@@ -165,6 +167,7 @@ TAM Score: ${company.tam}/5
 Exit Activity in Sector: ${company.exitActivity}
 Barrier to Entry: ${company.barrierToEntry}/5
 Additional Investment Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
+Investor Interest / Ability to Raise Capital: ${company.investorInterest || 'Not specified'}/5
 
 ${externalResearch}
 
@@ -175,13 +178,17 @@ CRITICAL REQUIREMENTS:
 4. EXPLICITLY CITE external sources when they influence your decision (use format: "per [Source]")
 5. Clearly distinguish between data-driven insights and market-context observations
 6. If insufficient external data, acknowledge this limitation explicitly
+7. MANDATORY: Factor investor interest level into capital recommendation, confidence score, and suggested actions:
+   - Score 1 (only us interested): Higher risk but potential leverage - scrutinize downside carefully
+   - Score 2-3 (moderate interest): Standard evaluation based on performance metrics
+   - Score 4-5 (oversubscribed/competitive): Consider rightsizing participation, less urgency to overcommit
 
 Provide your analysis in the following JSON format:
 {
   "recommendation": "Specific capital amount decision based on financial performance (e.g., 'Invest $250K of $1M request', 'Decline', 'Bridge Capital Only - $500K')",
   "timingBucket": "One of: Double Down, Reinvest (3-12 Months), Hold (3-6 Months), Bridge Capital Only, Exit Opportunistically, Decline",
   "reasoning": "2-4 sentences starting with financial analysis, incorporating relevant external market context WITH EXPLICIT SOURCE CITATIONS when external data influences decision, and concluding with investment logic",
-  "confidence": "Integer 1-5 where 5=strong financial+external validation, 3=solid financial but limited external, 1=insufficient data",
+  "confidence": "Integer 1-5 where 5=strong financial+external validation+high investor interest, 3=solid financial metrics, 1=insufficient data or concerning metrics with low interest",
   "keyRisks": "1-2 sentences highlighting material threats based on financial data and available market conditions WITH SOURCE CITATIONS where relevant", 
   "suggestedAction": "1 tactical sentence with specific next step incorporating both performance and market timing",
   "externalSources": "Brief summary of external research quality and limitations",

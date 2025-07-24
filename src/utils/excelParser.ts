@@ -15,6 +15,7 @@ export interface RawCompanyData {
   barrierToEntry: number;
   additionalInvestmentRequested: number;
   industry: string;
+  investorInterest: number | null;
 }
 
 // Updated column mapping with exact headers from Excel
@@ -45,7 +46,10 @@ const COLUMN_MAPPINGS = {
   'Additional Investment Requested ($)': 'additionalInvestmentRequested',
   'Industry': 'industry',
   'Industry Sector': 'industry',
-  'Sector': 'industry'
+  'Sector': 'industry',
+  'Investor Interest / Ability to Raise Capital': 'investorInterest',
+  'Investor Interest': 'investorInterest',
+  'Ability to Raise Capital': 'investorInterest'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -61,7 +65,8 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'exitActivity': ['exit', 'activity', 'sector', 'high', 'moderate', 'low'],
   'barrierToEntry': ['barrier', 'entry', 'advantage', 'firms', 'enter'],
   'additionalInvestmentRequested': ['additional', 'investment', 'request'],
-  'industry': ['industry', 'sector']
+  'industry': ['industry', 'sector'],
+  'investorInterest': ['investor', 'interest', 'ability', 'raise', 'capital']
 };
 
 // Improved fuzzy matching function
@@ -143,7 +148,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -277,9 +282,14 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                     }
                   }
                 }
-              } else if (['tam', 'barrierToEntry'].includes(fieldName)) {
+              } else if (['tam', 'barrierToEntry', 'investorInterest'].includes(fieldName)) {
                 let cleanValue = String(value).replace(/[^0-9]/g, '');
-                value = parseInt(cleanValue) || 1;
+                if (fieldName === 'investorInterest') {
+                  const parsedValue = parseInt(cleanValue);
+                  value = (parsedValue >= 1 && parsedValue <= 5) ? parsedValue : null;
+                } else {
+                  value = parseInt(cleanValue) || 1;
+                }
               } else if (typeof value !== 'string') {
                 value = String(value);
               }
