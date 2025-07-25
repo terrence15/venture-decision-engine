@@ -71,12 +71,13 @@ interface ExternalResearchResult {
   recentNews: string;
   fundingHistory: string;
   sources: string[];
-  // Enhanced attribution fields
+  // Enhanced attribution fields with M&A comps
   structuredInsights: {
     marketContext: { insight: string; source: string; }[];
     competitivePosition: { insight: string; source: string; }[];
     fundingEnvironment: { insight: string; source: string; }[];
     industryTrends: { insight: string; source: string; }[];
+    maComps: { insight: string; source: string; }[];
   };
   researchQuality: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
 }
@@ -118,12 +119,13 @@ export async function conductExternalResearch(
       recentNews: 'Recent news research skipped - insufficient company context',
       fundingHistory: 'Funding research skipped - no specific triggers identified',
       sources: [],
-      structuredInsights: {
-        marketContext: [],
-        competitivePosition: [],
-        fundingEnvironment: [],
-        industryTrends: []
-      },
+        structuredInsights: {
+          marketContext: [],
+          competitivePosition: [],
+          fundingEnvironment: [],
+          industryTrends: [],
+          maComps: []
+        },
       researchQuality: 'unavailable' as const
     };
   }
@@ -243,46 +245,40 @@ Always cite specific sources for claims and include publication dates when avail
 function constructResearchQueries(company: CompanyResearchData, triggers: ResearchTriggers): string[] {
   const queries: string[] = [];
   
-  // Industry-centric approach: Always prioritize industry research when available
+  // M&A-focused queries prioritizing recent transactions and exit multiples
   if (triggers.hasIndustry) {
     const industryData = normalizeIndustry(company.industry);
     console.log('🏷️ [Perplexity Research] Normalized industry data:', industryData);
     
-    // Start with broader queries, then get more specific
+    // Priority: M&A transactions and exit multiples for industry
     queries.push(
-      // Broad startup metrics and benchmarks
-      `startup valuation multiples exit multiples EV revenue ARR venture capital 2024`,
-      // Industry-specific exit data and EV/ARR multiples
-      `${industryData.primary} startup exit multiples IPO acquisition valuation benchmarks`,
-      `${industryData.primary} EV/ARR multiple valuation Series A Series B 2024`,
-      // General SaaS/tech metrics (fallback for most startups)
-      `SaaS startup metrics CAC payback burn multiple LTV CAC venture capital benchmarks`,
-      `SaaS EV/ARR multiple revenue multiples exit valuation benchmarks`,
-      // Industry-specific operational metrics
-      `${industryData.keywords[0]} startup metrics operational benchmarks funding rounds`
+      `Recent M&A transactions and exit multiples for ${industryData.primary} companies — include buyer name, year, valuation, and revenue or ARR multiple`,
+      `${industryData.primary} startup acquisitions 2023 2024 acquisition price valuation multiples buyer companies`,
+      `${industryData.primary} exit valuation EV/ARR EV/Revenue multiple acquisition IPO recent transactions`,
+      `M&A exit multiples ${industryData.keywords[0]} sector acquisition valuations revenue multiples`
     );
   } else {
-    // Fallback queries when no industry specified - use broader terms
+    // Fallback M&A queries when no industry specified
     queries.push(
-      `startup valuation multiples exit benchmarks venture capital 2024`,
-      `venture capital exit multiples IPO acquisition startup valuation`,
-      `startup metrics CAC payback burn multiple operational benchmarks`,
+      `Recent M&A transactions and exit multiples for tech companies — include buyer name, year, valuation, and revenue or ARR multiple`,
+      `startup acquisitions 2023 2024 exit multiples EV/ARR acquisition valuations`,
+      `technology M&A transactions exit valuation revenue multiples acquisition prices`,
       `${company.companyName} funding rounds valuation recent investment activity`
     );
   }
   
-  // Additional context-specific queries based on triggers
+  // Additional M&A context-specific queries
   if (triggers.highAdditionalInvestment) {
     queries.push(
-      `${company.companyName} Series A B C funding bridge round additional investment`,
-      `large funding rounds valuation multiple EV revenue startup exit`
+      `${company.companyName} acquisition rumors strategic buyers M&A exit opportunities`,
+      `large funding rounds exit strategy acquisition valuation multiple EV revenue`
     );
   }
   
   if (triggers.hasExitActivity && company.exitActivity) {
     queries.push(
-      `${company.companyName} ${company.exitActivity} IPO acquisition exit strategy`,
-      `${company.exitActivity} exit valuation multiple revenue acquisition price`
+      `${company.companyName} ${company.exitActivity} M&A acquisition strategic exit`,
+      `${company.exitActivity} recent acquisitions exit valuation multiple revenue price`
     );
   }
   
@@ -297,12 +293,14 @@ function parseStructuredInsights(results: string[], sources: string[]): {
   competitivePosition: { insight: string; source: string; }[];
   fundingEnvironment: { insight: string; source: string; }[];
   industryTrends: { insight: string; source: string; }[];
+  maComps: { insight: string; source: string; }[];
 } {
   const insights = {
     marketContext: [] as { insight: string; source: string; }[],
     competitivePosition: [] as { insight: string; source: string; }[],
     fundingEnvironment: [] as { insight: string; source: string; }[],
-    industryTrends: [] as { insight: string; source: string; }[]
+    industryTrends: [] as { insight: string; source: string; }[],
+    maComps: [] as { insight: string; source: string; }[]
   };
 
   // Extract key insights from each result with source attribution
@@ -316,8 +314,11 @@ function parseStructuredInsights(results: string[], sources: string[]): {
       const trimmed = sentence.trim();
       if (trimmed.length < 30) return;
       
-      // Categorize insights based on content keywords
-      if (trimmed.match(/market|industry|sector|demand|growth|size/i)) {
+      // Enhanced categorization with M&A comps detection
+      if (trimmed.match(/acquired|acquisition|M&A|merger|bought|purchased|exit|sold/i) && 
+          trimmed.match(/\$|multiple|valuation|revenue|ARR/i)) {
+        insights.maComps.push({ insight: trimmed, source: relevantSource });
+      } else if (trimmed.match(/market|industry|sector|demand|growth|size/i)) {
         insights.marketContext.push({ insight: trimmed, source: relevantSource });
       } else if (trimmed.match(/competitor|competitive|rival|comparison|versus/i)) {
         insights.competitivePosition.push({ insight: trimmed, source: relevantSource });

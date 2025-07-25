@@ -44,6 +44,7 @@ interface CompanyData {
     competitivePosition: string[];
     fundingEnvironment: string[];
     industryTrends: string[];
+    maComps: string[];
   };
   researchQuality?: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
   sourceAttributions?: string[];
@@ -165,6 +166,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>Round Terms</TableHead>
                 <TableHead>Recommendation</TableHead>
                 <TableHead>Confidence</TableHead>
+                <TableHead>Projected Exit Value</TableHead>
                 <TableHead>Risk-Adjusted Summary</TableHead>
               </TableRow>
             </TableHeader>
@@ -280,6 +282,18 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                     </TableCell>
                     <TableCell>
                       <div className="max-w-xs">
+                        {company.projectedExitValueRange ? (
+                          <div className="text-sm text-muted-foreground line-clamp-2">
+                            {company.projectedExitValueRange.substring(0, 120)}
+                            {company.projectedExitValueRange.length > 120 ? '...' : ''}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Pending analysis</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-xs">
                         {company.riskAdjustedMonetizationSummary ? (
                           <div className="text-sm text-muted-foreground line-clamp-2">
                             {company.riskAdjustedMonetizationSummary.substring(0, 150)}
@@ -294,7 +308,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={17} className="bg-muted/20 p-6">
+                      <TableCell colSpan={18} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -436,20 +450,31 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                               </div>
                             )}
                             
-                            {company.externalInsights && !company.insufficientData && (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold text-sm text-muted-foreground">External Market Intelligence</h4>
-                                  {company.researchQuality && (
-                                    <Badge variant={
-                                      company.researchQuality === 'comprehensive' ? 'default' :
-                                      company.researchQuality === 'limited' ? 'secondary' :
-                                      company.researchQuality === 'minimal' ? 'outline' : 'destructive'
-                                    } className="text-xs">
-                                      {company.researchQuality}
-                                    </Badge>
-                                  )}
-                                </div>
+                             {company.externalInsights && !company.insufficientData && (
+                               <div className="space-y-3">
+                                 <div className="flex items-center gap-2">
+                                   <h4 className="font-semibold text-sm text-muted-foreground">External Market Intelligence</h4>
+                                   {company.researchQuality && (
+                                     <Badge variant={
+                                       company.researchQuality === 'comprehensive' ? 'default' :
+                                       company.researchQuality === 'limited' ? 'secondary' :
+                                       company.researchQuality === 'minimal' ? 'outline' : 'destructive'
+                                     } className="text-xs">
+                                       {company.researchQuality}
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 
+                                 {company.externalInsights.maComps && company.externalInsights.maComps.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">M&A Comparables:</p>
+                                     <ul className="text-xs space-y-1">
+                                       {company.externalInsights.maComps.slice(0, 3).map((insight, idx) => (
+                                         <li key={idx} className="text-foreground/80">• {insight.substring(0, 200)}{insight.length > 200 ? '...' : ''}</li>
+                                       ))}
+                                     </ul>
+                                   </div>
+                                 )}
                                 
                                 {company.externalInsights.marketContext.length > 0 && (
                                   <div>

@@ -42,6 +42,7 @@ interface AnalysisResult {
     competitivePosition: string[];
     fundingEnvironment: string[];
     industryTrends: string[];
+    maComps: string[];
   };
   researchQuality: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
   sourceAttributions: string[];
@@ -91,7 +92,8 @@ export async function analyzeCompanyWithOpenAI(
           marketContext: [],
           competitivePosition: [],
           fundingEnvironment: [],
-          industryTrends: []
+          industryTrends: [],
+          maComps: []
         },
         researchQuality: 'unavailable' as const,
         sourceAttributions: []
@@ -136,6 +138,8 @@ Competitive Position: ${research.structuredInsights.competitivePosition.map(i =>
 Funding Environment: ${research.structuredInsights.fundingEnvironment.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No funding insights available'}
 
 Industry Trends: ${research.structuredInsights.industryTrends.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No trend insights available'}
+
+M&A Comparables: ${research.structuredInsights.maComps.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No M&A comparables found'}
 
 Research Sources: ${research.sources.join(', ') || 'Limited external data available'}
       `;
@@ -447,7 +451,8 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
         marketContext: [],
         competitivePosition: [],
         fundingEnvironment: [],
-        industryTrends: []
+        industryTrends: [],
+        maComps: []
       },
       researchQuality: research?.researchQuality || 'unavailable',
       sourceAttributions: analysis.sourceAttributions || []
@@ -511,7 +516,8 @@ export async function analyzePortfolio(
           marketContext: [],
           competitivePosition: [],
           fundingEnvironment: [],
-          industryTrends: []
+          industryTrends: [],
+          maComps: []
         },
         researchQuality: 'unavailable' as const,
         sourceAttributions: []
