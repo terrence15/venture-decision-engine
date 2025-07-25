@@ -34,6 +34,7 @@ interface CompanyData {
   keyRisks?: string;
   suggestedAction?: string;
   projectedExitValueRange?: string;
+  riskAdjustedMonetizationSummary?: string;
   // External Research Integration
   externalSources?: string;
   insufficientData?: boolean;
@@ -164,6 +165,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>Round Terms</TableHead>
                 <TableHead>Recommendation</TableHead>
                 <TableHead>Confidence</TableHead>
+                <TableHead>Risk-Adjusted Summary</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -276,11 +278,23 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                     <TableCell>
                       {getConfidenceBadge(company.confidence)}
                     </TableCell>
+                    <TableCell>
+                      <div className="max-w-xs">
+                        {company.riskAdjustedMonetizationSummary ? (
+                          <div className="text-sm text-muted-foreground line-clamp-2">
+                            {company.riskAdjustedMonetizationSummary.substring(0, 150)}
+                            {company.riskAdjustedMonetizationSummary.length > 150 ? '...' : ''}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Pending analysis</span>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={16} className="bg-muted/20 p-6">
+                      <TableCell colSpan={17} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -406,9 +420,18 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                             
                             {company.projectedExitValueRange && (
                               <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Projected Exit Value Range</h4>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">📈 Projected Exit Value Range</h4>
                                 <div className="text-sm leading-relaxed bg-muted/40 p-3 rounded border border-border">
                                   <div className="whitespace-pre-wrap">{company.projectedExitValueRange}</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {company.riskAdjustedMonetizationSummary && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">💰 Risk-Adjusted Monetization Summary</h4>
+                                <div className="text-sm leading-relaxed bg-gradient-subtle p-3 rounded border border-border">
+                                  <div className="whitespace-pre-wrap">{company.riskAdjustedMonetizationSummary}</div>
                                 </div>
                               </div>
                             )}

@@ -35,6 +35,7 @@ interface AnalysisResult {
   projectedExitValueRange: string;
   externalSources: string;
   insufficientData: boolean;
+  riskAdjustedMonetizationSummary: string;
   // Enhanced external attribution
   externalInsights: {
     marketContext: string[];
@@ -85,6 +86,7 @@ export async function analyzeCompanyWithOpenAI(
         projectedExitValueRange: 'Cannot project exit value without sufficient company data. Industry benchmarks and revenue metrics required for analysis.',
         externalSources: 'Insufficient internal data - external research not conducted',
         insufficientData: true,
+        riskAdjustedMonetizationSummary: 'Insufficient data to calculate risk-adjusted monetization summary. Core financial metrics, growth projections, and market validation data required to assess projected returns, success probability, and risk-adjusted exit value.',
         externalInsights: {
           marketContext: [],
           competitivePosition: [],
@@ -308,6 +310,38 @@ CRITICAL REQUIREMENTS:
    - Complexity 4-5: Support increased participation with clean structure confidence boost
 10. MANDATORY: Use exit timeline in all commentary sections (reasoning, projectedExitValueRange, suggestedAction)
 
+RISK-ADJUSTED MONETIZATION SUMMARY PROTOCOL:
+You MUST calculate the Risk-Adjusted Monetization Summary using this 7-step process:
+
+STEP 1: Project ARR at Exit
+Projected ARR at Exit = ARR (TTM) × (1 + Projected Revenue Growth) ^ Exit Timeline
+- Use company revenue/ARR data and projected growth rate
+- Use Exit Timeline from user input; if blank, default to 3 years
+
+STEP 2: Pull EV/ARR Multiple from External Research
+- Extract EV/ARR multiples from external research data (TechCrunch, Crunchbase, market reports)
+- Use industry-specific multiples based on stage and sector
+- Default to 5-8x range for Series A/B SaaS if no specific data available
+
+STEP 3: Estimate Gross Exit Value
+Gross Exit Value = Projected ARR at Exit × Industry EV/ARR Multiple
+
+STEP 4: Assign Composite Success Probability
+Calculate risk-weighted probability based on:
+- Execution Risk: Burn Multiple, Runway, EBITDA Margin, Revenue Growth
+- Market Risk: TAM, Exit Activity in Sector, Barrier to Entry  
+- Cap Table Risk: Round Complexity, Investor Interest
+Risk Levels: Low (50-70%), Medium (20-40%), High (5-15%)
+
+STEP 5: Calculate Risk-Adjusted Exit
+Risk-Adjusted Exit = Gross Exit Value × Success Probability
+
+STEP 6: Estimate VC Return  
+VC Return = Risk-Adjusted Exit × Equity Stake %
+
+STEP 7: Risk-Adjusted MOIC
+MOIC = VC Return ÷ (Total Investment + Additional Investment Requested)
+
 Provide your analysis in the following JSON format:
 {
   "recommendation": "Enhanced recommendations incorporating valuation analysis: 'Invest $X at fair valuation', 'Decline due to overpricing', 'Pro-rata only - valuation stretch', 'Conditional Investment - $X if terms include downside protection', 'Bridge Capital Only - $X pending reasonable valuation', 'Wait for Co-Lead', 'Decline due to syndicate risk', etc.",
@@ -317,6 +351,7 @@ Provide your analysis in the following JSON format:
   "keyRisks": "1-2 sentences highlighting material threats, MUST include complexity-specific risks like 'complex deal structure', 'governance alignment issues', 'liquidation preference concerns' for complexity 1-2, plus valuation risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
   "suggestedAction": "1 tactical sentence focusing on complexity management (legal review, term renegotiation for complexity 1-2), valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on structure quality, pricing and interest levels",
   "projectedExitValueRange": "1-2 paragraph analysis using EXIT TIMELINE for all projections. Calculate: Projected ARR = Current ARR × (1 + Revenue Growth Rate) ^ ${company.exitTimeline || 3} years, then Gross Exit Value = Projected ARR × Industry EV/ARR Multiple. Compare timeline assumptions against sector norms from external sources. Assess whether ${company.exitTimeline || 3}-year timeline is realistic given current metrics and market conditions. Include dilution impact over the timeline and return compression analysis. State timeline assumption explicitly: 'Based on a ${company.exitTimeline || 3}-year projected exit timeline' and mention if default assumption was used.",
+  "riskAdjustedMonetizationSummary": "MANDATORY 1-2 paragraph summary following the 7-step calculation process. Must include: 1) Projected ARR calculation, 2) EV/ARR multiple source and value, 3) Gross Exit Value, 4) Success probability assessment and rationale, 5) Risk-adjusted exit value, 6) VC return calculation, 7) Final risk-adjusted MOIC. Format: 'This company projects a gross exit value of ~$XM based on an ARR forecast of ~$XM over a ${company.exitTimeline || 3}-year timeline and a Xx EV/ARR multiple benchmarked from [source]. However, [risk factors] introduce [risk level] execution risk. We assign a X% success probability. This yields a risk-adjusted exit of ~$XM. With a X% fully diluted stake and $XM total capital exposure, expected return is ~$XM — implying a ~X.Xx risk-adjusted MOIC. [Strategic recommendation].'",
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],
@@ -390,6 +425,7 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
       projectedExitValueRange: analysis.projectedExitValueRange || 'Limited external benchmarks available - internal analysis only. Insufficient data for reliable exit value projection.',
       externalSources: externalSources,
       insufficientData: false,
+      riskAdjustedMonetizationSummary: analysis.riskAdjustedMonetizationSummary || 'Risk-adjusted monetization analysis could not be completed with available data. Requires comprehensive financial metrics and market validation signals for accurate return projections.',
       // Enhanced external attribution
       externalInsights: analysis.externalInsights || {
         marketContext: [],
@@ -432,6 +468,7 @@ export async function analyzePortfolio(
         keyRisks: analysis.keyRisks,
         suggestedAction: analysis.suggestedAction,
         projectedExitValueRange: analysis.projectedExitValueRange,
+        riskAdjustedMonetizationSummary: analysis.riskAdjustedMonetizationSummary,
         externalSources: analysis.externalSources,
         insufficientData: analysis.insufficientData
       } as any);
@@ -451,6 +488,7 @@ export async function analyzePortfolio(
         keyRisks: 'Unable to complete analysis due to technical issues.',
         suggestedAction: 'Retry analysis or conduct manual review.',
         projectedExitValueRange: 'Cannot project exit value due to analysis failure. Retry analysis or conduct manual evaluation.',
+        riskAdjustedMonetizationSummary: 'Risk-adjusted analysis could not be completed due to technical error. Retry analysis to generate comprehensive return projections.',
         externalSources: 'Analysis incomplete',
         insufficientData: true,
         externalInsights: {

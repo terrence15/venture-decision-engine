@@ -252,10 +252,12 @@ function constructResearchQueries(company: CompanyResearchData, triggers: Resear
     queries.push(
       // Broad startup metrics and benchmarks
       `startup valuation multiples exit multiples EV revenue ARR venture capital 2024`,
-      // Industry-specific exit data
+      // Industry-specific exit data and EV/ARR multiples
       `${industryData.primary} startup exit multiples IPO acquisition valuation benchmarks`,
+      `${industryData.primary} EV/ARR multiple valuation Series A Series B 2024`,
       // General SaaS/tech metrics (fallback for most startups)
       `SaaS startup metrics CAC payback burn multiple LTV CAC venture capital benchmarks`,
+      `SaaS EV/ARR multiple revenue multiples exit valuation benchmarks`,
       // Industry-specific operational metrics
       `${industryData.keywords[0]} startup metrics operational benchmarks funding rounds`
     );
@@ -271,11 +273,17 @@ function constructResearchQueries(company: CompanyResearchData, triggers: Resear
   
   // Additional context-specific queries based on triggers
   if (triggers.highAdditionalInvestment) {
-    queries.push(`${company.companyName} Series A B C funding bridge round additional investment`);
+    queries.push(
+      `${company.companyName} Series A B C funding bridge round additional investment`,
+      `large funding rounds valuation multiple EV revenue startup exit`
+    );
   }
   
   if (triggers.hasExitActivity && company.exitActivity) {
-    queries.push(`${company.companyName} ${company.exitActivity} IPO acquisition exit strategy`);
+    queries.push(
+      `${company.companyName} ${company.exitActivity} IPO acquisition exit strategy`,
+      `${company.exitActivity} exit valuation multiple revenue acquisition price`
+    );
   }
   
   // Limit to 4 queries to avoid rate limiting
