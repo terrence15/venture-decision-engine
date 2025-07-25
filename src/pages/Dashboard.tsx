@@ -135,7 +135,8 @@ export function Dashboard() {
         investorInterest: company.investorInterest,
         preMoneyValuation: company.preMoneyValuation,
         postMoneyValuation: company.postMoneyValuation,
-        roundComplexity: company.roundComplexity
+        roundComplexity: company.roundComplexity,
+        exitTimeline: company.exitTimeline || 3
       }));
       
       const analyzedCompanies = await analyzePortfolio(

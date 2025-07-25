@@ -19,6 +19,7 @@ interface CompanyData {
   preMoneyValuation: number | null;
   postMoneyValuation: number | null;
   roundComplexity: number | null;
+  exitTimeline: number | null;
   revenue?: number;
   monthlyBurn?: number;
   currentValuation?: number;
@@ -271,24 +272,41 @@ Investor Interest / Ability to Raise Capital: ${company.investorInterest !== nul
 Pre-Money Valuation: ${company.preMoneyValuation !== null ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
 Post-Money Valuation: ${company.postMoneyValuation !== null ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
 Round Complexity: ${company.roundComplexity !== null ? `${company.roundComplexity}/5` : 'Not provided - defaulting to 3 (neutral)'}
+Exit Timeline: ${company.exitTimeline !== null ? `${company.exitTimeline} years` : '3 years (default assumption)'}
 
 ${externalResearch}
 
+EXIT TIMELINE INTEGRATION PROTOCOL:
+Use the Exit Timeline to drive financial projections and time-sensitive investment decisions:
+
+PROJECTED FINANCIAL CALCULATIONS:
+- Projected ARR at Exit = Current ARR × (1 + Revenue Growth Rate) ^ Exit Timeline
+- Gross Exit Value = Projected ARR × Industry EV/ARR Multiple (from external research)
+- Factor timeline into IRR calculations: longer timelines increase risk and may compress returns
+
+TIME-SENSITIVE RISK ASSESSMENT:
+- Longer timelines (>5 years) increase execution risk and market uncertainty
+- Factor capital lock-up risk into confidence scoring
+- Consider timeline feasibility vs. runway and burn rate
+- Assess whether timeline aligns with typical sector exit patterns
+
 CRITICAL REQUIREMENTS:
-1. Base capital recommendation primarily on financial metrics above
-2. Use external market context to enhance reasoning and risk assessment where available
-3. If external data contradicts financial performance, explain discrepancy and prioritize actual company data
-4. EXPLICITLY CITE external sources when they influence your decision (use format: "per [Source]")
-5. Clearly distinguish between data-driven insights and market-context observations
-6. If insufficient external data, acknowledge this limitation explicitly
-7. MANDATORY: Factor investor interest level into capital recommendation, confidence score, and suggested actions:
+1. Base capital recommendation primarily on financial metrics above, enhanced by exit timeline projections
+2. Use exit timeline for ALL projected financial calculations (ARR, exit value, IRR assessment)
+3. Include explicit timeline mentions in reasoning: "based on a ${company.exitTimeline || 3}-year projected exit timeline"
+4. Factor timeline into confidence scoring: realistic timelines boost confidence, aggressive timelines reduce it
+5. Use external market context to validate timeline assumptions and sector exit patterns
+6. If external data contradicts timeline assumptions, explain discrepancy and adjust projections
+7. EXPLICITLY CITE external sources when they influence timeline or exit value projections
+8. MANDATORY: Factor investor interest level into capital recommendation, confidence score, and suggested actions:
    - Score 1 (only us interested): Higher risk but potential leverage - scrutinize downside carefully
    - Score 2-3 (moderate interest): Standard evaluation based on performance metrics
    - Score 4-5 (oversubscribed/competitive): Consider rightsizing participation, less urgency to overcommit
-8. MANDATORY: Factor round complexity into all decisions:
+9. MANDATORY: Factor round complexity into all decisions:
    - Complexity 1-2: Reduce confidence, require legal review, consider declining or conditional investment
    - Complexity 3: Standard evaluation with term review requirement
    - Complexity 4-5: Support increased participation with clean structure confidence boost
+10. MANDATORY: Use exit timeline in all commentary sections (reasoning, projectedExitValueRange, suggestedAction)
 
 Provide your analysis in the following JSON format:
 {
@@ -298,7 +316,7 @@ Provide your analysis in the following JSON format:
   "confidence": "Integer 1-5 where 5=strong financial+clean terms(4-5)+reasonable valuation+external validation+high investor interest, 3=solid metrics+moderate complexity(3)+fair valuation+moderate interest, 1=complex terms(1-2) OR overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",
   "keyRisks": "1-2 sentences highlighting material threats, MUST include complexity-specific risks like 'complex deal structure', 'governance alignment issues', 'liquidation preference concerns' for complexity 1-2, plus valuation risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
   "suggestedAction": "1 tactical sentence focusing on complexity management (legal review, term renegotiation for complexity 1-2), valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on structure quality, pricing and interest levels",
-  "projectedExitValueRange": "1-2 paragraph analysis synthesizing internal Excel data with external industry benchmarks. Calculate realistic projected exit value based on current revenue/ARR × externally benchmarked exit multiple for the industry/stage. Compare company's metrics (CAC payback, burn multiple, NRR) against sector norms from external sources. Assess valuation compression risk - whether current valuation supports healthy MOIC or is priced aggressively. Include dilution impact and return compression analysis. If industry benchmarks unavailable, state 'Limited external benchmarks available - internal analysis only' and provide basic exit value estimation using company data.",
+  "projectedExitValueRange": "1-2 paragraph analysis using EXIT TIMELINE for all projections. Calculate: Projected ARR = Current ARR × (1 + Revenue Growth Rate) ^ ${company.exitTimeline || 3} years, then Gross Exit Value = Projected ARR × Industry EV/ARR Multiple. Compare timeline assumptions against sector norms from external sources. Assess whether ${company.exitTimeline || 3}-year timeline is realistic given current metrics and market conditions. Include dilution impact over the timeline and return compression analysis. State timeline assumption explicitly: 'Based on a ${company.exitTimeline || 3}-year projected exit timeline' and mention if default assumption was used.",
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],

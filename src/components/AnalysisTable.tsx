@@ -25,6 +25,7 @@ interface CompanyData {
   preMoneyValuation: number | null;
   postMoneyValuation: number | null;
   roundComplexity: number | null;
+  exitTimeline: number | null;
   // AI Generated Fields
   recommendation?: string;
   timingBucket?: string;
@@ -155,6 +156,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>MOIC</TableHead>
                 <TableHead>TTM Growth</TableHead>
                 <TableHead>Projected Growth</TableHead>
+                <TableHead>Exit Timeline</TableHead>
                 <TableHead>Pre-Money</TableHead>
                 <TableHead>Post-Money</TableHead>
                 <TableHead>Requested</TableHead>
@@ -213,6 +215,20 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                       </div>
                     </TableCell>
                     <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">
+                          {company.exitTimeline !== null && company.exitTimeline !== undefined 
+                            ? `${company.exitTimeline} years`
+                            : '3 years (default)'}
+                        </span>
+                        {(!company.exitTimeline || company.exitTimeline === 3) && (
+                          <Badge variant="outline" className="text-xs">
+                            Default
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div className="text-sm">
                         {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
                           ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
@@ -264,7 +280,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={15} className="bg-muted/20 p-6">
+                      <TableCell colSpan={16} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -301,6 +317,19 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                    <span className="ml-2 font-medium">
                                      {formatPercentage(company.projectedRevenueGrowth)}
                                    </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Exit Timeline:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.exitTimeline !== null && company.exitTimeline !== undefined 
+                                       ? `${company.exitTimeline} years`
+                                       : '3 years (default)'}
+                                   </span>
+                                   {(!company.exitTimeline || company.exitTimeline === 3) && (
+                                     <Badge variant="outline" className="ml-1 text-xs">
+                                       Default Assumption
+                                     </Badge>
+                                   )}
                                  </div>
                                  <div>
                                    <span className="text-muted-foreground">Investor Interest:</span>

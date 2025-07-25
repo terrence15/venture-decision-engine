@@ -20,6 +20,7 @@ export interface RawCompanyData {
   preMoneyValuation: number | null;
   postMoneyValuation: number | null;
   roundComplexity: number | null;
+  exitTimeline: number | null;
 }
 
 // Updated column mapping with exact headers from Excel
@@ -69,7 +70,13 @@ const COLUMN_MAPPINGS = {
   'Round Complexity': 'roundComplexity',
   'Round Complexity (1-5)': 'roundComplexity',
   'Complexity': 'roundComplexity',
-  'Deal Complexity': 'roundComplexity'
+  'Deal Complexity': 'roundComplexity',
+  'Exit Timeline (in years)': 'exitTimeline',
+  'Exit Timeline': 'exitTimeline',
+  'Timeline': 'exitTimeline',
+  'Years to Exit': 'exitTimeline',
+  'Exit Timeline (years)': 'exitTimeline',
+  'Timeline to Exit': 'exitTimeline'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -90,7 +97,8 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'investorInterest': ['investor', 'interest', 'ability', 'raise', 'capital'],
   'preMoneyValuation': ['pre', 'money', 'valuation'],
   'postMoneyValuation': ['post', 'money', 'valuation'],
-  'roundComplexity': ['round', 'complexity', 'terms', 'structure', 'deal']
+  'roundComplexity': ['round', 'complexity', 'terms', 'structure', 'deal'],
+  'exitTimeline': ['exit', 'timeline', 'years', 'time', 'horizon', 'liquidity']
 };
 
 // Improved fuzzy matching function
@@ -172,7 +180,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -275,7 +283,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -323,6 +331,15 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                         value = 3; // Default to neutral
                       }
                     }
+                    // Handle exit timeline (validate positive numbers, default to 3)
+                    else if (fieldName === 'exitTimeline') {
+                      if (parsedValue > 0 && parsedValue <= 20) {
+                        value = Math.round(parsedValue); // Ensure integer years
+                      } else {
+                        console.warn(`Invalid exit timeline value for ${company.companyName}: ${parsedValue}. Must be positive and ≤20 years.`);
+                        value = 3; // Default to 3 years
+                      }
+                    }
                   }
                 }
               } else if (['tam', 'barrierToEntry', 'investorInterest', 'roundComplexity'].includes(fieldName)) {
@@ -350,6 +367,12 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
             }
           });
           
+          // Set default exit timeline if not provided
+          if (!company.exitTimeline) {
+            company.exitTimeline = 3; // Default to 3 years
+            console.log(`Setting default exit timeline of 3 years for ${company.companyName}`);
+          }
+
           // Validate required fields
           if (company.companyName) {
             companies.push(company);
