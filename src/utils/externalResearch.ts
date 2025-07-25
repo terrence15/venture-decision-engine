@@ -176,10 +176,9 @@ Provide concise, factual information focused on recent developments, funding act
         ],
         temperature: 0.2,
         top_p: 0.9,
-        max_tokens: 500,
+        max_tokens: 1200,
         return_images: false,
         return_related_questions: false,
-        search_domain_filter: APPROVED_SOURCES,
         search_recency_filter: 'year',
         frequency_penalty: 1,
         presence_penalty: 0
@@ -276,24 +275,24 @@ function constructResearchQueries(company: CompanyResearchData, triggers: Resear
     const industryData = normalizeIndustry(company.industry);
     console.log('🏷️ [Perplexity Research] Normalized industry data:', industryData);
     
-    // Tiered industry queries: specific → general → sector-level
+    // Start with broader queries, then get more specific
     queries.push(
-      // Exit multiples and benchmarks for industry
-      `${industryData.primary} exit multiples EV/ARR Series A B C funding stage valuation 2024`,
-      // Industry metrics and benchmarks
-      `${industryData.keywords[0]} startup metrics CAC payback burn multiple NRR LTV/CAC benchmarks`,
-      // Market size and TAM research
-      `${industryData.primary} market size TAM total addressable market venture capital exits`,
-      // Founder ownership and dilution norms
-      `${industryData.primary} founder ownership dilution norms funding rounds venture capital`
+      // Broad startup metrics and benchmarks
+      `startup valuation multiples exit multiples EV revenue ARR venture capital 2024`,
+      // Industry-specific exit data
+      `${industryData.primary} startup exit multiples IPO acquisition valuation benchmarks`,
+      // General SaaS/tech metrics (fallback for most startups)
+      `SaaS startup metrics CAC payback burn multiple LTV CAC venture capital benchmarks`,
+      // Industry-specific operational metrics
+      `${industryData.keywords[0]} startup metrics operational benchmarks funding rounds`
     );
   } else {
-    // Fallback queries when no industry specified
+    // Fallback queries when no industry specified - use broader terms
     queries.push(
-      `${company.companyName} funding rounds valuation recent investment activity`,
-      `${company.companyName} competitive analysis market position recent news`,
-      `startup funding trends venture capital investment 2024`,
-      `${company.companyName} partnerships business model revenue growth`
+      `startup valuation multiples exit benchmarks venture capital 2024`,
+      `venture capital exit multiples IPO acquisition startup valuation`,
+      `startup metrics CAC payback burn multiple operational benchmarks`,
+      `${company.companyName} funding rounds valuation recent investment activity`
     );
   }
   
@@ -371,12 +370,13 @@ function parseStructuredInsights(results: string[], sources: string[]): {
 }
 
 function determineResearchQuality(results: string[], sources: string[]): 'comprehensive' | 'limited' | 'minimal' | 'unavailable' {
-  const validResults = results.filter(r => r && !r.includes('unavailable') && !r.includes('failed')).length;
+  const validResults = results.filter(r => r && !r.includes('unavailable') && !r.includes('failed') && !r.includes('External research limited')).length;
   const sourcesCount = sources.length;
   
-  if (validResults >= 3 && sourcesCount >= 2) return 'comprehensive';
-  if (validResults >= 2 && sourcesCount >= 1) return 'limited';
-  if (validResults >= 1) return 'minimal';
+  // More lenient quality assessment - any useful content counts
+  if (validResults >= 2 && sourcesCount >= 1) return 'comprehensive';
+  if (validResults >= 1) return 'limited';
+  if (results.some(r => r && r.length > 50)) return 'minimal';
   return 'unavailable';
 }
 
