@@ -88,6 +88,21 @@ export async function conductExternalResearch(
   console.log('🔍 [Perplexity Research] Starting external research for:', company.companyName);
   console.log('🔑 [Perplexity Research] API Key present:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NO KEY');
   console.log('🔑 [Perplexity Research] API Key format valid:', apiKey?.startsWith('pplx-'));
+  
+  // Test API key first
+  if (!apiKey) {
+    console.error('❌ [Perplexity Research] No API key provided');
+    throw new Error('Perplexity API key is required for external research');
+  }
+  
+  // Quick API connectivity test
+  console.log('🧪 [Perplexity Research] Testing API connectivity...');
+  const testResult = await testPerplexityApiKey(apiKey);
+  if (!testResult.success) {
+    console.error('❌ [Perplexity Research] API key test failed:', testResult.error);
+    throw new Error(`Perplexity API key validation failed: ${testResult.error}`);
+  }
+  console.log('✅ [Perplexity Research] API key validated successfully');
 
   // Evaluate research triggers
   const triggers = shouldTriggerResearch(company);
