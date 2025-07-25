@@ -1,32 +1,5 @@
 
-// Approved sources for external research (limited to top 10 for Perplexity API domain filter)
-const APPROVED_SOURCES = [
-  'techcrunch.com',
-  'crunchbase.com', 
-  'cbinsights.com',
-  'reuters.com',
-  'bloomberg.com',
-  'finance.yahoo.com',
-  'sec.gov',
-  'linkedin.com',
-  'dealroom.co',
-  'statista.com'
-];
-
-// Forbidden sources that must not be accessed
-const FORBIDDEN_SOURCES = [
-  'ibisworld.com',
-  'pitchbook.com',
-  'capitaliq.com',
-  'terminal.bloomberg.com',
-  'gartner.com',
-  'forrester.com',
-  'euromonitor.com',
-  'frost.com',
-  'morningstar.com',
-  'preqin.com',
-  'valueline.com'
-];
+// Source restrictions removed - full web access enabled
 
 interface CompanyResearchData {
   companyName: string;
@@ -161,13 +134,9 @@ export async function conductExternalResearch(
             role: 'system',
             content: `You are a research analyst specializing in startup and venture capital research. 
 
-CRITICAL SOURCE RESTRICTIONS:
-- ONLY use information from: TechCrunch, Crunchbase News, CB Insights, McKinsey, BCG, Bain, Deloitte, PwC (public content), Reuters, Bloomberg News, Yahoo Finance, Google Finance, SEC EDGAR, LinkedIn company profiles, Dealroom, Statista previews, SSRN, NBER abstracts.
-- NEVER reference: IBISWorld, PitchBook Pro, Capital IQ, Bloomberg Terminal, Gartner, Forrester, Euromonitor, Frost & Sullivan, Morningstar, Preqin, Value Line, Crunchbase Pro.
-- If information is only available from forbidden sources, clearly state "Data not available from approved sources."
-- Always cite specific sources for claims and include publication dates when available.
+Access the full web and use any relevant sources available to provide comprehensive research on startup valuations, industry benchmarks, exit multiples, and market data.
 
-Provide concise, factual information focused on recent developments, funding activities, and market positioning.`
+Always cite specific sources for claims and include publication dates when available. Provide concise, factual information focused on recent developments, funding activities, and market positioning.`
           },
           {
             role: 'user',
@@ -205,25 +174,14 @@ Provide concise, factual information focused on recent developments, funding act
         const content = data.choices[0]?.message?.content || 'No information found';
         console.log('📄 [Perplexity Research] Extracted content length:', content.length);
         
-        // Validate sources in response
-        const sourceValidation = validateSources(content);
-        console.log('🔒 [Perplexity Research] Source validation:', sourceValidation);
+        results.push(content);
         
-        if (sourceValidation.hasForbiddenSources) {
-          console.warn('⚠️ [Perplexity Research] Forbidden sources detected, using fallback response');
-          results.push('External research limited - data sources do not meet approved criteria');
-        } else {
-          results.push(content);
-        }
-        
-        // Extract and validate sources from content
+        // Extract sources from content
         const sourceMatches = content.match(/(?:according to|from|via|source:|reported by)\s+([^.]+)/gi);
         if (sourceMatches) {
           const extractedSources = sourceMatches.map(s => s.replace(/^(according to|from|via|source:|reported by)\s+/i, ''));
           console.log('🔗 [Perplexity Research] Found sources:', extractedSources);
-          allSources.push(...extractedSources.filter(source => 
-            !FORBIDDEN_SOURCES.some(forbidden => source.toLowerCase().includes(forbidden.replace('.com', '')))
-          ));
+          allSources.push(...extractedSources);
         }
       } else {
         const errorText = await response.text();
@@ -309,20 +267,7 @@ function constructResearchQueries(company: CompanyResearchData, triggers: Resear
   return queries.slice(0, 4);
 }
 
-function validateSources(content: string): { hasForbiddenSources: boolean; detectedSources: string[] } {
-  const detectedSources: string[] = [];
-  let hasForbiddenSources = false;
-  
-  FORBIDDEN_SOURCES.forEach(forbiddenSource => {
-    const domain = forbiddenSource.replace('.com', '');
-    if (content.toLowerCase().includes(domain)) {
-      detectedSources.push(forbiddenSource);
-      hasForbiddenSources = true;
-    }
-  });
-  
-  return { hasForbiddenSources, detectedSources };
-}
+// Source validation removed - all sources allowed
 
 function parseStructuredInsights(results: string[], sources: string[]): {
   marketContext: { insight: string; source: string; }[];
@@ -370,7 +315,7 @@ function parseStructuredInsights(results: string[], sources: string[]): {
 }
 
 function determineResearchQuality(results: string[], sources: string[]): 'comprehensive' | 'limited' | 'minimal' | 'unavailable' {
-  const validResults = results.filter(r => r && !r.includes('unavailable') && !r.includes('failed') && !r.includes('External research limited')).length;
+  const validResults = results.filter(r => r && !r.includes('unavailable') && !r.includes('failed')).length;
   const sourcesCount = sources.length;
   
   // More lenient quality assessment - any useful content counts
