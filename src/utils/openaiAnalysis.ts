@@ -386,34 +386,50 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
           }
         ],
         temperature: 0.3,
-        max_tokens: 1000,
+        max_tokens: 2500,
       }),
     });
 
     console.log('🤖 [OpenAI Analysis] OpenAI response status:', response.status);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ [OpenAI Analysis] API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content;
     
-    console.log('🤖 [OpenAI Analysis] OpenAI response content:', content);
+    console.log('📄 [OpenAI Analysis] Response length:', content?.length || 0);
+    console.log('📄 [OpenAI Analysis] Response preview:', content?.substring(0, 200) + '...' || 'No content');
     
     if (!content) {
       throw new Error('No response content received from OpenAI');
     }
 
+    // Check for truncated response
+    if (!content.trim().endsWith('}')) {
+      console.warn('⚠️ [OpenAI Analysis] Response appears truncated');
+      throw new Error('OpenAI response was truncated - incomplete JSON data received');
+    }
+
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error('Could not parse JSON response from OpenAI');
+      console.error('❌ [OpenAI Analysis] No JSON found in response:', content);
+      throw new Error('Could not find valid JSON in OpenAI response');
     }
 
-    const analysis = JSON.parse(jsonMatch[0]);
-    console.log('🤖 [OpenAI Analysis] Parsed analysis result:', analysis);
+    let analysis;
+    try {
+      analysis = JSON.parse(jsonMatch[0]);
+      console.log('✅ [OpenAI Analysis] Successfully parsed analysis');
+    } catch (parseError) {
+      console.error('❌ [OpenAI Analysis] JSON parsing failed:', parseError);
+      console.error('❌ [OpenAI Analysis] Raw JSON:', jsonMatch[0]);
+      throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+    }
     
     return {
       recommendation: analysis.recommendation || 'Analysis incomplete',
