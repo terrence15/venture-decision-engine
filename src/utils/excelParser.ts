@@ -19,6 +19,7 @@ export interface RawCompanyData {
   investorInterest: number | null;
   preMoneyValuation: number | null;
   postMoneyValuation: number | null;
+  roundComplexity: number | null;
 }
 
 // Updated column mapping with exact headers from Excel
@@ -64,7 +65,11 @@ const COLUMN_MAPPINGS = {
   'Post-Money Valuation ($)': 'postMoneyValuation',
   'Post-Money Valuation': 'postMoneyValuation',
   'Post Money Valuation': 'postMoneyValuation',
-  'PostMoney Valuation': 'postMoneyValuation'
+  'PostMoney Valuation': 'postMoneyValuation',
+  'Round Complexity': 'roundComplexity',
+  'Round Complexity (1-5)': 'roundComplexity',
+  'Complexity': 'roundComplexity',
+  'Deal Complexity': 'roundComplexity'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -84,7 +89,8 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'industry': ['industry', 'sector'],
   'investorInterest': ['investor', 'interest', 'ability', 'raise', 'capital'],
   'preMoneyValuation': ['pre', 'money', 'valuation'],
-  'postMoneyValuation': ['post', 'money', 'valuation']
+  'postMoneyValuation': ['post', 'money', 'valuation'],
+  'roundComplexity': ['round', 'complexity', 'terms', 'structure', 'deal']
 };
 
 // Improved fuzzy matching function
@@ -166,7 +172,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -269,7 +275,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -308,13 +314,30 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       value = parsedValue * 100;
                       console.log(`Converted ${fieldName} from ${parsedValue} to ${value}%`);
                     }
+                    // Handle round complexity (validate 1-5 scale)
+                    else if (fieldName === 'roundComplexity') {
+                      if (parsedValue >= 1 && parsedValue <= 5) {
+                        value = Math.round(parsedValue); // Ensure integer
+                      } else {
+                        console.warn(`Invalid round complexity value for ${company.companyName}: ${parsedValue}. Must be 1-5.`);
+                        value = 3; // Default to neutral
+                      }
+                    }
                   }
                 }
-              } else if (['tam', 'barrierToEntry', 'investorInterest'].includes(fieldName)) {
+              } else if (['tam', 'barrierToEntry', 'investorInterest', 'roundComplexity'].includes(fieldName)) {
                 let cleanValue = String(value).replace(/[^0-9]/g, '');
                 if (fieldName === 'investorInterest') {
                   const parsedValue = parseInt(cleanValue);
                   value = (parsedValue >= 1 && parsedValue <= 5) ? parsedValue : null;
+                } else if (fieldName === 'roundComplexity') {
+                  const parsedValue = parseInt(cleanValue);
+                  if (parsedValue >= 1 && parsedValue <= 5) {
+                    value = parsedValue;
+                  } else {
+                    console.warn(`Invalid round complexity value: ${parsedValue}. Defaulting to 3.`);
+                    value = 3; // Default to neutral
+                  }
                 } else {
                   value = parseInt(cleanValue) || 1;
                 }

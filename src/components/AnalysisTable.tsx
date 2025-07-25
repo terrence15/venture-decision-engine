@@ -24,6 +24,7 @@ interface CompanyData {
   investorInterest: number | null;
   preMoneyValuation: number | null;
   postMoneyValuation: number | null;
+  roundComplexity: number | null;
   // AI Generated Fields
   recommendation?: string;
   timingBucket?: string;
@@ -69,6 +70,13 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     
     const config = variants[confidence as keyof typeof variants];
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const getComplexityBadge = (complexity?: number | null) => {
+    if (!complexity) return <Badge variant="secondary">Unknown</Badge>;
+    if (complexity <= 2) return <Badge variant="destructive">High Risk ({complexity}/5)</Badge>;
+    if (complexity === 3) return <Badge variant="secondary">Review Terms ({complexity}/5)</Badge>;
+    return <Badge variant="default">Clean Terms ({complexity}/5)</Badge>;
   };
 
   const formatCurrency = (amount: number | null | undefined) => {
@@ -150,6 +158,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>Post-Money</TableHead>
                 <TableHead>Requested</TableHead>
                 <TableHead>Investor Interest</TableHead>
+                <TableHead>Round Terms</TableHead>
                 <TableHead>Recommendation</TableHead>
                 <TableHead>Confidence</TableHead>
               </TableRow>
@@ -239,6 +248,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                         <span className="text-muted-foreground text-xs">N/A</span>
                       )}
                     </TableCell>
+                    <TableCell>{getComplexityBadge(company.roundComplexity)}</TableCell>
                     <TableCell>
                       {company.recommendation ? (
                         <span className="font-medium text-foreground">{company.recommendation}</span>
@@ -253,7 +263,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                     <TableRow>
-                      <TableCell colSpan={14} className="bg-muted/20 p-6">
+                      <TableCell colSpan={15} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -296,6 +306,13 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                    <span className="ml-2 font-medium">
                                      {company.investorInterest || 'N/A'}/5
                                    </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Round Complexity:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.roundComplexity || 'N/A'}/5
+                                   </span>
+                                   <div className="mt-1">{getComplexityBadge(company.roundComplexity)}</div>
                                  </div>
                                  <div>
                                    <span className="text-muted-foreground">Pre-Money:</span>

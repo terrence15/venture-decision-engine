@@ -133,7 +133,8 @@ export function Dashboard() {
         industry: company.industry || 'N/A',
         investorInterest: company.investorInterest,
         preMoneyValuation: company.preMoneyValuation,
-        postMoneyValuation: company.postMoneyValuation
+        postMoneyValuation: company.postMoneyValuation,
+        roundComplexity: company.roundComplexity
       }));
       
       const analyzedCompanies = await analyzePortfolio(

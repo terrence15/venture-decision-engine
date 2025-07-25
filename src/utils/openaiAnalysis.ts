@@ -18,6 +18,7 @@ interface CompanyData {
   investorInterest: number | null;
   preMoneyValuation: number | null;
   postMoneyValuation: number | null;
+  roundComplexity: number | null;
   revenue?: number;
   monthlyBurn?: number;
   currentValuation?: number;
@@ -60,7 +61,8 @@ export async function analyzeCompanyWithOpenAI(
     company.additionalInvestmentRequested,
     company.investorInterest,
     company.preMoneyValuation,
-    company.postMoneyValuation
+    company.postMoneyValuation,
+    company.roundComplexity
   ];
   
   const missingCriticalData = criticalFields.filter(field => 
@@ -227,6 +229,28 @@ RETURN COMPRESSION MATH:
 - Determine minimum exit valuation needed for acceptable returns (3x+ target)
 - If exit requirements seem unrealistic given TAM and market conditions, flag as overpriced participation
 
+ROUND COMPLEXITY DECISION FRAMEWORK:
+The Round Complexity score (1-5) is a critical structural risk factor that directly impacts investment confidence:
+
+COMPLEXITY INTERPRETATION:
+- Score 5: Clean, investor-friendly terms with simple preferred equity structure
+- Score 4: Standard terms with minor complexities but acceptable structure
+- Score 3: Moderate complexity requiring careful review but not prohibitive
+- Score 2: High complexity with potentially problematic terms (cram-downs, stacked preferences)
+- Score 1: Extremely messy structure with major red flags and governance risks
+
+DECISION IMPACT RULES:
+- Complexity 1-2 + Large Investment (>$3M): Flag "structural risk" and reduce confidence regardless of metrics
+- Complexity 1-2 + Any request: Require legal review and consider conditional investment only
+- Complexity 3: Standard evaluation with yellow flag for term review
+- Complexity 4-5: Support streamlined follow-on process with increased confidence
+- Missing complexity: Default to 3 but flag need for legal/term review
+
+CONFIDENCE MODIFICATION:
+- Complexity 1-2: Cap confidence at 3 maximum, regardless of financial performance
+- Complexity 3: No confidence penalty but mention term review requirement
+- Complexity 4-5: Potential confidence boost when combined with strong metrics
+
 PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
 Industry: ${company.industry || 'Not specified'}
@@ -244,6 +268,7 @@ Additional Investment Requested: $${(company.additionalInvestmentRequested / 100
 Investor Interest / Ability to Raise Capital: ${company.investorInterest !== null ? `${company.investorInterest}/5` : 'Not provided'}
 Pre-Money Valuation: ${company.preMoneyValuation !== null ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
 Post-Money Valuation: ${company.postMoneyValuation !== null ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
+Round Complexity: ${company.roundComplexity !== null ? `${company.roundComplexity}/5` : 'Not provided - defaulting to 3 (neutral)'}
 
 ${externalResearch}
 
@@ -258,15 +283,19 @@ CRITICAL REQUIREMENTS:
    - Score 1 (only us interested): Higher risk but potential leverage - scrutinize downside carefully
    - Score 2-3 (moderate interest): Standard evaluation based on performance metrics
    - Score 4-5 (oversubscribed/competitive): Consider rightsizing participation, less urgency to overcommit
+8. MANDATORY: Factor round complexity into all decisions:
+   - Complexity 1-2: Reduce confidence, require legal review, consider declining or conditional investment
+   - Complexity 3: Standard evaluation with term review requirement
+   - Complexity 4-5: Support increased participation with clean structure confidence boost
 
 Provide your analysis in the following JSON format:
 {
   "recommendation": "Enhanced recommendations incorporating valuation analysis: 'Invest $X at fair valuation', 'Decline due to overpricing', 'Pro-rata only - valuation stretch', 'Conditional Investment - $X if terms include downside protection', 'Bridge Capital Only - $X pending reasonable valuation', 'Wait for Co-Lead', 'Decline due to syndicate risk', etc.",
   "timingBucket": "Enhanced options: 'Double Down', 'Conditional Investment', 'Bridge Only Pending Syndicate', 'Wait for Co-Lead', 'Reinvest (3-12 Months)', 'Hold (3-6 Months)', 'Exit Opportunistically', 'Decline'",
   "reasoning": "2-4 sentences starting with financial analysis, incorporating CRITICAL valuation assessment (markup vs. growth fundamentals), investor interest, and round feasibility. Must address ownership dilution impact, return compression risk, and whether valuation is justified by traction. Include explicit source citations when external data influences decision.",
-  "confidence": "Integer 1-5 where 5=strong financial+reasonable valuation+external validation+high investor interest, 3=solid metrics+fair valuation+moderate interest, 1=overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",
-  "keyRisks": "1-2 sentences highlighting material threats, MUST include valuation-specific risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
-  "suggestedAction": "1 tactical sentence focusing on valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on pricing and interest levels",
+  "confidence": "Integer 1-5 where 5=strong financial+clean terms(4-5)+reasonable valuation+external validation+high investor interest, 3=solid metrics+moderate complexity(3)+fair valuation+moderate interest, 1=complex terms(1-2) OR overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",
+  "keyRisks": "1-2 sentences highlighting material threats, MUST include complexity-specific risks like 'complex deal structure', 'governance alignment issues', 'liquidation preference concerns' for complexity 1-2, plus valuation risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
+  "suggestedAction": "1 tactical sentence focusing on complexity management (legal review, term renegotiation for complexity 1-2), valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on structure quality, pricing and interest levels",
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],
