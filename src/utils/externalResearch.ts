@@ -278,14 +278,14 @@ function constructResearchQueries(company: CompanyResearchData, triggers: Resear
     
     // Tiered industry queries: specific → general → sector-level
     queries.push(
-      // Broad industry trends and market data
-      `${industryData.primary} market trends investment funding venture capital 2024`,
-      // Company-specific with industry context  
-      `${company.companyName} ${industryData.primary} competitive landscape market position`,
-      // Industry benchmarks and metrics
-      `${industryData.keywords[0]} startup metrics burn rate revenue growth benchmarks`,
-      // Recent industry activity and exits
-      `${industryData.primary} M&A IPO exits recent deals investment activity`
+      // Exit multiples and benchmarks for industry
+      `${industryData.primary} exit multiples EV/ARR Series A B C funding stage valuation 2024`,
+      // Industry metrics and benchmarks
+      `${industryData.keywords[0]} startup metrics CAC payback burn multiple NRR LTV/CAC benchmarks`,
+      // Market size and TAM research
+      `${industryData.primary} market size TAM total addressable market venture capital exits`,
+      // Founder ownership and dilution norms
+      `${industryData.primary} founder ownership dilution norms funding rounds venture capital`
     );
   } else {
     // Fallback queries when no industry specified

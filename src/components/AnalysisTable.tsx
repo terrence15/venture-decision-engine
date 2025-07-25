@@ -32,6 +32,7 @@ interface CompanyData {
   confidence?: number;
   keyRisks?: string;
   suggestedAction?: string;
+  projectedExitValueRange?: string;
   // External Research Integration
   externalSources?: string;
   insufficientData?: boolean;
@@ -371,6 +372,15 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                               <div>
                                 <h4 className="font-semibold text-sm text-muted-foreground mb-2">Suggested Action</h4>
                                 <p className="text-sm font-medium leading-relaxed">{company.suggestedAction}</p>
+                              </div>
+                            )}
+                            
+                            {company.projectedExitValueRange && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Projected Exit Value Range</h4>
+                                <div className="text-sm leading-relaxed bg-muted/40 p-3 rounded border border-border">
+                                  <div className="whitespace-pre-wrap">{company.projectedExitValueRange}</div>
+                                </div>
                               </div>
                             )}
                             

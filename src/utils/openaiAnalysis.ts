@@ -31,6 +31,7 @@ interface AnalysisResult {
   confidence: number;
   keyRisks: string;
   suggestedAction: string;
+  projectedExitValueRange: string;
   externalSources: string;
   insufficientData: boolean;
   // Enhanced external attribution
@@ -73,24 +74,25 @@ export async function analyzeCompanyWithOpenAI(
   
   if (missingCriticalData >= 2) {
     console.log('⚠️ [OpenAI Analysis] Insufficient data, returning early');
-    return {
-      recommendation: 'Insufficient data to assess',
-      timingBucket: 'N/A',
-      reasoning: 'Missing critical inputs (e.g., growth, burn, TAM, exit environment, valuations), which prevents a responsible investment recommendation. Recommend holding until updated data is provided.',
-      confidence: 1,
-      keyRisks: 'Lack of visibility into company performance, capital efficiency, valuation trajectory, or exit feasibility makes additional investment highly speculative.',
-      suggestedAction: 'Request updated financials, capital plan, growth KPIs, and current round valuation data before reassessing capital deployment.',
-      externalSources: 'Insufficient internal data - external research not conducted',
-      insufficientData: true,
-      externalInsights: {
-        marketContext: [],
-        competitivePosition: [],
-        fundingEnvironment: [],
-        industryTrends: []
-      },
-      researchQuality: 'unavailable' as const,
-      sourceAttributions: []
-    };
+      return {
+        recommendation: 'Insufficient data to assess',
+        timingBucket: 'N/A',
+        reasoning: 'Missing critical inputs (e.g., growth, burn, TAM, exit environment, valuations), which prevents a responsible investment recommendation. Recommend holding until updated data is provided.',
+        confidence: 1,
+        keyRisks: 'Lack of visibility into company performance, capital efficiency, valuation trajectory, or exit feasibility makes additional investment highly speculative.',
+        suggestedAction: 'Request updated financials, capital plan, growth KPIs, and current round valuation data before reassessing capital deployment.',
+        projectedExitValueRange: 'Cannot project exit value without sufficient company data. Industry benchmarks and revenue metrics required for analysis.',
+        externalSources: 'Insufficient internal data - external research not conducted',
+        insufficientData: true,
+        externalInsights: {
+          marketContext: [],
+          competitivePosition: [],
+          fundingEnvironment: [],
+          industryTrends: []
+        },
+        researchQuality: 'unavailable' as const,
+        sourceAttributions: []
+      };
   }
 
   // Conduct external research if Perplexity API key is available and triggers are met
@@ -296,6 +298,7 @@ Provide your analysis in the following JSON format:
   "confidence": "Integer 1-5 where 5=strong financial+clean terms(4-5)+reasonable valuation+external validation+high investor interest, 3=solid metrics+moderate complexity(3)+fair valuation+moderate interest, 1=complex terms(1-2) OR overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",
   "keyRisks": "1-2 sentences highlighting material threats, MUST include complexity-specific risks like 'complex deal structure', 'governance alignment issues', 'liquidation preference concerns' for complexity 1-2, plus valuation risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
   "suggestedAction": "1 tactical sentence focusing on complexity management (legal review, term renegotiation for complexity 1-2), valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on structure quality, pricing and interest levels",
+  "projectedExitValueRange": "1-2 paragraph analysis synthesizing internal Excel data with external industry benchmarks. Calculate realistic projected exit value based on current revenue/ARR × externally benchmarked exit multiple for the industry/stage. Compare company's metrics (CAC payback, burn multiple, NRR) against sector norms from external sources. Assess valuation compression risk - whether current valuation supports healthy MOIC or is priced aggressively. Include dilution impact and return compression analysis. If industry benchmarks unavailable, state 'Limited external benchmarks available - internal analysis only' and provide basic exit value estimation using company data.",
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],
@@ -366,6 +369,7 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
       confidence: Math.min(5, Math.max(1, parseInt(analysis.confidence) || 3)),
       keyRisks: analysis.keyRisks || 'Unable to assess risks with current information.',
       suggestedAction: analysis.suggestedAction || 'Request additional company data before proceeding.',
+      projectedExitValueRange: analysis.projectedExitValueRange || 'Limited external benchmarks available - internal analysis only. Insufficient data for reliable exit value projection.',
       externalSources: externalSources,
       insufficientData: false,
       // Enhanced external attribution
@@ -409,6 +413,7 @@ export async function analyzePortfolio(
         confidence: analysis.confidence,
         keyRisks: analysis.keyRisks,
         suggestedAction: analysis.suggestedAction,
+        projectedExitValueRange: analysis.projectedExitValueRange,
         externalSources: analysis.externalSources,
         insufficientData: analysis.insufficientData
       } as any);
@@ -427,6 +432,7 @@ export async function analyzePortfolio(
         confidence: 1,
         keyRisks: 'Unable to complete analysis due to technical issues.',
         suggestedAction: 'Retry analysis or conduct manual review.',
+        projectedExitValueRange: 'Cannot project exit value due to analysis failure. Retry analysis or conduct manual evaluation.',
         externalSources: 'Analysis incomplete',
         insufficientData: true,
         externalInsights: {

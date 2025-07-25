@@ -20,6 +20,7 @@ interface AnalyzedCompanyData extends RawCompanyData {
   confidence?: number;
   keyRisks?: string;
   suggestedAction?: string;
+  projectedExitValueRange?: string;
   externalSources?: string;
   insufficientData?: boolean;
 }
