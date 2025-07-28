@@ -436,62 +436,98 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                               </div>
                             )}
                             
-                            {company.externalInsights && !company.insufficientData && (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold text-sm text-muted-foreground">External Market Intelligence</h4>
-                                  {company.researchQuality && (
-                                    <Badge variant={
-                                      company.researchQuality === 'comprehensive' ? 'default' :
-                                      company.researchQuality === 'limited' ? 'secondary' :
-                                      company.researchQuality === 'minimal' ? 'outline' : 'destructive'
-                                    } className="text-xs">
-                                      {company.researchQuality}
-                                    </Badge>
-                                  )}
-                                </div>
-                                
-                                {company.externalInsights.marketContext.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Market Context:</p>
-                                    <ul className="text-xs space-y-1">
-                                      {company.externalInsights.marketContext.map((insight, i) => (
-                                        <li key={i} className="text-foreground">• {insight}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                                
-                                {company.externalInsights.competitivePosition.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Competitive Position:</p>
-                                    <ul className="text-xs space-y-1">
-                                      {company.externalInsights.competitivePosition.map((insight, i) => (
-                                        <li key={i} className="text-foreground">• {insight}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                                
-                                {company.externalInsights.fundingEnvironment.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Funding Environment:</p>
-                                    <ul className="text-xs space-y-1">
-                                      {company.externalInsights.fundingEnvironment.map((insight, i) => (
-                                        <li key={i} className="text-foreground">• {insight}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                                
-                                {company.sourceAttributions && company.sourceAttributions.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Sources Referenced:</p>
-                                    <p className="text-xs text-muted-foreground">{company.sourceAttributions.join(', ')}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                             {company.externalInsights && !company.insufficientData && (
+                               <div className="space-y-3">
+                                 <div className="flex items-center gap-2">
+                                   <h4 className="font-semibold text-sm text-muted-foreground">External Market Intelligence</h4>
+                                   {company.researchQuality && (
+                                     <Badge variant={
+                                       company.researchQuality === 'comprehensive' ? 'default' :
+                                       company.researchQuality === 'limited' ? 'secondary' :
+                                       company.researchQuality === 'minimal' ? 'outline' : 'destructive'
+                                     } className="text-xs">
+                                       {company.researchQuality}
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 
+                                 {company.externalInsights.marketContext.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Market Context:</p>
+                                     <ul className="text-xs space-y-1">
+                                       {company.externalInsights.marketContext.map((insight, i) => (
+                                         <li key={i} className="text-foreground">• {insight}</li>
+                                       ))}
+                                     </ul>
+                                   </div>
+                                 )}
+                                 
+                                 {company.externalInsights.competitivePosition.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Competitive Position:</p>
+                                     <ul className="text-xs space-y-1">
+                                       {company.externalInsights.competitivePosition.map((insight, i) => (
+                                         <li key={i} className="text-foreground">• {insight}</li>
+                                       ))}
+                                     </ul>
+                                   </div>
+                                 )}
+                                 
+                                 {company.externalInsights.fundingEnvironment.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Funding Environment:</p>
+                                     <ul className="text-xs space-y-1">
+                                       {company.externalInsights.fundingEnvironment.map((insight, i) => (
+                                         <li key={i} className="text-foreground">• {insight}</li>
+                                       ))}
+                                     </ul>
+                                   </div>
+                                 )}
+
+                                 {(company as any).namedComps && (company as any).namedComps.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-2">M&A Comparables:</p>
+                                     <div className="overflow-x-auto">
+                                       <table className="w-full text-xs border border-border rounded">
+                                         <thead className="bg-muted/50">
+                                           <tr>
+                                             <th className="text-left p-2 font-medium">Company</th>
+                                             <th className="text-left p-2 font-medium">Acquirer</th>
+                                             <th className="text-left p-2 font-medium">Year</th>
+                                             <th className="text-left p-2 font-medium">Valuation</th>
+                                             <th className="text-left p-2 font-medium">Multiple</th>
+                                             <th className="text-left p-2 font-medium">Notes</th>
+                                           </tr>
+                                         </thead>
+                                         <tbody>
+                                           {(company as any).namedComps.map((comp: any, idx: number) => (
+                                             <tr key={idx} className="border-t border-border">
+                                               <td className="p-2 text-foreground font-medium">{comp.company}</td>
+                                               <td className="p-2 text-muted-foreground">{comp.acquirer}</td>
+                                               <td className="p-2 text-muted-foreground">{comp.year}</td>
+                                               <td className="p-2 text-muted-foreground">{comp.valuation}</td>
+                                               <td className="p-2">
+                                                 <Badge variant="outline" className="text-xs">
+                                                   {comp.multiple}
+                                                 </Badge>
+                                               </td>
+                                               <td className="p-2 text-muted-foreground text-xs">{comp.notes}</td>
+                                             </tr>
+                                           ))}
+                                         </tbody>
+                                       </table>
+                                     </div>
+                                   </div>
+                                 )}
+                                 
+                                 {company.sourceAttributions && company.sourceAttributions.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Sources Referenced:</p>
+                                     <p className="text-xs text-muted-foreground">{company.sourceAttributions.join(', ')}</p>
+                                   </div>
+                                 )}
+                               </div>
+                             )}
                             
                             {company.externalSources && !company.externalInsights && !company.insufficientData && (
                               <div>

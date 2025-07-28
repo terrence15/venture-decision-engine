@@ -54,48 +54,54 @@ export async function analyzeCompanyWithOpenAI(
 ): Promise<AnalysisResult> {
   console.log('🤖 [OpenAI Analysis] Starting analysis for:', company.companyName);
   
-  // Check for insufficient data (fail-safe logic)
-  const criticalFields = [
-    company.moic,
-    company.revenueGrowth,
-    company.burnMultiple || company.runway,
-    company.tam,
-    company.exitActivity,
-    company.additionalInvestmentRequested,
-    company.investorInterest,
-    company.preMoneyValuation,
-    company.postMoneyValuation,
-    company.roundComplexity
-  ];
+  // Enhanced data validation with field-specific checks
+  const dataValidation = {
+    hasRevenue: company.revenue !== null && company.revenue !== undefined && company.revenue > 0,
+    hasARR: company.revenue !== null && company.revenue !== undefined && company.revenue > 0, // Assuming ARR = revenue for SaaS
+    hasGrowthData: company.revenueGrowth !== null && company.revenueGrowth !== undefined,
+    hasProjectedGrowth: company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined,
+    hasValuation: company.preMoneyValuation !== null && company.preMoneyValuation !== undefined && 
+                  company.postMoneyValuation !== null && company.postMoneyValuation !== undefined,
+    hasTimeline: company.exitTimeline !== null && company.exitTimeline !== undefined,
+    hasInvestorInterest: company.investorInterest !== null && company.investorInterest !== undefined,
+    hasComplexity: company.roundComplexity !== null && company.roundComplexity !== undefined
+  };
   
-  const missingCriticalData = criticalFields.filter(field => 
-    field === null || field === undefined || field === ''
-  ).length;
+  console.log('📊 [OpenAI Analysis] Data validation results:', dataValidation);
   
-  console.log('📊 [OpenAI Analysis] Missing critical data fields:', missingCriticalData);
+  // Critical data requirements for exit value calculations
+  const canCalculateExitValue = dataValidation.hasRevenue && dataValidation.hasGrowthData && dataValidation.hasTimeline;
+  const canAssessValuation = dataValidation.hasValuation && dataValidation.hasInvestorInterest;
   
-  if (missingCriticalData >= 2) {
-    console.log('⚠️ [OpenAI Analysis] Insufficient data, returning early');
-      return {
-        recommendation: 'Insufficient data to assess',
-        timingBucket: 'N/A',
-        reasoning: 'Missing critical inputs (e.g., growth, burn, TAM, exit environment, valuations), which prevents a responsible investment recommendation. Recommend holding until updated data is provided.',
-        confidence: 1,
-        keyRisks: 'Lack of visibility into company performance, capital efficiency, valuation trajectory, or exit feasibility makes additional investment highly speculative.',
-        suggestedAction: 'Request updated financials, capital plan, growth KPIs, and current round valuation data before reassessing capital deployment.',
-        projectedExitValueRange: 'Cannot project exit value without sufficient company data. Industry benchmarks and revenue metrics required for analysis.',
-        externalSources: 'Insufficient internal data - external research not conducted',
-        insufficientData: true,
-        riskAdjustedMonetizationSummary: 'Insufficient data to calculate risk-adjusted monetization summary. Core financial metrics, growth projections, and market validation data required to assess projected returns, success probability, and risk-adjusted exit value.',
-        externalInsights: {
-          marketContext: [],
-          competitivePosition: [],
-          fundingEnvironment: [],
-          industryTrends: []
-        },
-        researchQuality: 'unavailable' as const,
-        sourceAttributions: []
-      };
+  if (!canCalculateExitValue || !canAssessValuation) {
+    console.log('⚠️ [OpenAI Analysis] Insufficient data for reliable analysis');
+    const missingFields = [];
+    if (!dataValidation.hasRevenue) missingFields.push('revenue/ARR');
+    if (!dataValidation.hasGrowthData) missingFields.push('revenue growth');
+    if (!dataValidation.hasTimeline) missingFields.push('exit timeline');
+    if (!dataValidation.hasValuation) missingFields.push('valuation data');
+    if (!dataValidation.hasInvestorInterest) missingFields.push('investor interest');
+    
+    return {
+      recommendation: 'Insufficient data to calculate projected exit value',
+      timingBucket: 'N/A',
+      reasoning: `Missing required fields: ${missingFields.join(', ')}. Cannot reliably assess investment opportunity without core financial metrics and market validation data.`,
+      confidence: 1,
+      keyRisks: 'Data insufficiency prevents proper risk assessment. Investment decision would be speculative without key performance indicators.',
+      suggestedAction: `Please provide missing data: ${missingFields.join(', ')} before proceeding with investment evaluation.`,
+      projectedExitValueRange: 'Insufficient data to calculate projected exit value. Please ensure all required inputs are filled.',
+      externalSources: 'Insufficient internal data - external research not conducted',
+      insufficientData: true,
+      riskAdjustedMonetizationSummary: 'Insufficient data to calculate risk-adjusted monetization summary. Core financial metrics, growth projections, and market validation data required to assess projected returns, success probability, and risk-adjusted exit value.',
+      externalInsights: {
+        marketContext: [],
+        competitivePosition: [],
+        fundingEnvironment: [],
+        industryTrends: []
+      },
+      researchQuality: 'unavailable' as const,
+      sourceAttributions: []
+    };
   }
 
   // Conduct external research if Perplexity API key is available and triggers are met
@@ -136,6 +142,15 @@ Competitive Position: ${research.structuredInsights.competitivePosition.map(i =>
 Funding Environment: ${research.structuredInsights.fundingEnvironment.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No funding insights available'}
 
 Industry Trends: ${research.structuredInsights.industryTrends.map(i => `"${i.insight}" (${i.source})`).join('; ') || 'No trend insights available'}
+
+NAMED M&A COMPARABLES:
+Multiple Type: ${research.structuredInsights.multipleType}
+${research.structuredInsights.namedComps.length > 0 ? 
+  research.structuredInsights.namedComps.map(comp => 
+    `${comp.company} → ${comp.acquirer} (${comp.year}): ${comp.valuation}, ${comp.multiple} (${comp.notes})`
+  ).join('\n') : 
+  'No specific M&A comparables identified in research'
+}
 
 Research Sources: ${research.sources.join(', ') || 'Limited external data available'}
       `;
@@ -318,13 +333,16 @@ Projected ARR at Exit = ARR (TTM) × (1 + Projected Revenue Growth) ^ Exit Timel
 - Use company revenue/ARR data and projected growth rate
 - Use Exit Timeline from user input; if blank, default to 3 years
 
-STEP 2: Pull EV/ARR Multiple from External Research
-- Extract EV/ARR multiples from external research data (TechCrunch, Crunchbase, market reports)
-- Use industry-specific multiples based on stage and sector
-- Default to 5-8x range for Series A/B SaaS if no specific data available
+STEP 2: Pull Industry-Appropriate Multiple from External Research
+- Use the Multiple Type (${research?.structuredInsights?.multipleType || 'EV/Revenue'}) identified in external research
+- Extract ${research?.structuredInsights?.multipleType || 'EV/Revenue'} multiples from external research data and named comparables
+- For ${company.industry || 'this industry'}: Use industry-specific multiples based on business model
+- Cite specific comparables when available: ${research?.structuredInsights?.namedComps?.length > 0 ? 
+    research.structuredInsights.namedComps.map(c => `${c.company} (${c.multiple})`).join(', ') : 
+    'Use general industry benchmarks if no specific comps available'}
 
 STEP 3: Estimate Gross Exit Value
-Gross Exit Value = Projected ARR at Exit × Industry EV/ARR Multiple
+Gross Exit Value = Projected ${research?.structuredInsights?.multipleType?.includes('ARR') ? 'ARR' : 'Revenue'} at Exit × Industry ${research?.structuredInsights?.multipleType || 'EV/Revenue'} Multiple
 
 STEP 4: Assign Composite Success Probability
 Calculate risk-weighted probability based on:
@@ -350,8 +368,8 @@ Provide your analysis in the following JSON format:
   "confidence": "Integer 1-5 where 5=strong financial+clean terms(4-5)+reasonable valuation+external validation+high investor interest, 3=solid metrics+moderate complexity(3)+fair valuation+moderate interest, 1=complex terms(1-2) OR overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",
   "keyRisks": "1-2 sentences highlighting material threats, MUST include complexity-specific risks like 'complex deal structure', 'governance alignment issues', 'liquidation preference concerns' for complexity 1-2, plus valuation risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
   "suggestedAction": "1 tactical sentence focusing on complexity management (legal review, term renegotiation for complexity 1-2), valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on structure quality, pricing and interest levels",
-  "projectedExitValueRange": "1-2 paragraph analysis using EXIT TIMELINE for all projections. Calculate: Projected ARR = Current ARR × (1 + Revenue Growth Rate) ^ ${company.exitTimeline || 3} years, then Gross Exit Value = Projected ARR × Industry EV/ARR Multiple. Compare timeline assumptions against sector norms from external sources. Assess whether ${company.exitTimeline || 3}-year timeline is realistic given current metrics and market conditions. Include dilution impact over the timeline and return compression analysis. State timeline assumption explicitly: 'Based on a ${company.exitTimeline || 3}-year projected exit timeline' and mention if default assumption was used.",
-  "riskAdjustedMonetizationSummary": "MANDATORY 1-2 paragraph summary following the 7-step calculation process. Must include: 1) Projected ARR calculation, 2) EV/ARR multiple source and value, 3) Gross Exit Value, 4) Success probability assessment and rationale, 5) Risk-adjusted exit value, 6) VC return calculation, 7) Final risk-adjusted MOIC. Format: 'This company projects a gross exit value of ~$XM based on an ARR forecast of ~$XM over a ${company.exitTimeline || 3}-year timeline and a Xx EV/ARR multiple benchmarked from [source]. However, [risk factors] introduce [risk level] execution risk. We assign a X% success probability. This yields a risk-adjusted exit of ~$XM. With a X% fully diluted stake and $XM total capital exposure, expected return is ~$XM — implying a ~X.Xx risk-adjusted MOIC. [Strategic recommendation].'",
+  "projectedExitValueRange": "1-2 paragraph analysis using EXIT TIMELINE for all projections. Calculate: Projected ${research?.structuredInsights?.multipleType?.includes('ARR') ? 'ARR' : 'Revenue'} = Current ${research?.structuredInsights?.multipleType?.includes('ARR') ? 'ARR' : 'Revenue'} × (1 + Revenue Growth Rate) ^ ${company.exitTimeline || 3} years, then Gross Exit Value = Projected ${research?.structuredInsights?.multipleType?.includes('ARR') ? 'ARR' : 'Revenue'} × Industry ${research?.structuredInsights?.multipleType || 'EV/Revenue'} Multiple. Use named comparables from external research: ${research?.structuredInsights?.namedComps?.length > 0 ? research.structuredInsights.namedComps.map(c => `${c.company} (${c.multiple})`).join(', ') : 'cite general industry benchmarks'}. Compare timeline assumptions against sector norms from external sources. Assess whether ${company.exitTimeline || 3}-year timeline is realistic given current metrics and market conditions. Include dilution impact over the timeline and return compression analysis. State timeline assumption explicitly: 'Based on a ${company.exitTimeline || 3}-year projected exit timeline' and mention if default assumption was used.",
+  "riskAdjustedMonetizationSummary": "MANDATORY 1-2 paragraph summary following the 7-step calculation process. Must include: 1) Projected ${research?.structuredInsights?.multipleType?.includes('ARR') ? 'ARR' : 'Revenue'} calculation, 2) ${research?.structuredInsights?.multipleType || 'EV/Revenue'} multiple source and value, 3) Gross Exit Value, 4) Success probability assessment and rationale, 5) Risk-adjusted exit value, 6) VC return calculation, 7) Final risk-adjusted MOIC. ALWAYS cite named comparables when available: ${research?.structuredInsights?.namedComps?.length > 0 ? research.structuredInsights.namedComps.map(c => `${c.company} (${c.multiple})`).join(', ') : 'use general benchmarks'}. Format: 'This company projects a gross exit value of ~$XM based on a ${research?.structuredInsights?.multipleType?.includes('ARR') ? 'ARR' : 'revenue'} forecast of ~$XM over a ${company.exitTimeline || 3}-year timeline and a Xx ${research?.structuredInsights?.multipleType || 'EV/Revenue'} multiple benchmarked from [named comps or source]. However, [risk factors] introduce [risk level] execution risk. We assign a X% success probability. This yields a risk-adjusted exit of ~$XM. With a X% fully diluted stake and $XM total capital exposure, expected return is ~$XM — implying a ~X.Xx risk-adjusted MOIC. [Strategic recommendation].'",
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],

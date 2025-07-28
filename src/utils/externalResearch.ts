@@ -77,6 +77,8 @@ interface ExternalResearchResult {
     competitivePosition: { insight: string; source: string; }[];
     fundingEnvironment: { insight: string; source: string; }[];
     industryTrends: { insight: string; source: string; }[];
+    namedComps: { company: string; acquirer: string; year: string; valuation: string; multiple: string; notes: string; }[];
+    multipleType: string;
   };
   researchQuality: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
 }
@@ -122,7 +124,9 @@ export async function conductExternalResearch(
         marketContext: [],
         competitivePosition: [],
         fundingEnvironment: [],
-        industryTrends: []
+        industryTrends: [],
+        namedComps: [],
+        multipleType: 'EV/Revenue'
       },
       researchQuality: 'unavailable' as const
     };
@@ -243,51 +247,58 @@ Always cite specific sources for claims and include publication dates when avail
 function constructResearchQueries(company: CompanyResearchData, triggers: ResearchTriggers): string[] {
   const queries: string[] = [];
   
-  // Industry-centric approach: Always prioritize industry research when available
+  // Industry-centric approach with dynamic multiple types
   if (triggers.hasIndustry) {
     const industryData = normalizeIndustry(company.industry);
     console.log('🏷️ [Perplexity Research] Normalized industry data:', industryData);
     
-    // Start with broader queries, then get more specific
-    queries.push(
-      // Broad startup metrics and benchmarks
-      `startup valuation multiples exit multiples EV revenue ARR venture capital 2024`,
-      // Industry-specific exit data and EV/ARR multiples
-      `${industryData.primary} startup exit multiples IPO acquisition valuation benchmarks`,
-      `${industryData.primary} EV/ARR multiple valuation Series A Series B 2024`,
-      // General SaaS/tech metrics (fallback for most startups)
-      `SaaS startup metrics CAC payback burn multiple LTV CAC venture capital benchmarks`,
-      `SaaS EV/ARR multiple revenue multiples exit valuation benchmarks`,
-      // Industry-specific operational metrics
-      `${industryData.keywords[0]} startup metrics operational benchmarks funding rounds`
-    );
+    // Build industry-specific scoped queries
+    const industry = industryData.primary;
+    
+    // Query 1: Industry TAM and market analysis
+    queries.push(`${industry} TAM market size growth rate 2024 addressable market analysis`);
+    
+    // Query 2: Industry-specific exit multiples (dynamic based on business model)
+    const exitMultipleQuery = getIndustrySpecificMultipleQuery(industry);
+    queries.push(exitMultipleQuery);
+    
+    // Query 3: Named M&A comparables with transaction details
+    queries.push(`${industry} startup acquisition M&A exits company acquirer price valuation multiple 2023 2024`);
+    
+    // Query 4: Industry barriers and competitive landscape
+    queries.push(`${industry} competitive landscape barriers to entry market share leaders`);
+    
   } else {
-    // Fallback queries when no industry specified - use broader terms
+    // Fallback queries when no industry specified
     queries.push(
-      `startup valuation multiples exit benchmarks venture capital 2024`,
-      `venture capital exit multiples IPO acquisition startup valuation`,
-      `startup metrics CAC payback burn multiple operational benchmarks`,
-      `${company.companyName} funding rounds valuation recent investment activity`
+      `startup TAM market size analysis venture capital 2024`,
+      `startup exit multiples acquisition IPO valuation benchmarks`,
+      `startup M&A acquisition exits company names acquirer price 2023 2024`,
+      `${company.companyName} funding rounds valuation competitive landscape`
     );
   }
   
-  // Additional context-specific queries based on triggers
-  if (triggers.highAdditionalInvestment) {
-    queries.push(
-      `${company.companyName} Series A B C funding bridge round additional investment`,
-      `large funding rounds valuation multiple EV revenue startup exit`
-    );
-  }
-  
-  if (triggers.hasExitActivity && company.exitActivity) {
-    queries.push(
-      `${company.companyName} ${company.exitActivity} IPO acquisition exit strategy`,
-      `${company.exitActivity} exit valuation multiple revenue acquisition price`
-    );
-  }
-  
-  // Limit to 4 queries to avoid rate limiting
   return queries.slice(0, 4);
+}
+
+// Helper function to determine correct multiple type based on industry
+function getIndustrySpecificMultipleQuery(industry: string): string {
+  const lowerIndustry = industry.toLowerCase();
+  
+  if (lowerIndustry.includes('saas') || lowerIndustry.includes('software') || lowerIndustry.includes('enterprise')) {
+    return `${industry} EV/ARR multiples revenue multiples Series A B C exit valuation 2024`;
+  } else if (lowerIndustry.includes('marketplace') || lowerIndustry.includes('platform')) {
+    return `${industry} EV/GMV multiples transaction volume exit valuation 2024`;
+  } else if (lowerIndustry.includes('consumer') || lowerIndustry.includes('retail') || lowerIndustry.includes('ecommerce')) {
+    return `${industry} EV/Revenue multiples exit valuation consumer startup 2024`;
+  } else if (lowerIndustry.includes('fintech') || lowerIndustry.includes('financial')) {
+    return `${industry} EV/Revenue price to book multiples fintech exit valuation 2024`;
+  } else if (lowerIndustry.includes('biotech') || lowerIndustry.includes('pharma') || lowerIndustry.includes('medical')) {
+    return `${industry} EV/Revenue development stage multiples biotech exit valuation 2024`;
+  } else {
+    // Default to revenue multiple for unknown industries
+    return `${industry} EV/Revenue exit valuation multiples startup acquisition 2024`;
+  }
 }
 
 // Source validation removed - all sources allowed
@@ -297,13 +308,22 @@ function parseStructuredInsights(results: string[], sources: string[]): {
   competitivePosition: { insight: string; source: string; }[];
   fundingEnvironment: { insight: string; source: string; }[];
   industryTrends: { insight: string; source: string; }[];
+  namedComps: { company: string; acquirer: string; year: string; valuation: string; multiple: string; notes: string; }[];
+  multipleType: string;
 } {
   const insights = {
     marketContext: [] as { insight: string; source: string; }[],
     competitivePosition: [] as { insight: string; source: string; }[],
     fundingEnvironment: [] as { insight: string; source: string; }[],
-    industryTrends: [] as { insight: string; source: string; }[]
+    industryTrends: [] as { insight: string; source: string; }[],
+    namedComps: [] as { company: string; acquirer: string; year: string; valuation: string; multiple: string; notes: string; }[],
+    multipleType: 'EV/Revenue' as string
   };
+
+  // Extract named M&A comparables and determine multiple type
+  const allContent = results.join(' ');
+  insights.namedComps = extractNamedComps(allContent);
+  insights.multipleType = determineMultipleType(allContent);
 
   // Extract key insights from each result with source attribution
   results.forEach((result, index) => {
@@ -317,24 +337,83 @@ function parseStructuredInsights(results: string[], sources: string[]): {
       if (trimmed.length < 30) return;
       
       // Categorize insights based on content keywords
-      if (trimmed.match(/market|industry|sector|demand|growth|size/i)) {
+      if (trimmed.match(/TAM|market size|addressable market|market opportunity/i)) {
         insights.marketContext.push({ insight: trimmed, source: relevantSource });
-      } else if (trimmed.match(/competitor|competitive|rival|comparison|versus/i)) {
+      } else if (trimmed.match(/competitor|competitive|barriers|market share|leaders/i)) {
         insights.competitivePosition.push({ insight: trimmed, source: relevantSource });
-      } else if (trimmed.match(/funding|investment|capital|raised|valuation|round/i)) {
+      } else if (trimmed.match(/funding|investment|capital|raised|valuation|round|multiple/i)) {
         insights.fundingEnvironment.push({ insight: trimmed, source: relevantSource });
-      } else if (trimmed.match(/trend|future|outlook|forecast|direction/i)) {
+      } else if (trimmed.match(/trend|growth|outlook|forecast|direction/i)) {
         insights.industryTrends.push({ insight: trimmed, source: relevantSource });
       }
     });
   });
 
   // Limit to top 3 insights per category
-  Object.keys(insights).forEach(key => {
-    insights[key as keyof typeof insights] = insights[key as keyof typeof insights].slice(0, 3);
-  });
+  insights.marketContext = insights.marketContext.slice(0, 3);
+  insights.competitivePosition = insights.competitivePosition.slice(0, 3);
+  insights.fundingEnvironment = insights.fundingEnvironment.slice(0, 3);
+  insights.industryTrends = insights.industryTrends.slice(0, 3);
 
   return insights;
+}
+
+// Extract named M&A comparables from research content
+function extractNamedComps(content: string): { company: string; acquirer: string; year: string; valuation: string; multiple: string; notes: string; }[] {
+  const comps: { company: string; acquirer: string; year: string; valuation: string; multiple: string; notes: string; }[] = [];
+  
+  // Common acquisition patterns to match
+  const acquisitionPatterns = [
+    /(\w+(?:\s+\w+)*)\s+(?:acquired by|bought by|purchased by)\s+(\w+(?:\s+\w+)*)\s+(?:for|at)\s+\$?([\d.]+[BMK]?)\s*(?:in\s+)?(\d{4})?/gi,
+    /(\w+(?:\s+\w+)*)\s+acquisition\s+by\s+(\w+(?:\s+\w+)*)\s+\$?([\d.]+[BMK]?)\s*(?:in\s+)?(\d{4})?/gi,
+    /(\w+(?:\s+\w+)*)\s+sold\s+to\s+(\w+(?:\s+\w+)*)\s+for\s+\$?([\d.]+[BMK]?)\s*(?:in\s+)?(\d{4})?/gi
+  ];
+
+  acquisitionPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(content)) !== null && comps.length < 5) {
+      const company = match[1]?.trim();
+      const acquirer = match[2]?.trim();
+      const valuation = match[3]?.trim();
+      const year = match[4]?.trim() || '2023';
+      
+      if (company && acquirer && valuation) {
+        // Extract multiple if mentioned nearby
+        const contextStart = Math.max(0, match.index - 100);
+        const contextEnd = Math.min(content.length, match.index + match[0].length + 100);
+        const context = content.slice(contextStart, contextEnd);
+        const multipleMatch = context.match(/(\d+(?:\.\d+)?)\s*x\s*(?:revenue|ARR|GMV)/i);
+        
+        comps.push({
+          company: company,
+          acquirer: acquirer,
+          year: year,
+          valuation: valuation,
+          multiple: multipleMatch ? `${multipleMatch[1]}x` : 'N/A',
+          notes: multipleMatch ? `${multipleMatch[1]}x ${multipleMatch[0].includes('ARR') ? 'ARR' : multipleMatch[0].includes('GMV') ? 'GMV' : 'Revenue'}` : 'Multiple not specified'
+        });
+      }
+    }
+  });
+
+  return comps;
+}
+
+// Determine the appropriate multiple type based on content
+function determineMultipleType(content: string): string {
+  const lowerContent = content.toLowerCase();
+  
+  if (lowerContent.includes('ev/arr') || lowerContent.includes('arr multiple')) {
+    return 'EV/ARR';
+  } else if (lowerContent.includes('ev/gmv') || lowerContent.includes('gmv multiple')) {
+    return 'EV/GMV';
+  } else if (lowerContent.includes('ev/revenue') || lowerContent.includes('revenue multiple')) {
+    return 'EV/Revenue';
+  } else if (lowerContent.includes('ev/ebitda') || lowerContent.includes('ebitda multiple')) {
+    return 'EV/EBITDA';
+  } else {
+    return 'EV/Revenue'; // Default
+  }
 }
 
 function determineResearchQuality(results: string[], sources: string[]): 'comprehensive' | 'limited' | 'minimal' | 'unavailable' {
