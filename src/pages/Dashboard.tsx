@@ -137,7 +137,9 @@ export function Dashboard() {
         preMoneyValuation: company.preMoneyValuation,
         postMoneyValuation: company.postMoneyValuation,
         roundComplexity: company.roundComplexity,
-        exitTimeline: company.exitTimeline || 3
+        exitTimeline: company.exitTimeline || 3,
+        revenue: company.revenue,
+        arr: company.arr
       }));
       
       const analyzedCompanies = await analyzePortfolio(

@@ -20,7 +20,8 @@ interface CompanyData {
   postMoneyValuation: number | null;
   roundComplexity: number | null;
   exitTimeline: number | null;
-  revenue?: number;
+  revenue: number | null;
+  arr: number | null;
   monthlyBurn?: number;
   currentValuation?: number;
 }
@@ -57,7 +58,9 @@ export async function analyzeCompanyWithOpenAI(
   // Enhanced data validation with field-specific checks
   const dataValidation = {
     hasRevenue: company.revenue !== null && company.revenue !== undefined && company.revenue > 0,
-    hasARR: company.revenue !== null && company.revenue !== undefined && company.revenue > 0, // Assuming ARR = revenue for SaaS
+    hasARR: company.arr !== null && company.arr !== undefined && company.arr > 0,
+    hasAnyRevenueMetric: (company.revenue !== null && company.revenue !== undefined && company.revenue > 0) || 
+                        (company.arr !== null && company.arr !== undefined && company.arr > 0),
     hasGrowthData: company.revenueGrowth !== null && company.revenueGrowth !== undefined,
     hasProjectedGrowth: company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined,
     hasValuation: company.preMoneyValuation !== null && company.preMoneyValuation !== undefined && 
@@ -69,14 +72,14 @@ export async function analyzeCompanyWithOpenAI(
   
   console.log('📊 [OpenAI Analysis] Data validation results:', dataValidation);
   
-  // Critical data requirements for exit value calculations
-  const canCalculateExitValue = dataValidation.hasRevenue && dataValidation.hasGrowthData && dataValidation.hasTimeline;
+  // Critical data requirements for exit value calculations - now using flexible revenue logic
+  const canCalculateExitValue = dataValidation.hasAnyRevenueMetric && dataValidation.hasGrowthData && dataValidation.hasTimeline;
   const canAssessValuation = dataValidation.hasValuation && dataValidation.hasInvestorInterest;
   
   if (!canCalculateExitValue || !canAssessValuation) {
     console.log('⚠️ [OpenAI Analysis] Insufficient data for reliable analysis');
     const missingFields = [];
-    if (!dataValidation.hasRevenue) missingFields.push('revenue/ARR');
+    if (!dataValidation.hasAnyRevenueMetric) missingFields.push('revenue or ARR');
     if (!dataValidation.hasGrowthData) missingFields.push('revenue growth');
     if (!dataValidation.hasTimeline) missingFields.push('exit timeline');
     if (!dataValidation.hasValuation) missingFields.push('valuation data');
@@ -124,7 +127,7 @@ export async function analyzeCompanyWithOpenAI(
         additionalInvestmentRequested: company.additionalInvestmentRequested,
         industry: company.industry,
         tam: company.tam,
-        revenue: company.revenue,
+        revenue: company.revenue || company.arr,
         burnMultiple: company.burnMultiple,
         exitActivity: company.exitActivity
       }, perplexityKey);
@@ -277,6 +280,8 @@ Industry: ${company.industry || 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
 Current MOIC: ${company.moic}x
+Revenue: ${company.revenue !== null ? `$${(company.revenue / 1000000).toFixed(1)}M` : 'Not provided'}
+ARR: ${company.arr !== null ? `$${(company.arr / 1000000).toFixed(1)}M` : 'Not provided'}
 TTM Revenue Growth: ${company.revenueGrowth !== null ? `${company.revenueGrowth}%` : 'Not provided'}
 Projected Revenue Growth (Next 12 Months): ${company.projectedRevenueGrowth !== null ? `${company.projectedRevenueGrowth}%` : 'Not provided'}
 Burn Multiple: ${company.burnMultiple !== null ? `${company.burnMultiple}x` : 'Not provided'}
@@ -291,15 +296,27 @@ Post-Money Valuation: ${company.postMoneyValuation !== null ? `$${(company.postM
 Round Complexity: ${company.roundComplexity !== null ? `${company.roundComplexity}/5` : 'Not provided - defaulting to 3 (neutral)'}
 Exit Timeline: ${company.exitTimeline !== null ? `${company.exitTimeline} years` : '3 years (default assumption)'}
 
+REVENUE METRIC PRIORITIZATION:
+${company.arr !== null && company.revenue !== null ? 
+  `Both ARR ($${(company.arr / 1000000).toFixed(1)}M) and Revenue ($${(company.revenue / 1000000).toFixed(1)}M) provided. For SaaS/subscription models, prioritize ARR. For transaction-based models, prioritize total revenue.` :
+  company.arr !== null ? 
+    `ARR-based analysis: Use $${(company.arr / 1000000).toFixed(1)}M ARR for EV/ARR multiple calculations and recurring revenue projections.` :
+    company.revenue !== null ? 
+      `Revenue-based analysis: Use $${(company.revenue / 1000000).toFixed(1)}M total revenue for EV/Revenue multiple calculations.` :
+      'No revenue metrics provided - cannot calculate exit value projections.'
+}
+
 ${externalResearch}
 
 EXIT TIMELINE INTEGRATION PROTOCOL:
 Use the Exit Timeline to drive financial projections and time-sensitive investment decisions:
 
 PROJECTED FINANCIAL CALCULATIONS:
-- Projected ARR at Exit = Current ARR × (1 + Revenue Growth Rate) ^ Exit Timeline
-- Gross Exit Value = Projected ARR × Industry EV/ARR Multiple (from external research)
+- IF ARR PROVIDED: Projected ARR at Exit = Current ARR × (1 + Revenue Growth Rate) ^ Exit Timeline
+- IF REVENUE PROVIDED: Projected Revenue at Exit = Current Revenue × (1 + Revenue Growth Rate) ^ Exit Timeline  
+- Gross Exit Value = Projected ARR × Industry EV/ARR Multiple OR Projected Revenue × Industry EV/Revenue Multiple (from external research)
 - Factor timeline into IRR calculations: longer timelines increase risk and may compress returns
+- SPECIFY which metric (ARR vs Revenue) is being used in all exit value calculations
 
 TIME-SENSITIVE RISK ASSESSMENT:
 - Longer timelines (>5 years) increase execution risk and market uncertainty

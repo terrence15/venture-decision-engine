@@ -21,6 +21,8 @@ export interface RawCompanyData {
   postMoneyValuation: number | null;
   roundComplexity: number | null;
   exitTimeline: number | null;
+  revenue: number | null;
+  arr: number | null;
 }
 
 // Updated column mapping with exact headers from Excel
@@ -76,7 +78,17 @@ const COLUMN_MAPPINGS = {
   'Timeline': 'exitTimeline',
   'Years to Exit': 'exitTimeline',
   'Exit Timeline (years)': 'exitTimeline',
-  'Timeline to Exit': 'exitTimeline'
+  'Timeline to Exit': 'exitTimeline',
+  'Revenue': 'revenue',
+  'Total Revenue': 'revenue',
+  'Annual Revenue': 'revenue',
+  'Latest Revenue': 'revenue',
+  'Revenue ($)': 'revenue',
+  'ARR': 'arr',
+  'Annual Recurring Revenue': 'arr',
+  'Recurring Revenue': 'arr',
+  'Subscription Revenue': 'arr',
+  'ARR ($)': 'arr'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -98,7 +110,9 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'preMoneyValuation': ['pre', 'money', 'valuation'],
   'postMoneyValuation': ['post', 'money', 'valuation'],
   'roundComplexity': ['round', 'complexity', 'terms', 'structure', 'deal'],
-  'exitTimeline': ['exit', 'timeline', 'years', 'time', 'horizon', 'liquidity']
+  'exitTimeline': ['exit', 'timeline', 'years', 'time', 'horizon', 'liquidity'],
+  'revenue': ['revenue', 'total', 'annual', 'latest'],
+  'arr': ['arr', 'annual', 'recurring', 'subscription']
 };
 
 // Improved fuzzy matching function
@@ -180,7 +194,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -283,7 +297,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -302,8 +316,8 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       value = parsedValue * 1000;
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
                     }
-                    // Scale valuation fields based on magnitude (handle millions)
-                    else if (['preMoneyValuation', 'postMoneyValuation'].includes(fieldName)) {
+                    // Scale revenue and ARR fields based on magnitude (handle millions)
+                    else if (['preMoneyValuation', 'postMoneyValuation', 'revenue', 'arr'].includes(fieldName)) {
                       // If value is less than 1000, assume it's in millions and convert to dollars
                       if (parsedValue < 1000) {
                         value = parsedValue * 1000000;
