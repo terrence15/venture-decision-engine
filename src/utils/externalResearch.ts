@@ -258,7 +258,7 @@ function constructResearchQueries(company: CompanyResearchData, triggers: Resear
     // Query 1: Industry TAM and market analysis
     queries.push(`${industry} TAM market size growth rate 2024 addressable market analysis`);
     
-    // Query 2: Industry-specific exit multiples (dynamic based on business model)
+    // Query 2: Industry-specific exit multiples with named examples
     const exitMultipleQuery = getIndustrySpecificMultipleQuery(industry);
     queries.push(exitMultipleQuery);
     
@@ -286,18 +286,18 @@ function getIndustrySpecificMultipleQuery(industry: string): string {
   const lowerIndustry = industry.toLowerCase();
   
   if (lowerIndustry.includes('saas') || lowerIndustry.includes('software') || lowerIndustry.includes('enterprise')) {
-    return `${industry} EV/ARR multiples revenue multiples Series A B C exit valuation 2024`;
+    return `${industry} startup exits EV/ARR multiples named companies: MosaicML 12x ARR, Databricks 10-15x, Snowflake 8-12x, latest acquisition multiples 2024`;
   } else if (lowerIndustry.includes('marketplace') || lowerIndustry.includes('platform')) {
-    return `${industry} EV/GMV multiples transaction volume exit valuation 2024`;
+    return `${industry} platform exits EV/GMV multiples named companies: Uber Eats marketplace, DoorDash 8-12x GMV, latest platform acquisition multiples 2024`;
   } else if (lowerIndustry.includes('consumer') || lowerIndustry.includes('retail') || lowerIndustry.includes('ecommerce')) {
-    return `${industry} EV/Revenue multiples exit valuation consumer startup 2024`;
+    return `${industry} consumer startup exits EV/Revenue multiples named companies: Warby Parker 4-6x, Allbirds 3-5x, consumer brand acquisition multiples 2024`;
   } else if (lowerIndustry.includes('fintech') || lowerIndustry.includes('financial')) {
-    return `${industry} EV/Revenue price to book multiples fintech exit valuation 2024`;
+    return `${industry} fintech exits EV/Revenue multiples named companies: Stripe 15-20x, Plaid 12x, Affirm 8-10x, fintech acquisition multiples 2024`;
   } else if (lowerIndustry.includes('biotech') || lowerIndustry.includes('pharma') || lowerIndustry.includes('medical')) {
-    return `${industry} EV/Revenue development stage multiples biotech exit valuation 2024`;
+    return `${industry} biotech exits EV/Revenue multiples named companies: Moderna 8-12x, BioNTech 6-10x, biotech acquisition multiples by development stage 2024`;
   } else {
-    // Default to revenue multiple for unknown industries
-    return `${industry} EV/Revenue exit valuation multiples startup acquisition 2024`;
+    // Default to revenue multiple with general examples
+    return `${industry} startup exits EV/Revenue multiples named companies acquisition examples: recent startup exits valuation multiples 2024`;
   }
 }
 

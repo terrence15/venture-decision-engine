@@ -26,6 +26,8 @@ interface CompanyData {
   postMoneyValuation: number | null;
   roundComplexity: number | null;
   exitTimeline: number | null;
+  revenue: number | null;
+  arr: number | null;
   // AI Generated Fields
   recommendation?: string;
   timingBucket?: string;
@@ -108,6 +110,27 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     return `${value.toFixed(1)}${suffix}`;
   };
 
+  const formatRevenue = (revenue: number | null | undefined, arr: number | null | undefined) => {
+    if (arr !== null && arr !== undefined && arr > 0) {
+      return {
+        value: `$${(arr / 1000000).toFixed(1)}M`,
+        type: 'ARR',
+        primary: true
+      };
+    } else if (revenue !== null && revenue !== undefined && revenue > 0) {
+      return {
+        value: `$${(revenue / 1000000).toFixed(1)}M`,
+        type: 'Revenue',
+        primary: false
+      };
+    }
+    return {
+      value: 'N/A',
+      type: 'N/A',
+      primary: false
+    };
+  };
+
   const handleRowClick = (companyId: string) => {
     try {
       setExpandedRow(expandedRow === companyId ? null : companyId);
@@ -152,6 +175,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead className="w-8"></TableHead>
                 <TableHead className="min-w-[200px]">Company</TableHead>
                 <TableHead>Industry</TableHead>
+                <TableHead>ARR/Revenue</TableHead>
                 <TableHead>Investment</TableHead>
                 <TableHead>Equity</TableHead>
                 <TableHead>MOIC</TableHead>
@@ -195,6 +219,18 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                       <span className="text-sm font-medium text-muted-foreground">
                         {company.industry || 'N/A'}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">
+                          {formatRevenue(company.revenue, company.arr).value}
+                        </span>
+                        {formatRevenue(company.revenue, company.arr).type !== 'N/A' && (
+                          <Badge variant={formatRevenue(company.revenue, company.arr).primary ? 'default' : 'secondary'} className="text-xs">
+                            {formatRevenue(company.revenue, company.arr).type}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{formatCurrency(company.totalInvestment)}</TableCell>
                     <TableCell>{formatPercentage(company.equityStake)}</TableCell>
@@ -314,18 +350,45 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                       : 'N/A'}
                                   </span>
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">TAM:</span>
-                                  <span className="ml-2 font-medium">
-                                    {company.tam || 'N/A'}/5
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Barrier to Entry:</span>
-                                  <span className="ml-2 font-medium">
-                                    {company.barrierToEntry || 'N/A'}/5
-                                  </span>
-                                </div>
+                                 <div>
+                                   <span className="text-muted-foreground">TAM:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.tam || 'N/A'}/5
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Barrier to Entry:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.barrierToEntry || 'N/A'}/5
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">ARR:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.arr !== null && company.arr !== undefined && company.arr > 0 
+                                       ? `$${(company.arr / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                   </span>
+                                   {company.arr !== null && company.arr !== undefined && company.arr > 0 && (
+                                     <Badge variant="default" className="ml-1 text-xs">
+                                       Primary
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Revenue:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 
+                                       ? `$${(company.revenue / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                   </span>
+                                   {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 && 
+                                    (company.arr === null || company.arr === undefined || company.arr <= 0) && (
+                                     <Badge variant="secondary" className="ml-1 text-xs">
+                                       Primary
+                                     </Badge>
+                                   )}
+                                 </div>
                                  <div>
                                    <span className="text-muted-foreground">Projected Growth:</span>
                                    <span className="ml-2 font-medium">
