@@ -11,9 +11,12 @@ import { Building2, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { analyzePortfolio } from '@/utils/openaiAnalysis';
 import { parseExcelFile, RawCompanyData } from '@/utils/excelParser';
 import { getPerplexityApiKey, setPerplexityApiKey } from '@/utils/externalResearch';
+import { PortfolioExposureBubbleChart } from '@/components/charts/PortfolioExposureBubbleChart';
+import { MOICDistributionHistogram } from '@/components/charts/MOICDistributionHistogram';
+import { CapitalEfficiencyLeaderboard } from '@/components/charts/CapitalEfficiencyLeaderboard';
 
 // Extended interface for analyzed companies
-interface AnalyzedCompanyData extends RawCompanyData {
+export interface AnalyzedCompanyData extends RawCompanyData {
   recommendation?: string;
   timingBucket?: string;
   reasoning?: string;
@@ -34,6 +37,7 @@ export function Dashboard() {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [isParsingFile, setIsParsingFile] = useState(false);
+  const [filteredCompanies, setFilteredCompanies] = useState<AnalyzedCompanyData[]>([]);
   const { toast } = useToast();
 
   const handleFileUpload = async (file: File) => {
@@ -283,9 +287,61 @@ export function Dashboard() {
               </Card>
             </div>
 
+            {/* Interactive Charts Section */}
+            {companies.some(c => c.moic !== null && c.moic !== undefined) && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-semibold">Portfolio Analytics</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  <PortfolioExposureBubbleChart 
+                    companies={companies}
+                    onCompanySelect={(company) => {
+                      setFilteredCompanies([company]);
+                      toast({
+                        title: "Company Selected",
+                        description: `Filtered view to show ${company.companyName}`,
+                      });
+                    }}
+                  />
+                  <MOICDistributionHistogram 
+                    companies={companies}
+                    onBinSelect={(companiesInBin) => {
+                      setFilteredCompanies(companiesInBin);
+                      toast({
+                        title: "MOIC Filter Applied",
+                        description: `Showing ${companiesInBin.length} companies in selected range`,
+                      });
+                    }}
+                  />
+                  <CapitalEfficiencyLeaderboard 
+                    companies={companies}
+                    onCompanySelect={(company) => {
+                      setFilteredCompanies([company]);
+                      toast({
+                        title: "Company Selected",
+                        description: `Filtered view to show ${company.companyName}`,
+                      });
+                    }}
+                  />
+                </div>
+                {filteredCompanies.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      Filtered: {filteredCompanies.length} companies
+                    </Badge>
+                    <button
+                      onClick={() => setFilteredCompanies([])}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Clear filter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Analysis Table */}
             <AnalysisTable 
-              companies={companies}
+              companies={filteredCompanies.length > 0 ? filteredCompanies : companies}
               onAnalyze={handleAnalyze}
               isAnalyzing={isAnalyzing}
               analysisProgress={analysisProgress}
