@@ -5,6 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ExecutiveSummaryCard } from '@/components/dashboard/ExecutiveSummaryCard';
+import { FinancialHealthCard } from '@/components/dashboard/FinancialHealthCard';
+import { RiskAssessmentCard } from '@/components/dashboard/RiskAssessmentCard';
+import { ExitScenarioCard } from '@/components/dashboard/ExitScenarioCard';
+import { StrategyFitCard } from '@/components/dashboard/StrategyFitCard';
 
 interface CompanyData {
   id: string;
@@ -49,6 +54,46 @@ interface CompanyData {
   };
   researchQuality?: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
   sourceAttributions?: string[];
+  // Dashboard-specific fields
+  executiveSummary?: {
+    outcome: string;
+    keyMetrics: {
+      irr: string;
+      moic: string;
+      cashMultiple: string;
+      runway: string;
+      valuationDelta: string;
+    };
+    visualCues: string[];
+  };
+  financialHealth?: {
+    summary: string;
+    burnMultiple: number;
+    arrGrowth: string;
+    healthScore: number;
+  };
+  riskAssessment?: {
+    summary: string;
+    majorRisks: Array<{
+      risk: string;
+      severity: 'low' | 'medium' | 'high' | 'critical';
+      impact: string;
+    }>;
+  };
+  exitScenario?: {
+    summary: string;
+    detailedCalculation: string;
+    timeSeriesData: string;
+    confidence: number;
+  };
+  strategyFit?: {
+    score: number;
+    justification: string;
+    editableSuggestions: string[];
+  };
+  smartAlerts?: string[];
+  projectedExitValue?: number;
+  fundStrategyAlignment?: string;
 }
 
 interface AnalysisTableProps {
@@ -331,275 +376,204 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   {expandedRow === company.id && (
                     <TableRow>
                       <TableCell colSpan={17} className="bg-muted/20 p-6">
-                        <div className="grid md:grid-cols-2 gap-6">
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="font-semibold text-sm text-muted-foreground mb-2">Company Metrics</h4>
-                              <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div>
-                                  <span className="text-muted-foreground">Burn Multiple:</span>
-                                  <span className="ml-2 font-medium">
-                                    {formatNumber(company.burnMultiple, 'x')}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Runway:</span>
-                                  <span className="ml-2 font-medium">
-                                    {company.runway !== null && company.runway !== undefined && !isNaN(company.runway) 
-                                      ? `${company.runway} months` 
-                                      : 'N/A'}
-                                  </span>
-                                </div>
-                                 <div>
-                                   <span className="text-muted-foreground">TAM:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.tam || 'N/A'}/5
-                                   </span>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Barrier to Entry:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.barrierToEntry || 'N/A'}/5
-                                   </span>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">ARR:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.arr !== null && company.arr !== undefined && company.arr > 0 
-                                       ? `$${(company.arr / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                   </span>
-                                   {company.arr !== null && company.arr !== undefined && company.arr > 0 && (
-                                     <Badge variant="default" className="ml-1 text-xs">
-                                       Primary
-                                     </Badge>
-                                   )}
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Revenue:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 
-                                       ? `$${(company.revenue / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                   </span>
-                                   {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 && 
-                                    (company.arr === null || company.arr === undefined || company.arr <= 0) && (
-                                     <Badge variant="secondary" className="ml-1 text-xs">
-                                       Primary
-                                     </Badge>
-                                   )}
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Projected Growth:</span>
-                                   <span className="ml-2 font-medium">
-                                     {formatPercentage(company.projectedRevenueGrowth)}
-                                   </span>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Exit Timeline:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.exitTimeline !== null && company.exitTimeline !== undefined 
-                                       ? `${company.exitTimeline} years`
-                                       : '3 years (default)'}
-                                   </span>
-                                   {(!company.exitTimeline || company.exitTimeline === 3) && (
-                                     <Badge variant="outline" className="ml-1 text-xs">
-                                       Default Assumption
-                                     </Badge>
-                                   )}
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Investor Interest:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.investorInterest || 'N/A'}/5
-                                   </span>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Round Complexity:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.roundComplexity || 'N/A'}/5
-                                   </span>
-                                   <div className="mt-1">{getComplexityBadge(company.roundComplexity)}</div>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Pre-Money:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
-                                       ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                   </span>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Post-Money:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
-                                       ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                     {company.preMoneyValuation && company.postMoneyValuation && (
-                                       <Badge variant="outline" className="ml-1 text-xs">
-                                         {((company.postMoneyValuation / company.preMoneyValuation)).toFixed(1)}x markup
-                                       </Badge>
-                                     )}
-                                   </span>
-                                 </div>
-                                <div className="col-span-2">
-                                  <span className="text-muted-foreground">Exit Activity:</span>
-                                  <span className="ml-2 font-medium">
-                                    {company.exitActivity || 'N/A'}
-                                  </span>
-                                </div>
-                              </div>
+                        {/* Smart Alerts Section */}
+                        {company.smartAlerts && company.smartAlerts.length > 0 && (
+                          <div className="mb-6">
+                            <h4 className="font-semibold text-sm text-muted-foreground mb-3">Smart Alerts</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {company.smartAlerts.map((alert, index) => (
+                                <Badge 
+                                  key={index} 
+                                  variant={
+                                    alert.includes('⚠') ? 'secondary' :
+                                    alert.includes('🚩') ? 'destructive' :
+                                    alert.includes('🛑') ? 'destructive' :
+                                    'default'
+                                  }
+                                  className="text-xs"
+                                >
+                                  {alert}
+                                </Badge>
+                              ))}
                             </div>
-                            
-                            {company.timingBucket && (
-                              <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Strategic Timing</h4>
-                                <Badge variant="outline">{company.timingBucket}</Badge>
-                              </div>
-                            )}
                           </div>
-                          
-                          <div className="space-y-4">
-                            {company.reasoning && (
-                              <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">AI Reasoning</h4>
-                                <p className="text-sm leading-relaxed">{company.reasoning}</p>
-                              </div>
-                            )}
-                            
-                            {company.keyRisks && (
-                              <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Key Risks</h4>
-                                <p className="text-sm text-destructive leading-relaxed">{company.keyRisks}</p>
-                              </div>
-                            )}
-                            
-                            {company.suggestedAction && (
-                              <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Suggested Action</h4>
-                                <p className="text-sm font-medium leading-relaxed">{company.suggestedAction}</p>
-                              </div>
-                            )}
-                            
-                            {company.projectedExitValueRange && (
-                              <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">📈 Projected Exit Value Range</h4>
-                                <div className="text-sm leading-relaxed bg-muted/40 p-3 rounded border border-border">
-                                  <div className="whitespace-pre-wrap">{company.projectedExitValueRange}</div>
-                                </div>
-                              </div>
-                            )}
+                        )}
 
-                            {company.riskAdjustedMonetizationSummary && (
-                              <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">💰 Risk-Adjusted Monetization Summary</h4>
-                                <div className="text-sm leading-relaxed bg-gradient-subtle p-3 rounded border border-border">
-                                  <div className="whitespace-pre-wrap">{company.riskAdjustedMonetizationSummary}</div>
-                                </div>
-                              </div>
+                        {/* Dashboard Cards Grid */}
+                        {company.executiveSummary || company.financialHealth || company.riskAssessment || company.exitScenario || company.strategyFit ? (
+                          <div className="grid lg:grid-cols-2 gap-6">
+                            {company.executiveSummary && (
+                              <ExecutiveSummaryCard 
+                                executiveSummary={company.executiveSummary}
+                                recommendation={company.recommendation || 'Pending analysis'}
+                                confidence={company.confidence || 0}
+                              />
                             )}
                             
-                             {company.externalInsights && !company.insufficientData && (
-                               <div className="space-y-3">
-                                 <div className="flex items-center gap-2">
-                                   <h4 className="font-semibold text-sm text-muted-foreground">External Market Intelligence</h4>
-                                   {company.researchQuality && (
-                                     <Badge variant={
-                                       company.researchQuality === 'comprehensive' ? 'default' :
-                                       company.researchQuality === 'limited' ? 'secondary' :
-                                       company.researchQuality === 'minimal' ? 'outline' : 'destructive'
-                                     } className="text-xs">
-                                       {company.researchQuality}
-                                     </Badge>
-                                   )}
-                                 </div>
-                                 
-                                 {company.externalInsights.marketContext.length > 0 && (
-                                   <div>
-                                     <p className="text-xs font-medium text-muted-foreground mb-1">Market Context:</p>
-                                     <ul className="text-xs space-y-1">
-                                       {company.externalInsights.marketContext.map((insight, i) => (
-                                         <li key={i} className="text-foreground">• {insight}</li>
-                                       ))}
-                                     </ul>
-                                   </div>
-                                 )}
-                                 
-                                 {company.externalInsights.competitivePosition.length > 0 && (
-                                   <div>
-                                     <p className="text-xs font-medium text-muted-foreground mb-1">Competitive Position:</p>
-                                     <ul className="text-xs space-y-1">
-                                       {company.externalInsights.competitivePosition.map((insight, i) => (
-                                         <li key={i} className="text-foreground">• {insight}</li>
-                                       ))}
-                                     </ul>
-                                   </div>
-                                 )}
-                                 
-                                 {company.externalInsights.fundingEnvironment.length > 0 && (
-                                   <div>
-                                     <p className="text-xs font-medium text-muted-foreground mb-1">Funding Environment:</p>
-                                     <ul className="text-xs space-y-1">
-                                       {company.externalInsights.fundingEnvironment.map((insight, i) => (
-                                         <li key={i} className="text-foreground">• {insight}</li>
-                                       ))}
-                                     </ul>
-                                   </div>
-                                 )}
-
-                                 {(company as any).namedComps && (company as any).namedComps.length > 0 && (
-                                   <div>
-                                     <p className="text-xs font-medium text-muted-foreground mb-2">M&A Comparables:</p>
-                                     <div className="overflow-x-auto">
-                                       <table className="w-full text-xs border border-border rounded">
-                                         <thead className="bg-muted/50">
-                                           <tr>
-                                             <th className="text-left p-2 font-medium">Company</th>
-                                             <th className="text-left p-2 font-medium">Acquirer</th>
-                                             <th className="text-left p-2 font-medium">Year</th>
-                                             <th className="text-left p-2 font-medium">Valuation</th>
-                                             <th className="text-left p-2 font-medium">Multiple</th>
-                                             <th className="text-left p-2 font-medium">Notes</th>
-                                           </tr>
-                                         </thead>
-                                         <tbody>
-                                           {(company as any).namedComps.map((comp: any, idx: number) => (
-                                             <tr key={idx} className="border-t border-border">
-                                               <td className="p-2 text-foreground font-medium">{comp.company}</td>
-                                               <td className="p-2 text-muted-foreground">{comp.acquirer}</td>
-                                               <td className="p-2 text-muted-foreground">{comp.year}</td>
-                                               <td className="p-2 text-muted-foreground">{comp.valuation}</td>
-                                               <td className="p-2">
-                                                 <Badge variant="outline" className="text-xs">
-                                                   {comp.multiple}
-                                                 </Badge>
-                                               </td>
-                                               <td className="p-2 text-muted-foreground text-xs">{comp.notes}</td>
-                                             </tr>
-                                           ))}
-                                         </tbody>
-                                       </table>
-                                     </div>
-                                   </div>
-                                 )}
-                                 
-                                 {company.sourceAttributions && company.sourceAttributions.length > 0 && (
-                                   <div>
-                                     <p className="text-xs font-medium text-muted-foreground mb-1">Sources Referenced:</p>
-                                     <p className="text-xs text-muted-foreground">{company.sourceAttributions.join(', ')}</p>
-                                   </div>
-                                 )}
-                               </div>
+                            {company.financialHealth && (
+                              <FinancialHealthCard 
+                                financialHealth={company.financialHealth}
+                              />
+                            )}
+                            
+                             {company.riskAssessment && (
+                               <RiskAssessmentCard 
+                                 riskAssessment={company.riskAssessment}
+                                 keyRisks={company.keyRisks ? [company.keyRisks] : []}
+                               />
                              )}
                             
-                            {company.externalSources && !company.externalInsights && !company.insufficientData && (
-                              <div>
-                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">External Research Sources</h4>
-                                <p className="text-xs text-muted-foreground leading-relaxed">{company.externalSources}</p>
-                              </div>
+                             {company.exitScenario && (
+                               <ExitScenarioCard 
+                                 exitScenario={company.exitScenario}
+                                 projectedExitValue={company.projectedExitValue?.toString() || '0'}
+                               />
+                             )}
+                            
+                            {company.strategyFit && (
+                              <StrategyFitCard 
+                                strategyFit={company.strategyFit}
+                                fundStrategyAlignment={company.fundStrategyAlignment || ''}
+                              />
                             )}
                           </div>
-                        </div>
+                        ) : (
+                          /* Fallback to legacy display for companies without enhanced data */
+                          <div className="grid md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Company Metrics</h4>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Burn Multiple:</span>
+                                    <span className="ml-2 font-medium">
+                                      {formatNumber(company.burnMultiple, 'x')}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Runway:</span>
+                                    <span className="ml-2 font-medium">
+                                      {company.runway !== null && company.runway !== undefined && !isNaN(company.runway) 
+                                        ? `${company.runway} months` 
+                                        : 'N/A'}
+                                    </span>
+                                  </div>
+                                   <div>
+                                     <span className="text-muted-foreground">TAM:</span>
+                                     <span className="ml-2 font-medium">
+                                       {company.tam || 'N/A'}/5
+                                     </span>
+                                   </div>
+                                   <div>
+                                     <span className="text-muted-foreground">Barrier to Entry:</span>
+                                     <span className="ml-2 font-medium">
+                                       {company.barrierToEntry || 'N/A'}/5
+                                     </span>
+                                   </div>
+                                   <div>
+                                     <span className="text-muted-foreground">ARR:</span>
+                                     <span className="ml-2 font-medium">
+                                       {company.arr !== null && company.arr !== undefined && company.arr > 0 
+                                         ? `$${(company.arr / 1000000).toFixed(1)}M`
+                                         : 'N/A'}
+                                     </span>
+                                     {company.arr !== null && company.arr !== undefined && company.arr > 0 && (
+                                       <Badge variant="default" className="ml-1 text-xs">
+                                         Primary
+                                       </Badge>
+                                     )}
+                                   </div>
+                                   <div>
+                                     <span className="text-muted-foreground">Revenue:</span>
+                                     <span className="ml-2 font-medium">
+                                       {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 
+                                         ? `$${(company.revenue / 1000000).toFixed(1)}M`
+                                         : 'N/A'}
+                                     </span>
+                                     {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 && 
+                                      (company.arr === null || company.arr === undefined || company.arr <= 0) && (
+                                       <Badge variant="secondary" className="ml-1 text-xs">
+                                         Primary
+                                       </Badge>
+                                     )}
+                                   </div>
+                                   <div>
+                                     <span className="text-muted-foreground">Exit Activity:</span>
+                                     <span className="ml-2 font-medium">
+                                       {company.exitActivity || 'N/A'}
+                                     </span>
+                                   </div>
+                                </div>
+                              </div>
+
+                              {company.externalInsights && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Market Intelligence</h4>
+                                  <div className="space-y-2 text-sm">
+                                    {company.externalInsights.marketContext.length > 0 && (
+                                      <div>
+                                        <span className="font-medium text-muted-foreground">Market Context:</span>
+                                        <ul className="ml-4 mt-1 space-y-1">
+                                          {company.externalInsights.marketContext.slice(0, 2).map((context, index) => (
+                                            <li key={index} className="text-foreground">• {context}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    {company.externalInsights.competitivePosition.length > 0 && (
+                                      <div>
+                                        <span className="font-medium text-muted-foreground">Competitive Position:</span>
+                                        <ul className="ml-4 mt-1 space-y-1">
+                                          {company.externalInsights.competitivePosition.slice(0, 2).map((position, index) => (
+                                            <li key={index} className="text-foreground">• {position}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-4">
+                              {company.reasoning && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">AI Reasoning</h4>
+                                  <p className="text-sm text-foreground leading-relaxed">
+                                    {company.reasoning}
+                                  </p>
+                                </div>
+                              )}
+
+                              {company.keyRisks && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Key Risks</h4>
+                                  <p className="text-sm text-foreground leading-relaxed">
+                                    {company.keyRisks}
+                                  </p>
+                                </div>
+                              )}
+
+                              {company.suggestedAction && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Suggested Action</h4>
+                                  <p className="text-sm text-foreground leading-relaxed">
+                                    {company.suggestedAction}
+                                  </p>
+                                </div>
+                              )}
+
+                              {company.projectedExitValueRange && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Projected Exit Value</h4>
+                                  <p className="text-sm text-foreground leading-relaxed">
+                                    {company.projectedExitValueRange}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   )}
