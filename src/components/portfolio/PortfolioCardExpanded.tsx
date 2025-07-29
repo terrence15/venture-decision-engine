@@ -44,7 +44,7 @@ export function PortfolioCardExpanded({ company, isOpen, onClose }: PortfolioCar
   // Format percentage
   const formatPercentage = (value: number | null | undefined) => {
     if (!value) return 'N/A';
-    return `${(value * 100).toFixed(2)}%`;
+    return `${value.toFixed(2)}%`;
   };
 
   // Get health status

@@ -54,7 +54,7 @@ export function PortfolioCard({ company, onExpand }: PortfolioCardProps) {
   // Format percentage
   const formatPercentage = (value: number | null | undefined) => {
     if (!value) return 'N/A';
-    return `${(value * 100).toFixed(1)}%`;
+    return `${value.toFixed(1)}%`;
   };
 
   // Format runway
