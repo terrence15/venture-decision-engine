@@ -196,10 +196,10 @@ export function Dashboard() {
         {!uploadedFile ? (
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-4">
-                AI-Powered Portfolio Analysis
+              <h2 className="text-4xl font-orbitron font-black text-foreground mb-4 tracking-wider">
+                AI-POWERED PORTFOLIO ANALYSIS
               </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-space-grotesk">
                 Upload your portfolio data to receive objective, risk-adjusted recommendations 
                 for capital deployment decisions backed by AI analysis and real-time market research.
               </p>
@@ -214,14 +214,14 @@ export function Dashboard() {
         ) : (
           <div className="space-y-6">
             {/* File Info Card */}
-            <Card className="shadow-soft">
+            <Card className="shadow-glow">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Loaded from:</p>
-                    <p className="font-medium">{uploadedFile.name}</p>
+                    <p className="text-sm text-muted-foreground font-space-grotesk">Loaded from:</p>
+                    <p className="font-medium font-orbitron text-accent">{uploadedFile.name}</p>
                   </div>
-                  <Badge variant="outline">{companies.length} companies</Badge>
+                  <Badge variant="outline" className="border-accent text-accent">{companies.length} companies</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -290,7 +290,7 @@ export function Dashboard() {
             {/* Interactive Charts Section */}
             {companies.some(c => c.moic !== null && c.moic !== undefined) && (
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold">Portfolio Analytics</h3>
+                <h3 className="text-2xl font-orbitron font-bold text-accent tracking-wider">PORTFOLIO ANALYTICS</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   <PortfolioExposureBubbleChart 
                     companies={companies}

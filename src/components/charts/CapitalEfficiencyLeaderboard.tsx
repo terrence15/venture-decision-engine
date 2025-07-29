@@ -15,11 +15,11 @@ export function CapitalEfficiencyLeaderboard({ companies, onCompanySelect }: Cap
     if (active && payload && payload.length) {
       const data = payload[0].payload as EfficiencyData;
       return (
-        <div className="bg-popover p-3 rounded-lg border shadow-lg">
-          <p className="font-semibold">{label}</p>
-          <p className="text-sm">Burn Multiple: {data.burnMultiple.toFixed(2)}x</p>
-          <p className="text-sm">Efficiency Score: {data.efficiency.toFixed(2)}</p>
-          <p className="text-sm">Revenue: ${((data.data.revenue || data.data.arr || 0) / 1000000).toFixed(1)}M</p>
+        <div className="hud-tooltip p-3 rounded-lg font-space-grotesk">
+          <p className="font-orbitron font-bold text-accent text-xs uppercase tracking-wider">{label}</p>
+          <p className="text-sm text-foreground">Burn Multiple: <span className="text-accent">{data.burnMultiple.toFixed(2)}x</span></p>
+          <p className="text-sm text-foreground">Efficiency Score: <span className="text-accent">{data.efficiency.toFixed(2)}</span></p>
+          <p className="text-sm text-foreground">Revenue: <span className="text-accent">${((data.data.revenue || data.data.arr || 0) / 1000000).toFixed(1)}M</span></p>
         </div>
       );
     }
@@ -34,16 +34,16 @@ export function CapitalEfficiencyLeaderboard({ companies, onCompanySelect }: Cap
 
   if (efficiencyData.length === 0) {
     return (
-      <Card className="shadow-soft">
+      <Card className="shadow-glow relative overflow-hidden">
         <CardHeader>
-          <CardTitle className="text-lg">Capital Efficiency Leaderboard</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardTitle className="text-lg font-orbitron text-accent">CAPITAL EFFICIENCY LEADERBOARD</CardTitle>
+          <p className="text-sm text-muted-foreground font-space-grotesk">
             Top performers by capital efficiency
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-gradient-to-br from-background/50 to-background/80">
           <div className="flex items-center justify-center h-48 text-muted-foreground">
-            <p>No burn multiple data available</p>
+            <p className="font-space-grotesk">No burn multiple data available</p>
           </div>
         </CardContent>
       </Card>
@@ -51,26 +51,26 @@ export function CapitalEfficiencyLeaderboard({ companies, onCompanySelect }: Cap
   }
 
   return (
-    <Card className="shadow-soft">
+    <Card className="shadow-glow relative overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-lg">Capital Efficiency Leaderboard</CardTitle>
-        <p className="text-sm text-muted-foreground">
+        <CardTitle className="text-lg font-orbitron text-accent">CAPITAL EFFICIENCY LEADERBOARD</CardTitle>
+        <p className="text-sm text-muted-foreground font-space-grotesk">
           Top performers by capital efficiency (1 / burn multiple)
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="bg-gradient-to-br from-background/50 to-background/80">
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={efficiencyData} layout="horizontal">
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="1 1" stroke="hsl(var(--accent) / 0.2)" />
             <XAxis 
               type="number" 
-              tick={{ fill: 'hsl(var(--foreground))' }}
+              tick={{ fill: 'hsl(var(--accent))', fontSize: 12 }}
             />
             <YAxis 
               dataKey="name" 
               type="category" 
               width={100}
-              tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+              tick={{ fill: 'hsl(var(--accent))', fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar 
@@ -79,7 +79,7 @@ export function CapitalEfficiencyLeaderboard({ companies, onCompanySelect }: Cap
               cursor="pointer"
             >
               {efficiencyData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+                <Cell key={`cell-${index}`} fill={entry.color} stroke="hsl(var(--accent))" strokeWidth={1} />
               ))}
             </Bar>
           </BarChart>

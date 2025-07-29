@@ -15,12 +15,12 @@ export function PortfolioExposureBubbleChart({ companies, onCompanySelect }: Por
     if (active && payload && payload.length) {
       const data = payload[0].payload as ChartDataPoint;
       return (
-        <div className="bg-popover p-3 rounded-lg border shadow-lg">
-          <p className="font-semibold">{data.name}</p>
-          <p className="text-sm">Risk-Adjusted MOIC: {data.x.toFixed(2)}x</p>
-          <p className="text-sm">Confidence: {data.y}/5</p>
-          <p className="text-sm">Capital Exposure: ${data.size.toFixed(1)}M</p>
-          <p className="text-sm">Recommendation: {data.data.recommendation || 'Pending'}</p>
+        <div className="hud-tooltip p-3 rounded-lg font-space-grotesk">
+          <p className="font-orbitron font-bold text-accent text-xs uppercase tracking-wider">{data.name}</p>
+          <p className="text-sm text-foreground">Risk-Adjusted MOIC: <span className="text-accent">{data.x.toFixed(2)}x</span></p>
+          <p className="text-sm text-foreground">Confidence: <span className="text-accent">{data.y}/5</span></p>
+          <p className="text-sm text-foreground">Capital Exposure: <span className="text-accent">${data.size.toFixed(1)}M</span></p>
+          <p className="text-sm text-foreground">Recommendation: <span className="text-accent">{data.data.recommendation || 'Pending'}</span></p>
         </div>
       );
     }
@@ -34,30 +34,30 @@ export function PortfolioExposureBubbleChart({ companies, onCompanySelect }: Por
   };
 
   return (
-    <Card className="shadow-soft">
+    <Card className="shadow-glow relative overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-lg">Portfolio Exposure vs Risk</CardTitle>
-        <p className="text-sm text-muted-foreground">
+        <CardTitle className="text-lg font-orbitron text-accent">PORTFOLIO EXPOSURE VS RISK</CardTitle>
+        <p className="text-sm text-muted-foreground font-space-grotesk">
           Capital at risk vs potential return. Bubble size = total exposure.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="bg-gradient-to-br from-background/50 to-background/80">
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="1 1" stroke="hsl(var(--accent) / 0.2)" />
             <XAxis 
               dataKey="x" 
               type="number" 
               domain={['dataMin - 0.5', 'dataMax + 0.5']}
-              tick={{ fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'Risk-Adjusted MOIC', position: 'insideBottom', offset: -5 }}
+              tick={{ fill: 'hsl(var(--accent))', fontSize: 12 }}
+              label={{ value: 'Risk-Adjusted MOIC', position: 'insideBottom', offset: -5, style: { fill: 'hsl(var(--accent))' } }}
             />
             <YAxis 
               dataKey="y" 
               type="number" 
               domain={[0, 5]}
-              tick={{ fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'Confidence Score', angle: -90, position: 'insideLeft' }}
+              tick={{ fill: 'hsl(var(--accent))', fontSize: 12 }}
+              label={{ value: 'Confidence Score', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--accent))' } }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Scatter 
@@ -66,7 +66,7 @@ export function PortfolioExposureBubbleChart({ companies, onCompanySelect }: Por
               cursor="pointer"
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+                <Cell key={`cell-${index}`} fill={entry.color} stroke="hsl(var(--accent))" strokeWidth={1} />
               ))}
             </Scatter>
           </ScatterChart>
