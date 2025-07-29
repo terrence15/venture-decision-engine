@@ -6,14 +6,16 @@ import { CombinedApiKeyInput } from '@/components/CombinedApiKeyInput';
 import { ApiKeyStatus } from '@/components/ApiKeyStatus';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Building2, DollarSign, TrendingUp, AlertTriangle, LayoutGrid, Table2 } from 'lucide-react';
 import { analyzePortfolio } from '@/utils/openaiAnalysis';
 import { parseExcelFile, RawCompanyData } from '@/utils/excelParser';
 import { getPerplexityApiKey, setPerplexityApiKey } from '@/utils/externalResearch';
 import { PortfolioExposureBubbleChart } from '@/components/charts/PortfolioExposureBubbleChart';
 import { MOICDistributionHistogram } from '@/components/charts/MOICDistributionHistogram';
 import { CapitalEfficiencyLeaderboard } from '@/components/charts/CapitalEfficiencyLeaderboard';
+import { PortfolioCardGrid } from '@/components/portfolio/PortfolioCardGrid';
 
 // Extended interface for analyzed companies
 export interface AnalyzedCompanyData extends RawCompanyData {
@@ -38,6 +40,7 @@ export function Dashboard() {
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [filteredCompanies, setFilteredCompanies] = useState<AnalyzedCompanyData[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const { toast } = useToast();
 
   const handleFileUpload = async (file: File) => {
@@ -339,14 +342,58 @@ export function Dashboard() {
               </div>
             )}
 
-            {/* Analysis Table */}
-            <AnalysisTable 
-              companies={filteredCompanies.length > 0 ? filteredCompanies : companies}
-              onAnalyze={handleAnalyze}
-              isAnalyzing={isAnalyzing}
-              analysisProgress={analysisProgress}
-              analysisStatus={analysisStatus}
-            />
+            {/* View Toggle */}
+            <Card className="shadow-glow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-orbitron tracking-wider">
+                    PORTFOLIO DATA
+                  </CardTitle>
+                  <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg">
+                    <Button
+                      variant={viewMode === 'table' ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode('table')}
+                      className="flex items-center gap-2"
+                    >
+                      <Table2 className="h-4 w-4" />
+                      Table
+                    </Button>
+                    <Button
+                      variant={viewMode === 'cards' ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode('cards')}
+                      className="flex items-center gap-2"
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                      Cards
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Conditional Rendering Based on View Mode */}
+            {viewMode === 'table' ? (
+              <AnalysisTable 
+                companies={filteredCompanies.length > 0 ? filteredCompanies : companies}
+                onAnalyze={handleAnalyze}
+                isAnalyzing={isAnalyzing}
+                analysisProgress={analysisProgress}
+                analysisStatus={analysisStatus}
+              />
+            ) : (
+              <PortfolioCardGrid
+                companies={filteredCompanies.length > 0 ? filteredCompanies : companies}
+                onCompanySelect={(company) => {
+                  setFilteredCompanies([company]);
+                  toast({
+                    title: "Company Selected",
+                    description: `Filtered view to show ${company.companyName}`,
+                  });
+                }}
+              />
+            )}
           </div>
         )}
         
