@@ -46,48 +46,6 @@ interface AnalysisResult {
   };
   researchQuality: 'comprehensive' | 'limited' | 'minimal' | 'unavailable';
   sourceAttributions: string[];
-  // Dashboard-specific fields
-  executiveSummary: {
-    outcome: string;
-    keyMetrics: {
-      irr: string;
-      moic: string;
-      cashMultiple: string;
-      runway: string;
-      valuationDelta: string;
-    };
-    visualCues: string[];
-  };
-  financialHealth: {
-    summary: string;
-    burnMultiple: number;
-    arrGrowth: string;
-    healthScore: number;
-  };
-  riskAssessment: {
-    summary: string;
-    majorRisks: Array<{
-      risk: string;
-      severity: 'low' | 'medium' | 'high' | 'critical';
-      impact: string;
-    }>;
-  };
-  exitScenario: {
-    summary: string;
-    detailedCalculation: string;
-    timeSeriesData: string;
-    confidence: number;
-  };
-  strategyFit: {
-    score: number;
-    justification: string;
-    editableSuggestions: string[];
-  };
-  smartAlerts: Array<{
-    type: 'warning' | 'error' | 'info';
-    message: string;
-    threshold: string;
-  }>;
 }
 
 export async function analyzeCompanyWithOpenAI(
@@ -145,49 +103,7 @@ export async function analyzeCompanyWithOpenAI(
         industryTrends: []
       },
       researchQuality: 'unavailable' as const,
-      sourceAttributions: [],
-      // Dashboard-specific fields with defaults
-      executiveSummary: {
-        outcome: 'Insufficient data for analysis',
-        keyMetrics: {
-          irr: 'N/A',
-          moic: 'N/A',
-          cashMultiple: 'N/A',
-          runway: 'N/A',
-          valuationDelta: 'N/A'
-        },
-        visualCues: ['[⚠ Insufficient Data] - Analysis cannot be completed']
-      },
-      financialHealth: {
-        summary: 'Cannot assess financial health without required data',
-        burnMultiple: 0,
-        arrGrowth: 'Data not available',
-        healthScore: 1
-      },
-      riskAssessment: {
-        summary: 'Risk assessment unavailable due to missing data',
-        majorRisks: [{
-          risk: 'Insufficient data for analysis',
-          severity: 'critical' as const,
-          impact: 'Cannot make informed investment decision'
-        }]
-      },
-      exitScenario: {
-        summary: 'Exit scenario analysis unavailable',
-        detailedCalculation: 'Cannot calculate without required financial metrics',
-        timeSeriesData: 'Growth trajectory unknown',
-        confidence: 0.1
-      },
-      strategyFit: {
-        score: 1,
-        justification: 'Cannot assess strategy fit without complete data',
-        editableSuggestions: ['Complete required data fields before analysis']
-      },
-      smartAlerts: [{
-        type: 'error' as const,
-        message: '[🛑 Insufficient Data] - Analysis blocked by missing critical fields',
-        threshold: 'Missing required fields for analysis'
-      }]
+      sourceAttributions: []
     };
   }
 
@@ -559,37 +475,6 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
       throw new Error(`Failed to parse JSON response: ${parseError.message}`);
     }
     
-    // Generate dashboard-specific fields
-    const burnMultiple = company.burnMultiple || 0;
-    const postMoneyValuation = company.postMoneyValuation || 0;
-    const arr = company.arr || 0;
-    const investorInterest = company.investorInterest || 0;
-    const capitalRequested = company.additionalInvestmentRequested || 0;
-
-    // Generate smart alerts
-    const smartAlerts = [];
-    if (burnMultiple > 2.5) {
-      smartAlerts.push({
-        type: 'warning' as const,
-        message: '[⚠ Burn Multiple Risk] - High burn rate relative to revenue',
-        threshold: 'Burn Multiple > 2.5'
-      });
-    }
-    if (postMoneyValuation > arr * 10 && arr > 0) {
-      smartAlerts.push({
-        type: 'error' as const,
-        message: '[🚩 Overvaluation Risk] - Valuation exceeds 10x ARR',
-        threshold: 'Post-Money Valuation > 10x ARR'
-      });
-    }
-    if (investorInterest <= 2 && capitalRequested > 3000000) {
-      smartAlerts.push({
-        type: 'error' as const,
-        message: '[🛑 Bagholder Risk] - Low investor interest with high capital request',
-        threshold: 'Investor Interest ≤ 2 + Request > $3M'
-      });
-    }
-
     return {
       recommendation: analysis.recommendation || 'Analysis incomplete',
       timingBucket: analysis.timingBucket || 'Hold (3-6 Months)',
@@ -609,53 +494,7 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
         industryTrends: []
       },
       researchQuality: research?.researchQuality || 'unavailable',
-      sourceAttributions: analysis.sourceAttributions || [],
-      // Dashboard-specific fields
-      executiveSummary: {
-        outcome: analysis.recommendation?.split('.')[0] || 'Analysis incomplete',
-        keyMetrics: {
-          irr: analysis.projectedExitValueRange?.includes('IRR') ? analysis.projectedExitValueRange.match(/(\d+%)/)?.[1] || 'TBD' : 'TBD',
-          moic: analysis.projectedExitValueRange?.includes('MOIC') ? analysis.projectedExitValueRange.match(/(\d+\.?\d*x)/)?.[1] || 'TBD' : 'TBD',
-          cashMultiple: analysis.riskAdjustedMonetizationSummary?.includes('multiple') ? analysis.riskAdjustedMonetizationSummary.match(/(\d+\.?\d*x)/)?.[1] || 'TBD' : 'TBD',
-          runway: company.runway ? `${company.runway} months` : 'TBD',
-          valuationDelta: postMoneyValuation && arr ? `${(postMoneyValuation / arr).toFixed(1)}x ARR` : 'TBD'
-        },
-        visualCues: smartAlerts.map(alert => alert.message)
-      },
-      financialHealth: {
-        summary: `Burn multiple of ${burnMultiple.toFixed(1)}x with ${company.runway || 0} months runway`,
-        burnMultiple,
-        arrGrowth: arr > 0 ? 'Positive ARR trajectory' : 'Revenue-based model',
-        healthScore: Math.min(5, Math.max(1, Math.round(5 - (burnMultiple > 2 ? 2 : 0) - (company.runway && company.runway < 12 ? 1 : 0))))
-      },
-      riskAssessment: {
-        summary: `Analysis identifies multiple risk factors requiring consideration`,
-        majorRisks: analysis.keyRisks ? analysis.keyRisks.split('.').slice(0, 5).map((risk, index) => ({
-          risk: risk.trim().substring(0, 100),
-          severity: index === 0 ? 'high' as const : index < 3 ? 'medium' as const : 'low' as const,
-          impact: 'Financial and strategic implications'
-        })) : [{
-          risk: 'Risk assessment incomplete',
-          severity: 'medium' as const,
-          impact: 'Unable to fully assess risk profile'
-        }]
-      },
-      exitScenario: {
-        summary: analysis.projectedExitValueRange?.substring(0, 150) || 'Exit value analysis pending',
-        detailedCalculation: analysis.projectedExitValueRange || 'Calculation pending completion',
-        timeSeriesData: arr > 0 ? `ARR trajectory from $${(arr / 1000000).toFixed(1)}M with growth assumptions` : 'Revenue-based projections',
-        confidence: Math.min(5, Math.max(1, parseInt(analysis.confidence) || 3)) / 5
-      },
-      strategyFit: {
-        score: Math.min(5, Math.max(1, Math.round((parseInt(analysis.confidence) || 3)))),
-        justification: analysis.reasoning?.substring(0, 200) || 'Strategy alignment assessment pending',
-        editableSuggestions: [
-          'Consider valuation adjustment based on market comparables',
-          'Flag for quarterly reforecast and milestone tracking',
-          'Evaluate co-investment opportunities with strategic partners'
-        ]
-      },
-      smartAlerts
+      sourceAttributions: analysis.sourceAttributions || []
     };
 
   } catch (error) {
