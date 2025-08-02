@@ -456,164 +456,80 @@ Research Sources: ${research.sources.join(', ') || 'Limited external data availa
 
   onProgress?.(`Analyzing ${company.companyName}...`);
 
+  // Calculate internal analysis scores
+  const marketCredibilityScore = calculateMarketCredibilityScore(company);
+  const capitalEfficiencyScore = calculateCapitalEfficiencyScore(company);
+  const executionCredibilityScore = calculateExecutionCredibilityScore(company);
+  
+  // Calculate scenario projections
+  const scenarios = calculateScenarios(company, marketCredibilityScore, capitalEfficiencyScore, executionCredibilityScore);
+
   const investmentContext = company.isExistingInvestment 
     ? "You are an expert venture capital investor evaluating whether to approve an additional capital request from an EXISTING PORTFOLIO COMPANY. Focus on performance tracking, exit timing optimization, and portfolio management decisions."
     : "You are an expert venture capital investor evaluating a NEW POTENTIAL INVESTMENT OPPORTUNITY. Focus on investment thesis validation, due diligence priorities, market entry strategy, and initial capital deployment decisions.";
 
-  const prompt = `${investmentContext} Your analysis must be grounded in the Excel financial data with external market insights used only as supporting context.
+    const prompt = `You are a sophisticated venture capital analyst conducting an investment evaluation.
 
-ANALYSIS PROTOCOL:
-- Excel financial data is the PRIMARY source of truth for all investment decisions
-- External research provides market color and sector context ONLY  
-- Never hallucinate or invent market data not provided in external research
-- If external data is insufficient, state this explicitly rather than making assumptions
-- Integrate approved source insights into reasoning and risk assessment where available
+COMPANY DATA:
+${JSON.stringify(company, null, 2)}
 
-SERIES/STAGE CONTEXTUAL FRAMING:
-${company.seriesStage ? `This company is at the ${company.seriesStage} stage. Use this contextual information to enhance your analysis:` : 'Series/Stage not specified - provide general analysis without stage-specific context.'}
+INTERNAL ANALYSIS SCORES:
+- Market Credibility: ${marketCredibilityScore}/100 (TAM validation, exit activity, industry positioning)
+- Capital Efficiency: ${capitalEfficiencyScore}/100 (burn multiple, runway, growth efficiency)  
+- Execution Credibility: ${executionCredibilityScore}/100 (growth consistency, projection realism)
 
-${company.seriesStage ? `STAGE-SPECIFIC INTERPRETATION GUIDELINES FOR ${company.seriesStage.toUpperCase()}:
-${company.seriesStage === 'Seed' ? `
-- Focus on product-market fit signals, early traction validation, and founder-market fit
-- Typical metrics: $0-2M ARR, high growth volatility, limited revenue history
-- Investment thesis: Early-stage risk/reward, emphasis on team and market opportunity
-- Example context: "For a Seed company with $1M ARR, this $5M raise suggests strong early validation signals"` : 
-company.seriesStage === 'Series A' ? `
-- Emphasize scalable business model, growth efficiency, and unit economics validation
-- Typical metrics: $1-10M ARR, proven growth trajectory, emerging competitive differentiation
-- Investment thesis: Growth capital for market expansion, sales/marketing scale-up
-- Example context: "For a Series A company with $3M ARR, this $40M raise suggests an ambitious scale-up plan"` :
-company.seriesStage === 'Series B' || company.seriesStage === 'Series C' ? `
-- Highlight market expansion, operational scaling, and path to profitability clarity
-- Typical metrics: $10M+ ARR, established market position, proven business model
-- Investment thesis: Expansion capital, geographic/product line growth, market leadership
-- Example context: "Series B companies typically see 2-3 year exit timelines; this 6-year plan may indicate structural drag"` :
-company.seriesStage === 'Growth' ? `
-- Focus on path to profitability, exit readiness, and market leadership consolidation
-- Typical metrics: $50M+ ARR, strong unit economics, clear competitive moats
-- Investment thesis: Late-stage growth capital, pre-IPO positioning, strategic partnerships
-- Example context: "At the Growth stage, an 8x projected revenue multiple is aggressive but not unprecedented in frontier AI"` :
-`- Analyze based on available financial metrics without stage-specific assumptions
-- Use general venture capital benchmarks and industry standards for evaluation`}
+SCENARIO ANALYSIS:
+${JSON.stringify(scenarios, null, 2)}
 
-IMPORTANT: This Series/Stage information is for CONTEXTUAL FRAMING ONLY and should NOT:
-- Drive automated benchmarks or conditional logic
-- Override financial data or calculations  
-- Be used as a primary decision factor
-- Change core investment methodology
+${externalResearch ? `
+EXTERNAL RESEARCH CONTEXT:
+${externalResearch}
+` : ''}
 
-Use Series/Stage to enhance qualitative commentary, provide relevant benchmarks, and add appropriate context to financial analysis.` : ''}
+Generate a comprehensive investment analysis that integrates all available data. Your response MUST be structured EXACTLY as follows:
 
-## FUNDRAISING CONTEXT & ROUND DYNAMICS
-${company.totalRaiseRequest && company.amountRequestedFromFirm ? `
-- Total Round Size: $${(company.totalRaiseRequest / 1000000).toFixed(1)}M
-- Our Participation: $${(company.amountRequestedFromFirm / 1000000).toFixed(1)}M (${((company.amountRequestedFromFirm / company.totalRaiseRequest) * 100).toFixed(1)}%)
-- Remaining to Raise: $${((company.totalRaiseRequest - company.amountRequestedFromFirm) / 1000000).toFixed(1)}M
+🧠 AI Reasoning
+Provide detailed analysis incorporating company fundamentals, growth metrics, and market positioning. Include:
+- Current revenue/ARR metrics with historical growth context
+- Forward revenue multiple calculation: "Post-Money $X / Year+2 Revenue $Y = Zx forward multiple"
+- Sector benchmark comparison: "vs sector median of Xx per [source]"
+- Growth trajectory analysis: "Forward 2Y CAGR of X% vs historical Y%" 
+- Burn efficiency: "Burn multiple of Xx indicates [operational assessment]"
+- Investor interest and round complexity impact on execution risk
+- Ownership calculations: "X% pre-round → Y% post-round participation"
+- Exit timeline and market activity context
 
-ROUND VIABILITY ASSESSMENT:
-- Evaluate likelihood of successful round closure based on size vs. market conditions
-- Assess syndicate strategy and lead/follow dynamics given our participation level
-- Flag potential stranded capital risks if round fails to close fully
-- Consider capital efficiency: raise size relative to revenue/traction metrics
-` : company.totalRaiseRequest ? `
-- Total Round Size: $${(company.totalRaiseRequest / 1000000).toFixed(1)}M
-- Our Participation: Not specified (cannot assess round participation strategy)
-` : company.amountRequestedFromFirm ? `
-- Our Participation: $${(company.amountRequestedFromFirm / 1000000).toFixed(1)}M
-- Total Round Size: Unknown (cannot assess full round viability or risk of stranded investment)
-` : `
-- Fundraising details not provided (limited ability to assess round dynamics and closing risk)
-`}
+⚠️ Key Risks  
+Structure risks thematically with specific quantitative impact:
+- Valuation Compression: Include specific multiple scenarios and impact on returns
+- Execution Gap: Address projection credibility and scaling challenges  
+- Market Positioning: Competitive dynamics and differentiation sustainability
+- Capital Requirements: Burn trajectory and additional funding needs
+- Exit Environment: Liquidity constraints and buyer landscape
 
-CRITICAL INVESTOR INTEREST LOGIC (GATING VARIABLE):
-The "Investor Interest / Ability to Raise Capital" score is NOT a soft modifier - it's a critical feasibility gate that can override positive financial metrics:
+✅ Suggested Action
+Provide mathematically justified recommendation including:
+- Investment sizing with ownership percentage impact
+- MOIC requirements: "At X% ownership, need $Y exit for Zx MOIC"
+- Risk mitigation strategies and term protection
+- Monitoring milestones and performance tracking
+- Follow-on strategy and exit preparation timeline
 
-CONDITIONAL INVESTMENT RULES:
-- IF Investor Interest ≤ 2 AND Additional Investment Requested > $3M:
-  * Apply "All-or-Nothing" threshold logic - high risk of stranded capital
-  * Consider "Conditional Investment" recommendations (e.g., "Invest $2M only if remaining $8M committed by others within 30 days")
-  * Flag "bagholder risk" - we bear disproportionate risk without syndicate support
-  * Question: Is our capital catalytic or just hopeful?
+📈 Projected Exit Value Range
+Present scenario analysis in table format showing:
+- Bear/Base/Bull revenue projections with explicit growth assumptions
+- Exit multiples with sector benchmark justification
+- Probability weightings based on execution risk assessment
+- Ownership-adjusted returns with MOIC calculations
 
-- IF Investor Interest = 1 (only us interested):
-  * HEAVILY downweight confidence regardless of financial metrics
-  * Add "syndicate risk" and "round fragility" to keyRisks
-  * Suggest: "Wait for lead investor confirmation" or "Seek co-investors before committing"
-  * If use-of-funds is binary (needs full amount), flag as "round unlikely to close"
+💰 Risk-Adjusted Monetization Summary  
+Include comprehensive return modeling:
+- Revenue trajectory: "Current $X → Exit $Y (Z% forward CAGR, W-year timeline)"
+- Scenario probability weighting with risk-adjusted expected value
+- Dilution-adjusted ownership calculations
+- IRR and MOIC projections with sensitivity analysis
 
-- IF Investor Interest = 4-5 (competitive/oversubscribed):
-  * Increase confidence and support partial commitments
-  * Consider rightsizing participation: "Partial participation sufficient in competitive round"
-  * Lower urgency to overcommit capital
-
-ROUND FEASIBILITY ASSESSMENT:
-- Evaluate if the capital need is modular vs binary (can company succeed with partial funding?)
-- If binary funding need + low investor interest = flag as "round fragility risk"
-- Apply minimum raise success likelihood: "Would this raise succeed without our anchor?"
-
-PROJECTED REVENUE GROWTH INTEGRATION LOGIC:
-The "Projected Revenue Growth (Next 12 Months)" is a critical forward-looking momentum signal that must be weighted against external validation signals:
-
-GROWTH MOMENTUM INTERPRETATION:
-- Above 100% = Hyper-growth stage signal (justify larger follow-ons if externally validated)
-- Above 50% = Strong forward momentum (positive indicator if supported by market interest)
-- Below 25% = Caution flag unless paired with profitability or defensibility
-- Must be cross-referenced with TTM performance for credibility assessment
-
-CREDIBILITY VALIDATION RULES:
-- High projected growth (>50%) + High investor interest (4-5) = Validate optimistic projections and consider increased investment
-- High projected growth (>100%) + Low investor interest (1-2) = RED FLAG - aggressive projections lack external validation, downweight confidence significantly
-- Low projected growth (<25%) + High burn multiple = Flag capital efficiency concerns and execution risk
-
-CAPITAL RECOMMENDATION INTEGRATION:
-- Use projected growth to justify investment sizing: strong validated growth can support larger commitments
-- Flag disconnects: if projections are ambitious but investor interest is low, question if growth targets are realistic
-- Consider runway needs: aggressive growth projections require adequate execution timeline and capital efficiency
-
-VALUATION-BASED DECISION FRAMEWORK:
-The Pre-Money and Post-Money Valuation data must drive sophisticated capital deployment decisions:
-
-OWNERSHIP & DILUTION ANALYSIS:
-- Calculate ownership preservation: Compare current equity stake vs. new round dilution impact
-- Assess return compression: Determine required exit valuation for 3x+ returns on new capital at post-money pricing
-- Flag overpricing: If markup exceeds growth fundamentals (revenue, market traction), caution against follow-on participation
-
-VALUATION JUSTIFICATION RULES:
-- High markup (>2.5x from implied previous round) + Strong growth (>50% TTM + >50% projected) + High investor interest (4-5) = Validate premium pricing
-- High markup (>3x) + Weak growth (<25% TTM or projected) + Low investor interest (1-2) = RED FLAG for overpricing, recommend decline
-- Reasonable markup (<2x) + Moderate growth + Competitive interest = Support pro-rata or increased participation
-
-STRATEGIC ROUND ANALYSIS:
-- Higher post-money valuations create greater exit pressure and strategic risk
-- Low-quality rounds at inflated valuations should reduce confidence and flag "deadweight pricing" risk
-- Consider if valuation is hype-driven vs. fundamentals-driven based on growth metrics and market validation
-
-RETURN COMPRESSION MATH:
-- Calculate new cost basis at post-money valuation
-- Determine minimum exit valuation needed for acceptable returns (3x+ target)
-- If exit requirements seem unrealistic given TAM and market conditions, flag as overpriced participation
-
-ROUND COMPLEXITY DECISION FRAMEWORK:
-The Round Complexity score (1-5) is a critical structural risk factor that directly impacts investment confidence:
-
-COMPLEXITY INTERPRETATION:
-- Score 5: Clean, investor-friendly terms with simple preferred equity structure
-- Score 4: Standard terms with minor complexities but acceptable structure
-- Score 3: Moderate complexity requiring careful review but not prohibitive
-- Score 2: High complexity with potentially problematic terms (cram-downs, stacked preferences)
-- Score 1: Extremely messy structure with major red flags and governance risks
-
-DECISION IMPACT RULES:
-- Complexity 1-2 + Large Investment (>$3M): Flag "structural risk" and reduce confidence regardless of metrics
-- Complexity 1-2 + Any request: Require legal review and consider conditional investment only
-- Complexity 3: Standard evaluation with yellow flag for term review
-- Complexity 4-5: Support streamlined follow-on process with increased confidence
-- Missing complexity: Default to 3 but flag need for legal/term review
-
-CONFIDENCE MODIFICATION:
-- Complexity 1-2: Cap confidence at 3 maximum, regardless of financial performance
-- Complexity 3: No confidence penalty but mention term review requirement
-- Complexity 4-5: Potential confidence boost when combined with strong metrics
+Use professional VC language, show specific calculations, reference industry benchmarks, and ensure every input field influences the analysis. Write like a top-tier investment memo.
 
 PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
