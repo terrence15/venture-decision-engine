@@ -1,12 +1,10 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight, Download, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-
-// Stable row size mapping to prevent layout thrashing
-const ROW_HEIGHT_MAP = new Map<string, number>();
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface CompanyData {
   id: string;
@@ -79,223 +77,10 @@ interface AnalysisTableProps {
   analysisStatus?: string;
 }
 
-// Memoized row component with stable props comparison
-const TableRowComponent = React.memo(({ 
-  company, 
-  isExpanded, 
-  onRowClick,
-  formatCurrency,
-  formatPercentage,
-  formatNumber,
-  formatRevenue,
-  getConfidenceBadge,
-  getComplexityBadge 
-}: {
-  company: CompanyData;
-  isExpanded: boolean;
-  onRowClick: (id: string) => void;
-  formatCurrency: (amount: number | null | undefined) => string;
-  formatPercentage: (value: number | null | undefined) => string;
-  formatNumber: (value: number | null | undefined, suffix?: string) => string;
-  formatRevenue: (revenue: number | null | undefined, arr: number | null | undefined) => { value: string; type: string; primary: boolean };
-  getConfidenceBadge: (confidence?: number) => React.ReactNode;
-  getComplexityBadge: (complexity?: number | null) => React.ReactNode;
-}) => (
-  <div 
-    className="cursor-pointer hover:bg-muted/50 transition-colors border-b"
-    onClick={() => onRowClick(company.id)}
-    style={{ 
-      display: 'grid', 
-      gridTemplateColumns: '40px 200px 120px 120px 120px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
-      alignItems: 'center',
-      height: '60px',
-      contain: 'layout style'
-    }}
-  >
-    <div className="p-4 flex justify-center">
-      {isExpanded ? (
-        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-      ) : (
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      )}
-    </div>
-    <div className="font-medium p-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="truncate">{company.companyName}</span>
-        <Badge variant={company.isExistingInvestment ? "default" : "outline"} className="text-xs">
-          {company.isExistingInvestment ? "Portfolio" : "Potential"}
-        </Badge>
-        {company.insufficientData && (
-          <Badge variant="outline" className="text-xs">
-            Insufficient Data
-          </Badge>
-        )}
-      </div>
-    </div>
-    <div className="p-4">
-      {company.seriesStage ? (
-        <Badge variant="secondary" className="text-xs">
-          {company.seriesStage}
-        </Badge>
-      ) : (
-        <span className="text-xs text-muted-foreground">N/A</span>
-      )}
-    </div>
-    <div className="p-4">
-      {company.totalRaiseRequest ? (
-        <span className="font-medium text-sm">
-          {formatCurrency(company.totalRaiseRequest)}
-        </span>
-      ) : (
-        <span className="text-muted-foreground text-sm">-</span>
-      )}
-    </div>
-    <div className="p-4">
-      {company.amountRequestedFromFirm ? (
-        <div className="space-y-1">
-          <span className="font-medium text-sm">
-            {formatCurrency(company.amountRequestedFromFirm)}
-          </span>
-          {company.totalRaiseRequest && (
-            <div className="text-xs text-muted-foreground">
-              {((company.amountRequestedFromFirm / company.totalRaiseRequest) * 100).toFixed(1)}%
-            </div>
-          )}
-        </div>
-      ) : (
-        <span className="text-muted-foreground text-sm">-</span>
-      )}
-    </div>
-    <div className="p-4">
-      <span className="text-sm font-medium text-muted-foreground truncate">
-        {company.industry || 'N/A'}
-      </span>
-    </div>
-    <div className="p-4">
-      <div className="flex items-center gap-1">
-        <span className="text-sm font-medium">
-          {formatRevenue(company.revenue, company.arr).value}
-        </span>
-        {formatRevenue(company.revenue, company.arr).type !== 'N/A' && (
-          <Badge variant={formatRevenue(company.revenue, company.arr).primary ? 'default' : 'secondary'} className="text-xs">
-            {formatRevenue(company.revenue, company.arr).type}
-          </Badge>
-        )}
-      </div>
-    </div>
-    <div className="p-4 text-sm">{formatCurrency(company.totalInvestment)}</div>
-    <div className="p-4 text-sm">{formatPercentage(company.equityStake)}</div>
-    <div className="p-4 text-sm">{formatNumber(company.moic, 'x')}</div>
-    <div className="p-4 text-sm">{formatPercentage(company.revenueGrowth)}</div>
-    <div className="p-4">
-      <div className="flex items-center gap-1">
-        <span className="text-sm">{formatPercentage(company.projectedRevenueGrowth)}</span>
-        {company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined && (
-          <Badge variant={
-            company.projectedRevenueGrowth >= 100 ? 'default' :
-            company.projectedRevenueGrowth >= 50 ? 'secondary' :
-            company.projectedRevenueGrowth < 25 ? 'destructive' : 'outline'
-          } className="text-xs">
-            {company.projectedRevenueGrowth >= 100 ? 'Hyper' :
-             company.projectedRevenueGrowth >= 50 ? 'Strong' :
-             company.projectedRevenueGrowth < 25 ? 'Caution' : 'Moderate'}
-          </Badge>
-        )}
-      </div>
-    </div>
-    <div className="p-4">
-      <div className="flex items-center gap-1">
-        {company.revenueTrajectoryScore !== null && company.revenueTrajectoryScore !== undefined ? (
-          <Badge variant={
-            company.revenueTrajectoryScore >= 4 ? 'default' :
-            company.revenueTrajectoryScore >= 3 ? 'secondary' :
-            company.revenueTrajectoryScore >= 2 ? 'outline' : 'destructive'
-          } className="text-xs">
-            {company.revenueTrajectoryScore.toFixed(1)}/5
-          </Badge>
-        ) : (
-          <Badge variant="destructive" className="text-xs">
-            Insufficient
-          </Badge>
-        )}
-      </div>
-    </div>
-    <div className="p-4">
-      <div className="flex items-center gap-1">
-        <span className="text-sm font-medium">
-          {company.exitTimeline !== null && company.exitTimeline !== undefined 
-            ? `${company.exitTimeline} years`
-            : '3 years (default)'}
-        </span>
-        {(!company.exitTimeline || company.exitTimeline === 3) && (
-          <Badge variant="outline" className="text-xs">
-            Default
-          </Badge>
-        )}
-      </div>
-    </div>
-    <div className="p-4">
-      <div className="text-sm">
-        {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
-          ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
-          : 'N/A'}
-      </div>
-    </div>
-    <div className="p-4">
-      <div className="text-sm">
-        {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
-          ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
-          : 'N/A'}
-      </div>
-    </div>
-    <div className="p-4 text-sm">{formatCurrency(company.additionalInvestmentRequested)}</div>
-    <div className="p-4">
-      {company.investorInterest !== null && company.investorInterest !== undefined ? (
-        <Badge variant={
-          company.investorInterest >= 4 ? 'default' :
-          company.investorInterest >= 3 ? 'secondary' :
-          company.investorInterest >= 2 ? 'outline' : 'destructive'
-        } className="text-xs">
-          {company.investorInterest}/5
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground text-sm">N/A</span>
-      )}
-    </div>
-    <div className="p-4">
-      {getComplexityBadge(company.roundComplexity)}
-    </div>
-    <div className="p-4">
-      <div className="text-sm truncate" title={company.recommendation || 'Pending analysis'}>
-        {company.recommendation || 'Pending analysis'}
-      </div>
-    </div>
-    <div className="p-4">
-      {getConfidenceBadge(company.confidence)}
-    </div>
-    <div className="p-4">
-      <div className="text-sm truncate" title={company.riskAdjustedMonetizationSummary || 'Pending analysis'}>
-        {company.riskAdjustedMonetizationSummary || 'Pending analysis'}
-      </div>
-    </div>
-  </div>
-), (prevProps, nextProps) => {
-  // Custom comparison to prevent unnecessary re-renders
-  return (
-    prevProps.company.id === nextProps.company.id &&
-    prevProps.isExpanded === nextProps.isExpanded &&
-    prevProps.company.recommendation === nextProps.company.recommendation &&
-    prevProps.company.confidence === nextProps.company.confidence
-  );
-});
-
 export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [expandedRowDetails, setExpandedRowDetails] = useState<CompanyData | null>(null);
-  const parentRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
 
-  const getConfidenceBadge = useCallback((confidence?: number) => {
+  const getConfidenceBadge = (confidence?: number) => {
     if (!confidence) return null;
     
     const variants = {
@@ -307,15 +92,15 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     };
     
     const config = variants[confidence as keyof typeof variants];
-    return <Badge variant={config.variant} className="text-xs">{config.label}</Badge>;
-  }, []);
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
 
-  const getComplexityBadge = useCallback((complexity?: number | null) => {
-    if (!complexity) return <Badge variant="secondary" className="text-xs">Unknown</Badge>;
-    if (complexity <= 2) return <Badge variant="destructive" className="text-xs">High Risk ({complexity}/5)</Badge>;
-    if (complexity === 3) return <Badge variant="secondary" className="text-xs">Review ({complexity}/5)</Badge>;
-    return <Badge variant="default" className="text-xs">Clean ({complexity}/5)</Badge>;
-  }, []);
+  const getComplexityBadge = (complexity?: number | null) => {
+    if (!complexity) return <Badge variant="secondary">Unknown</Badge>;
+    if (complexity <= 2) return <Badge variant="destructive">High Risk ({complexity}/5)</Badge>;
+    if (complexity === 3) return <Badge variant="secondary">Review Terms ({complexity}/5)</Badge>;
+    return <Badge variant="default">Clean Terms ({complexity}/5)</Badge>;
+  };
 
   const formatCurrency = useCallback((amount: number | null | undefined) => {
     if (amount === null || amount === undefined || isNaN(amount)) {
@@ -365,70 +150,12 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
   }, []);
 
   const handleRowClick = useCallback((companyId: string) => {
-    // Debounced row expansion to prevent rapid state changes
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
+    try {
+      setExpandedRow(expandedRow === companyId ? null : companyId);
+    } catch (error) {
+      console.error('Error expanding row:', error);
     }
-    
-    debounceRef.current = setTimeout(() => {
-      const company = companies.find(c => c.id === companyId);
-      if (expandedRow === companyId) {
-        setExpandedRow(null);
-        setExpandedRowDetails(null);
-      } else {
-        setExpandedRow(companyId);
-        setExpandedRowDetails(company || null);
-      }
-    }, 50);
-  }, [expandedRow, companies]);
-
-  // Stable size calculation using memoized mapping
-  const getItemSize = useCallback((index: number) => {
-    const company = companies[index];
-    const rowId = company.id;
-    
-    // Cache the size to prevent recalculation
-    if (!ROW_HEIGHT_MAP.has(rowId)) {
-      ROW_HEIGHT_MAP.set(rowId, 60);
-    }
-    
-    return ROW_HEIGHT_MAP.get(rowId) || 60;
-  }, [companies]);
-
-  // Virtual scrolling setup with stable configuration
-  const virtualizer = useVirtualizer({
-    count: companies.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: getItemSize,
-    overscan: 10, // Increased overscan to prevent flickering
-    measureElement: undefined, // Disable dynamic measurement
-  });
-
-  // Memoized header columns to prevent re-renders
-  const headerColumns = useMemo(() => [
-    { label: '', width: '40px' },
-    { label: 'Company', width: '200px' },
-    { label: 'Series/Stage', width: '120px' },
-    { label: 'Total Raise', width: '120px' },
-    { label: 'Amount Requested', width: '120px' },
-    { label: 'Industry', width: '1fr' },
-    { label: 'ARR/Revenue', width: '1fr' },
-    { label: 'Investment', width: '1fr' },
-    { label: 'Equity', width: '1fr' },
-    { label: 'MOIC', width: '1fr' },
-    { label: 'TTM Growth', width: '1fr' },
-    { label: 'Projected Growth', width: '1fr' },
-    { label: 'Revenue Timeline', width: '1fr' },
-    { label: 'Exit Timeline', width: '1fr' },
-    { label: 'Pre-Money', width: '1fr' },
-    { label: 'Post-Money', width: '1fr' },
-    { label: 'Requested', width: '1fr' },
-    { label: 'Investor Interest', width: '1fr' },
-    { label: 'Round Terms', width: '1fr' },
-    { label: 'Recommendation', width: '1fr' },
-    { label: 'Confidence', width: '1fr' },
-    { label: 'Risk-Adjusted Summary', width: '1fr' }
-  ], []);
+  }, [expandedRow]);
 
   return (
     <Card className="w-full shadow-medium">
@@ -459,96 +186,556 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
       </CardHeader>
       
       <CardContent className="p-0">
-        <div 
-          ref={parentRef}
-          className="h-[600px] overflow-auto"
-          style={{ 
-            contain: 'layout size style',
-            position: 'relative'
-          }}
-        >
-          {/* Fixed Table Header */}
-          <div className="sticky top-0 z-20 bg-muted/50 border-b" style={{ contain: 'layout style' }}>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '40px 200px 120px 120px 120px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
-              alignItems: 'center',
-              height: '60px'
-            }}>
-              {headerColumns.map((col, index) => (
-                <div key={index} className="p-4 font-medium text-sm text-muted-foreground">
-                  {col.label}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Virtual Scrolling Content */}
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const company = companies[virtualRow.index];
-              const isExpanded = expandedRow === company.id;
-              
-              return (
-                <div
-                  key={company.id}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '60px',
-                    transform: `translate3d(0, ${virtualRow.start}px, 0)`,
-                    contain: 'layout style'
-                  }}
-                >
-                  <TableRowComponent
-                    company={company}
-                    isExpanded={isExpanded}
-                    onRowClick={handleRowClick}
-                    formatCurrency={formatCurrency}
-                    formatPercentage={formatPercentage}
-                    formatNumber={formatNumber}
-                    formatRevenue={formatRevenue}
-                    getConfidenceBadge={getConfidenceBadge}
-                    getComplexityBadge={getComplexityBadge}
-                  />
-                  
-                  {isExpanded && (
-                    <div className="bg-muted/20 p-6 space-y-4 border-t">
-                      <div className="text-sm space-y-4">
-                        <h4 className="font-medium text-base">Detailed Analysis</h4>
-                        {company.reasoning && (
-                          <div className="bg-background border rounded-lg p-4">
-                            <h5 className="font-medium mb-2">Investment Reasoning</h5>
-                            <p className="text-sm leading-relaxed">{company.reasoning}</p>
-                          </div>
-                        )}
-                        {company.keyRisks && (
-                          <div className="bg-background border rounded-lg p-4">
-                            <h5 className="font-medium mb-2">Key Risks</h5>
-                            <p className="text-sm leading-relaxed">{company.keyRisks}</p>
-                          </div>
-                        )}
-                        {company.suggestedAction && (
-                          <div className="bg-background border rounded-lg p-4">
-                            <h5 className="font-medium mb-2">Suggested Actions</h5>
-                            <p className="text-sm leading-relaxed">{company.suggestedAction}</p>
-                          </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="w-8"></TableHead>
+                <TableHead className="min-w-[200px]">Company</TableHead>
+                <TableHead className="min-w-[120px]">Series/Stage</TableHead>
+                <TableHead className="min-w-[120px]">Total Raise</TableHead>
+                <TableHead className="min-w-[120px]">Amount Requested</TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>ARR/Revenue</TableHead>
+                <TableHead>Investment</TableHead>
+                <TableHead>Equity</TableHead>
+                <TableHead>MOIC</TableHead>
+                <TableHead>TTM Growth</TableHead>
+                <TableHead>Projected Growth</TableHead>
+                <TableHead>Revenue Timeline</TableHead>
+                <TableHead>Exit Timeline</TableHead>
+                <TableHead>Pre-Money</TableHead>
+                <TableHead>Post-Money</TableHead>
+                <TableHead>Requested</TableHead>
+                <TableHead>Investor Interest</TableHead>
+                <TableHead>Round Terms</TableHead>
+                <TableHead>Recommendation</TableHead>
+                <TableHead>Confidence</TableHead>
+                <TableHead>Risk-Adjusted Summary</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {companies.map((company) => (
+                <>
+                  <TableRow 
+                    key={company.id}
+                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => handleRowClick(company.id)}
+                  >
+                    <TableCell>
+                      {expandedRow === company.id ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{company.companyName}</span>
+                        <Badge variant={company.isExistingInvestment ? "default" : "outline"}>
+                          {company.isExistingInvestment ? "Portfolio" : "Potential"}
+                        </Badge>
+                        {company.insufficientData && (
+                          <Badge variant="outline" className="text-xs">
+                            Insufficient Data
+                          </Badge>
                         )}
                       </div>
-                    </div>
+                    </TableCell>
+                    <TableCell>
+                      {company.seriesStage ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {company.seriesStage}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {company.totalRaiseRequest ? (
+                        <span className="font-medium">
+                          {formatCurrency(company.totalRaiseRequest)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {company.amountRequestedFromFirm ? (
+                        <div className="space-y-1">
+                          <span className="font-medium">
+                            {formatCurrency(company.amountRequestedFromFirm)}
+                          </span>
+                          {company.totalRaiseRequest && (
+                            <div className="text-xs text-muted-foreground">
+                              {((company.amountRequestedFromFirm / company.totalRaiseRequest) * 100).toFixed(1)}%
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {company.industry || 'N/A'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">
+                          {formatRevenue(company.revenue, company.arr).value}
+                        </span>
+                        {formatRevenue(company.revenue, company.arr).type !== 'N/A' && (
+                          <Badge variant={formatRevenue(company.revenue, company.arr).primary ? 'default' : 'secondary'} className="text-xs">
+                            {formatRevenue(company.revenue, company.arr).type}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatCurrency(company.totalInvestment)}</TableCell>
+                    <TableCell>{formatPercentage(company.equityStake)}</TableCell>
+                    <TableCell>{formatNumber(company.moic, 'x')}</TableCell>
+                    <TableCell>{formatPercentage(company.revenueGrowth)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {formatPercentage(company.projectedRevenueGrowth)}
+                        {company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined && (
+                          <Badge variant={
+                            company.projectedRevenueGrowth >= 100 ? 'default' :
+                            company.projectedRevenueGrowth >= 50 ? 'secondary' :
+                            company.projectedRevenueGrowth < 25 ? 'destructive' : 'outline'
+                          } className="text-xs">
+                            {company.projectedRevenueGrowth >= 100 ? 'Hyper' :
+                             company.projectedRevenueGrowth >= 50 ? 'Strong' :
+                             company.projectedRevenueGrowth < 25 ? 'Caution' : 'Moderate'}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                     <TableCell>
+                       <div className="flex items-center gap-1">
+                         {company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || 
+                          company.currentRevenue !== null || company.projectedRevenueYear1 !== null || 
+                          company.projectedRevenueYear2 !== null ? (
+                           <div className="text-xs">
+                             <div className="flex gap-1 items-center">
+                               <span className="text-muted-foreground">-2:</span>
+                               <span>{company.revenueYearMinus2 ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                               {!company.revenueYearMinus2 && (
+                                 <span className="text-yellow-500 text-xs" title="Historical CAGR calculation unavailable">⚠️</span>
+                               )}
+                             </div>
+                             <div className="flex gap-1 items-center">
+                               <span className="text-muted-foreground">Cur:</span>
+                               <span>{company.currentRevenue ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                               {!company.currentRevenue && (
+                                 <span className="text-red-500 text-xs" title="Critical: Current revenue missing">🚫</span>
+                               )}
+                             </div>
+                             <div className="flex gap-1 items-center">
+                               <span className="text-muted-foreground">+2:</span>
+                               <span>{company.projectedRevenueYear2 ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                               {!company.projectedRevenueYear2 && (
+                                 <span className="text-red-500 text-xs" title="Risk-adjusted analysis disabled">⛔</span>
+                               )}
+                             </div>
+                           </div>
+                         ) : (
+                           <div className="flex items-center gap-1">
+                             <span className="text-xs text-muted-foreground">No timeline</span>
+                             <span className="text-red-500 text-xs" title="Insufficient data for trajectory analysis">🚫</span>
+                           </div>
+                         )}
+                         {company.revenueTrajectoryScore !== null && company.revenueTrajectoryScore !== undefined ? (
+                           <Badge variant={
+                             company.revenueTrajectoryScore >= 4 ? 'default' :
+                             company.revenueTrajectoryScore >= 3 ? 'secondary' :
+                             company.revenueTrajectoryScore >= 2 ? 'outline' : 'destructive'
+                           } className="text-xs ml-1">
+                             {company.revenueTrajectoryScore.toFixed(1)}/5
+                           </Badge>
+                         ) : (
+                           <Badge variant="destructive" className="text-xs ml-1" title="Low confidence: Incomplete data">
+                             Insufficient
+                           </Badge>
+                         )}
+                       </div>
+                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">
+                          {company.exitTimeline !== null && company.exitTimeline !== undefined 
+                            ? `${company.exitTimeline} years`
+                            : '3 years (default)'}
+                        </span>
+                        {(!company.exitTimeline || company.exitTimeline === 3) && (
+                          <Badge variant="outline" className="text-xs">
+                            Default
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
+                          ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
+                          : 'N/A'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">
+                          {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
+                            ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
+                            : 'N/A'}
+                        </span>
+                        {company.preMoneyValuation && company.postMoneyValuation && (
+                          <Badge variant={
+                            (company.postMoneyValuation / company.preMoneyValuation) >= 3 ? 'destructive' :
+                            (company.postMoneyValuation / company.preMoneyValuation) >= 2 ? 'secondary' : 'outline'
+                          } className="text-xs">
+                            {((company.postMoneyValuation / company.preMoneyValuation)).toFixed(1)}x
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatCurrency(company.additionalInvestmentRequested)}</TableCell>
+                    <TableCell>
+                      {company.investorInterest ? (
+                        <Badge variant={
+                          company.investorInterest >= 4 ? 'default' :
+                          company.investorInterest >= 3 ? 'secondary' : 'destructive'
+                        }>
+                          {company.investorInterest}/5
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{getComplexityBadge(company.roundComplexity)}</TableCell>
+                    <TableCell>
+                      {company.recommendation ? (
+                        <span className="font-medium text-foreground">{company.recommendation}</span>
+                      ) : (
+                        <span className="text-muted-foreground italic">Pending analysis</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {getConfidenceBadge(company.confidence)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-xs">
+                        {company.riskAdjustedMonetizationSummary ? (
+                          <div className="text-sm text-muted-foreground line-clamp-2">
+                            {company.riskAdjustedMonetizationSummary.substring(0, 150)}
+                            {company.riskAdjustedMonetizationSummary.length > 150 ? '...' : ''}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Pending analysis</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  
+                  {expandedRow === company.id && (
+                  <TableRow>
+                    <TableCell colSpan={22} className="bg-muted/20 p-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="font-semibold text-sm text-muted-foreground mb-2">Company Metrics</h4>
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Burn Multiple:</span>
+                                  <span className="ml-2 font-medium">
+                                    {formatNumber(company.burnMultiple, 'x')}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Runway:</span>
+                                  <span className="ml-2 font-medium">
+                                    {company.runway !== null && company.runway !== undefined && !isNaN(company.runway) 
+                                      ? `${company.runway} months` 
+                                      : 'N/A'}
+                                  </span>
+                                </div>
+                                 <div>
+                                   <span className="text-muted-foreground">TAM:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.tam || 'N/A'}/5
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Barrier to Entry:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.barrierToEntry || 'N/A'}/5
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">ARR:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.arr !== null && company.arr !== undefined && company.arr > 0 
+                                       ? `$${(company.arr / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                   </span>
+                                   {company.arr !== null && company.arr !== undefined && company.arr > 0 && (
+                                     <Badge variant="default" className="ml-1 text-xs">
+                                       Primary
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Revenue:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 
+                                       ? `$${(company.revenue / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                   </span>
+                                   {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 && 
+                                    (company.arr === null || company.arr === undefined || company.arr <= 0) && (
+                                     <Badge variant="secondary" className="ml-1 text-xs">
+                                       Primary
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Projected Growth:</span>
+                                   <span className="ml-2 font-medium">
+                                     {formatPercentage(company.projectedRevenueGrowth)}
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Exit Timeline:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.exitTimeline !== null && company.exitTimeline !== undefined 
+                                       ? `${company.exitTimeline} years`
+                                       : '3 years (default)'}
+                                   </span>
+                                   {(!company.exitTimeline || company.exitTimeline === 3) && (
+                                     <Badge variant="outline" className="ml-1 text-xs">
+                                       Default Assumption
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Investor Interest:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.investorInterest || 'N/A'}/5
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Round Complexity:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.roundComplexity || 'N/A'}/5
+                                   </span>
+                                   <div className="mt-1">{getComplexityBadge(company.roundComplexity)}</div>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Pre-Money:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
+                                       ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                   </span>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Post-Money:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
+                                       ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
+                                       : 'N/A'}
+                                     {company.preMoneyValuation && company.postMoneyValuation && (
+                                       <Badge variant="outline" className="ml-1 text-xs">
+                                         {((company.postMoneyValuation / company.preMoneyValuation)).toFixed(1)}x markup
+                                       </Badge>
+                                     )}
+                                   </span>
+                                 </div>
+                                 {(company.totalRaiseRequest || company.amountRequestedFromFirm) && (
+                                   <div className="col-span-2">
+                                     <span className="text-muted-foreground">Fundraising:</span>
+                                     <div className="ml-2 space-y-1">
+                                       {company.totalRaiseRequest && (
+                                         <div className="text-sm">Total Raise: <span className="font-semibold">{formatCurrency(company.totalRaiseRequest)}</span></div>
+                                       )}
+                                       {company.amountRequestedFromFirm && (
+                                         <div className="text-sm">From Us: <span className="font-semibold">{formatCurrency(company.amountRequestedFromFirm)}</span></div>
+                                       )}
+                                       {company.totalRaiseRequest && company.amountRequestedFromFirm && (
+                                         <div className="text-xs text-muted-foreground">
+                                           {((company.amountRequestedFromFirm / company.totalRaiseRequest) * 100).toFixed(1)}% participation
+                                           {company.amountRequestedFromFirm / company.totalRaiseRequest > 0.3 ? ' (Anchor investor)' : ' (Follow investor)'}
+                                         </div>
+                                       )}
+                                     </div>
+                                   </div>
+                                 )}
+                                 <div className="col-span-2">
+                                   <span className="text-muted-foreground">Exit Activity:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.exitActivity || 'N/A'}
+                                   </span>
+                                 </div>
+                              </div>
+                            </div>
+                            
+                            {company.timingBucket && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Strategic Timing</h4>
+                                <Badge variant="outline">{company.timingBucket}</Badge>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-4">
+                            {company.reasoning && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">AI Reasoning</h4>
+                                <p className="text-sm leading-relaxed">{company.reasoning}</p>
+                              </div>
+                            )}
+                            
+                            {company.keyRisks && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Key Risks</h4>
+                                <p className="text-sm text-destructive leading-relaxed">{company.keyRisks}</p>
+                              </div>
+                            )}
+                            
+                            {company.suggestedAction && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Suggested Action</h4>
+                                <p className="text-sm font-medium leading-relaxed">{company.suggestedAction}</p>
+                              </div>
+                            )}
+                            
+                            {company.projectedExitValueRange && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">📈 Projected Exit Value Range</h4>
+                                <div className="text-sm leading-relaxed bg-muted/40 p-3 rounded border border-border">
+                                  <div className="whitespace-pre-wrap">{company.projectedExitValueRange}</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {company.riskAdjustedMonetizationSummary && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">💰 Risk-Adjusted Monetization Summary</h4>
+                                <div className="text-sm leading-relaxed bg-gradient-subtle p-3 rounded border border-border">
+                                  <div className="whitespace-pre-wrap">{company.riskAdjustedMonetizationSummary}</div>
+                                </div>
+                              </div>
+                            )}
+                            
+                             {company.externalInsights && !company.insufficientData && (
+                               <div className="space-y-3">
+                                 <div className="flex items-center gap-2">
+                                   <h4 className="font-semibold text-sm text-muted-foreground">External Market Intelligence</h4>
+                                   {company.researchQuality && (
+                                     <Badge variant={
+                                       company.researchQuality === 'comprehensive' ? 'default' :
+                                       company.researchQuality === 'limited' ? 'secondary' :
+                                       company.researchQuality === 'minimal' ? 'outline' : 'destructive'
+                                     } className="text-xs">
+                                       {company.researchQuality}
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 
+                                 {company.externalInsights.marketContext.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Market Context:</p>
+                                     <ul className="text-xs space-y-1">
+                                       {company.externalInsights.marketContext.map((insight, i) => (
+                                         <li key={i} className="text-foreground">• {insight}</li>
+                                       ))}
+                                     </ul>
+                                   </div>
+                                 )}
+                                 
+                                 {company.externalInsights.competitivePosition.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Competitive Position:</p>
+                                     <ul className="text-xs space-y-1">
+                                       {company.externalInsights.competitivePosition.map((insight, i) => (
+                                         <li key={i} className="text-foreground">• {insight}</li>
+                                       ))}
+                                     </ul>
+                                   </div>
+                                 )}
+                                 
+                                 {company.externalInsights.fundingEnvironment.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Funding Environment:</p>
+                                     <ul className="text-xs space-y-1">
+                                       {company.externalInsights.fundingEnvironment.map((insight, i) => (
+                                         <li key={i} className="text-foreground">• {insight}</li>
+                                       ))}
+                                     </ul>
+                                   </div>
+                                 )}
+
+                                 {(company as any).namedComps && (company as any).namedComps.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-2">M&A Comparables:</p>
+                                     <div className="overflow-x-auto">
+                                       <table className="w-full text-xs border border-border rounded">
+                                         <thead className="bg-muted/50">
+                                           <tr>
+                                             <th className="text-left p-2 font-medium">Company</th>
+                                             <th className="text-left p-2 font-medium">Acquirer</th>
+                                             <th className="text-left p-2 font-medium">Year</th>
+                                             <th className="text-left p-2 font-medium">Valuation</th>
+                                             <th className="text-left p-2 font-medium">Multiple</th>
+                                             <th className="text-left p-2 font-medium">Notes</th>
+                                           </tr>
+                                         </thead>
+                                         <tbody>
+                                           {(company as any).namedComps.map((comp: any, idx: number) => (
+                                             <tr key={idx} className="border-t border-border">
+                                               <td className="p-2 text-foreground font-medium">{comp.company}</td>
+                                               <td className="p-2 text-muted-foreground">{comp.acquirer}</td>
+                                               <td className="p-2 text-muted-foreground">{comp.year}</td>
+                                               <td className="p-2 text-muted-foreground">{comp.valuation}</td>
+                                               <td className="p-2">
+                                                 <Badge variant="outline" className="text-xs">
+                                                   {comp.multiple}
+                                                 </Badge>
+                                               </td>
+                                               <td className="p-2 text-muted-foreground text-xs">{comp.notes}</td>
+                                             </tr>
+                                           ))}
+                                         </tbody>
+                                       </table>
+                                     </div>
+                                   </div>
+                                 )}
+                                 
+                                 {company.sourceAttributions && company.sourceAttributions.length > 0 && (
+                                   <div>
+                                     <p className="text-xs font-medium text-muted-foreground mb-1">Sources Referenced:</p>
+                                     <p className="text-xs text-muted-foreground">{company.sourceAttributions.join(', ')}</p>
+                                   </div>
+                                 )}
+                               </div>
+                             )}
+                            
+                            {company.externalSources && !company.externalInsights && !company.insufficientData && (
+                              <div>
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-2">External Research Sources</h4>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{company.externalSources}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </div>
-              );
-            })}
-          </div>
+                </>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>
