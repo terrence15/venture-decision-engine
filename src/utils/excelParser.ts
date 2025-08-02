@@ -1,5 +1,6 @@
 
 import * as XLSX from 'xlsx';
+import { enhanceCompanyWithAnalytics } from './revenueAnalytics';
 
 export interface RawCompanyData {
   id: string;
@@ -23,6 +24,19 @@ export interface RawCompanyData {
   exitTimeline: number | null;
   revenue: number | null;
   arr: number | null;
+  // Revenue Timeline Fields
+  revenueYearMinus2: number | null;
+  revenueYearMinus1: number | null;
+  currentRevenue: number | null;
+  projectedRevenueYear1: number | null;
+  projectedRevenueYear2: number | null;
+  currentARR: number | null;
+  // Calculated Analytics (computed from timeline data)
+  yoyGrowthPercent: number | null;
+  historicalCAGR2Y: number | null;
+  forwardCAGR2Y: number | null;
+  forwardRevenueMultiple: number | null;
+  revenueTrajectoryScore: number | null; // 0-5 scale
 }
 
 // Updated column mapping with exact headers from Excel
@@ -88,7 +102,37 @@ const COLUMN_MAPPINGS = {
   'Annual Recurring Revenue': 'arr',
   'Recurring Revenue': 'arr',
   'Subscription Revenue': 'arr',
-  'ARR ($)': 'arr'
+  'ARR ($)': 'arr',
+  // Revenue Timeline Column Mappings
+  'Revenue Year -2': 'revenueYearMinus2',
+  'Revenue Year -2 ($)': 'revenueYearMinus2',
+  'Revenue Two Years Ago': 'revenueYearMinus2',
+  'Revenue -2': 'revenueYearMinus2',
+  'Rev Year -2': 'revenueYearMinus2',
+  'Revenue Year -1': 'revenueYearMinus1',
+  'Revenue Year -1 ($)': 'revenueYearMinus1',
+  'Revenue Last Year': 'revenueYearMinus1',
+  'Revenue -1': 'revenueYearMinus1',
+  'Rev Year -1': 'revenueYearMinus1',
+  'Current Revenue': 'currentRevenue',
+  'Current Revenue ($)': 'currentRevenue',
+  'Current Year Revenue': 'currentRevenue',
+  'TTM Revenue': 'currentRevenue',
+  'Rev Current': 'currentRevenue',
+  'Projected Revenue Year +1': 'projectedRevenueYear1',
+  'Projected Revenue Year +1 ($)': 'projectedRevenueYear1',
+  'Revenue Next Year': 'projectedRevenueYear1',
+  'Revenue +1': 'projectedRevenueYear1',
+  'Rev Year +1': 'projectedRevenueYear1',
+  'Projected Revenue Year +2': 'projectedRevenueYear2',
+  'Projected Revenue Year +2 ($)': 'projectedRevenueYear2',
+  'Revenue Year Two': 'projectedRevenueYear2',
+  'Revenue +2': 'projectedRevenueYear2',
+  'Rev Year +2': 'projectedRevenueYear2',
+  'Current ARR': 'currentARR',
+  'Current ARR ($)': 'currentARR',
+  'TTM ARR': 'currentARR',
+  'ARR Current': 'currentARR'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -112,7 +156,14 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'roundComplexity': ['round', 'complexity', 'terms', 'structure', 'deal'],
   'exitTimeline': ['exit', 'timeline', 'years', 'time', 'horizon', 'liquidity'],
   'revenue': ['revenue', 'total', 'annual', 'latest'],
-  'arr': ['arr', 'annual', 'recurring', 'subscription']
+  'arr': ['arr', 'annual', 'recurring', 'subscription'],
+  // Revenue Timeline Keywords
+  'revenueYearMinus2': ['revenue', 'year', 'minus', '2', 'two', 'ago'],
+  'revenueYearMinus1': ['revenue', 'year', 'minus', '1', 'last', 'previous'],
+  'currentRevenue': ['current', 'revenue', 'ttm', 'present'],
+  'projectedRevenueYear1': ['projected', 'revenue', 'year', '1', 'next', 'plus'],
+  'projectedRevenueYear2': ['projected', 'revenue', 'year', '2', 'plus', 'forward'],
+  'currentARR': ['current', 'arr', 'ttm', 'annual', 'recurring']
 };
 
 // Improved fuzzy matching function
@@ -194,7 +245,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -297,7 +348,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -317,7 +368,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
                     }
                     // Scale revenue and ARR fields based on magnitude (handle millions)
-                    else if (['preMoneyValuation', 'postMoneyValuation', 'revenue', 'arr'].includes(fieldName)) {
+                    else if (['preMoneyValuation', 'postMoneyValuation', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
                       // If value is less than 1000, assume it's in millions and convert to dollars
                       if (parsedValue < 1000) {
                         value = parsedValue * 1000000;
@@ -389,7 +440,9 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
 
           // Validate required fields
           if (company.companyName) {
-            companies.push(company);
+            // Apply revenue analytics calculations
+            const enhancedCompany = enhanceCompanyWithAnalytics(company);
+            companies.push(enhancedCompany);
           }
         }
         

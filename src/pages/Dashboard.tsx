@@ -143,7 +143,20 @@ export function Dashboard() {
         roundComplexity: company.roundComplexity,
         exitTimeline: company.exitTimeline || 3,
         revenue: company.revenue,
-        arr: company.arr
+        arr: company.arr,
+        // Revenue Timeline Fields (defaulting to null if not available)
+        revenueYearMinus2: company.revenueYearMinus2 || null,
+        revenueYearMinus1: company.revenueYearMinus1 || null,
+        currentRevenue: company.currentRevenue || null,
+        projectedRevenueYear1: company.projectedRevenueYear1 || null,
+        projectedRevenueYear2: company.projectedRevenueYear2 || null,
+        currentARR: company.currentARR || null,
+        // Calculated Analytics (will be computed by analytics module)
+        yoyGrowthPercent: company.yoyGrowthPercent || null,
+        historicalCAGR2Y: company.historicalCAGR2Y || null,
+        forwardCAGR2Y: company.forwardCAGR2Y || null,
+        forwardRevenueMultiple: company.forwardRevenueMultiple || null,
+        revenueTrajectoryScore: company.revenueTrajectoryScore || null
       }));
       
       const analyzedCompanies = await analyzePortfolio(

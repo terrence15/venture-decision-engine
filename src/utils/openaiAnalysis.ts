@@ -24,6 +24,19 @@ interface CompanyData {
   arr: number | null;
   monthlyBurn?: number;
   currentValuation?: number;
+  // Revenue Timeline Fields
+  revenueYearMinus2: number | null;
+  revenueYearMinus1: number | null;
+  currentRevenue: number | null;
+  projectedRevenueYear1: number | null;
+  projectedRevenueYear2: number | null;
+  currentARR: number | null;
+  // Calculated Analytics
+  yoyGrowthPercent: number | null;
+  historicalCAGR2Y: number | null;
+  forwardCAGR2Y: number | null;
+  forwardRevenueMultiple: number | null;
+  revenueTrajectoryScore: number | null;
 }
 
 interface AnalysisResult {
@@ -280,10 +293,31 @@ Industry: ${company.industry || 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
 Current MOIC: ${company.moic}x
+
+REVENUE TIMELINE ANALYSIS (5-Point Historical and Forward Progression):
+${company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || company.currentRevenue !== null || company.projectedRevenueYear1 !== null || company.projectedRevenueYear2 !== null ?
+  `Year -2: ${company.revenueYearMinus2 !== null ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}
+Year -1: ${company.revenueYearMinus1 !== null ? `$${(company.revenueYearMinus1 / 1000000).toFixed(1)}M` : 'N/A'}
+Current: ${company.currentRevenue !== null ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}
+Year +1: ${company.projectedRevenueYear1 !== null ? `$${(company.projectedRevenueYear1 / 1000000).toFixed(1)}M` : 'N/A'}
+Year +2: ${company.projectedRevenueYear2 !== null ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}
+
+CALCULATED ANALYTICS:
+YoY Growth: ${company.yoyGrowthPercent !== null ? `${company.yoyGrowthPercent.toFixed(1)}%` : 'N/A'}
+Historical 2Y CAGR: ${company.historicalCAGR2Y !== null ? `${company.historicalCAGR2Y.toFixed(1)}%` : 'N/A'}
+Forward 2Y CAGR: ${company.forwardCAGR2Y !== null ? `${company.forwardCAGR2Y.toFixed(1)}%` : 'N/A'}
+Forward Revenue Multiple (Exit Val/Rev+2): ${company.forwardRevenueMultiple !== null ? `${company.forwardRevenueMultiple.toFixed(1)}x` : 'N/A'}
+Revenue Trajectory Score: ${company.revenueTrajectoryScore !== null ? `${company.revenueTrajectoryScore}/5` : 'N/A'}` :
+  'Timeline data not available - using legacy single-point revenue metrics below'}
+
+LEGACY REVENUE METRICS (for compatibility):
 Revenue: ${company.revenue !== null ? `$${(company.revenue / 1000000).toFixed(1)}M` : 'Not provided'}
 ARR: ${company.arr !== null ? `$${(company.arr / 1000000).toFixed(1)}M` : 'Not provided'}
+Current ARR: ${company.currentARR !== null ? `$${(company.currentARR / 1000000).toFixed(1)}M` : 'Not provided'}
 TTM Revenue Growth: ${company.revenueGrowth !== null ? `${company.revenueGrowth}%` : 'Not provided'}
 Projected Revenue Growth (Next 12 Months): ${company.projectedRevenueGrowth !== null ? `${company.projectedRevenueGrowth}%` : 'Not provided'}
+
+OTHER FINANCIAL METRICS:
 Burn Multiple: ${company.burnMultiple !== null ? `${company.burnMultiple}x` : 'Not provided'}
 Runway: ${company.runway !== null ? `${company.runway} months` : 'Not provided'}
 TAM Score: ${company.tam}/5
@@ -296,14 +330,42 @@ Post-Money Valuation: ${company.postMoneyValuation !== null ? `$${(company.postM
 Round Complexity: ${company.roundComplexity !== null ? `${company.roundComplexity}/5` : 'Not provided - defaulting to 3 (neutral)'}
 Exit Timeline: ${company.exitTimeline !== null ? `${company.exitTimeline} years` : '3 years (default assumption)'}
 
-REVENUE METRIC PRIORITIZATION:
+REVENUE TIMELINE DECISION FRAMEWORK:
+${company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || company.projectedRevenueYear1 !== null || company.projectedRevenueYear2 !== null ?
+  `TIMELINE-BASED ANALYSIS MODE:
+Use the 5-point revenue timeline for comprehensive trajectory assessment. Apply these decision rules:
+
+1. GROWTH TREND EVALUATION:
+- Compare Year -2 → -1 → Current → +1 → +2 progression
+- Label as "Accelerating", "Stagnating", or "Volatile" based on pattern
+- Validate that projections (+1, +2) are realistic given historical performance
+
+2. CREDIBILITY VALIDATION:
+- If Forward CAGR > 2x Historical CAGR: Flag "projection credibility risk"
+- If High projected growth + Low investor interest: RED FLAG for overoptimistic projections
+- If Flat historical growth + Aggressive projections: Question execution capability
+
+3. EXIT VALUE MODELING:
+- Use Year +2 Revenue for exit calculations: Projected Exit Value = Revenue+2 × Industry Multiple
+- Factor timeline into IRR: ${company.exitTimeline || 3} years to exit affects risk-adjusted returns
+- If Forward Revenue Multiple > 30x: Flag "valuation requires high exit premium"
+
+4. TRAJECTORY SCORE INTEGRATION:
+- Trajectory Score ${company.revenueTrajectoryScore !== null ? `(${company.revenueTrajectoryScore}/5)` : '(not calculated)'} reflects growth consistency and credibility
+- Scores ≤2: High execution risk, reduce confidence
+- Scores ≥4: Strong momentum, support increased investment` :
+  
+  `LEGACY SINGLE-POINT ANALYSIS MODE:
+Timeline data unavailable - using traditional revenue/ARR metrics with reduced confidence in projections.
 ${company.arr !== null && company.revenue !== null ? 
-  `Both ARR ($${(company.arr / 1000000).toFixed(1)}M) and Revenue ($${(company.revenue / 1000000).toFixed(1)}M) provided. For SaaS/subscription models, prioritize ARR. For transaction-based models, prioritize total revenue.` :
-  company.arr !== null ? 
-    `ARR-based analysis: Use $${(company.arr / 1000000).toFixed(1)}M ARR for EV/ARR multiple calculations and recurring revenue projections.` :
-    company.revenue !== null ? 
-      `Revenue-based analysis: Use $${(company.revenue / 1000000).toFixed(1)}M total revenue for EV/Revenue multiple calculations.` :
-      'No revenue metrics provided - cannot calculate exit value projections.'
+    `Both ARR ($${(company.arr / 1000000).toFixed(1)}M) and Revenue ($${(company.revenue / 1000000).toFixed(1)}M) provided. For SaaS/subscription models, prioritize ARR.` :
+    company.arr !== null ? 
+      `ARR-based analysis: Use $${(company.arr / 1000000).toFixed(1)}M ARR for calculations.` :
+      company.revenue !== null ? 
+        `Revenue-based analysis: Use $${(company.revenue / 1000000).toFixed(1)}M total revenue for calculations.` :
+        'No revenue metrics provided - cannot calculate exit value projections.'
+  }
+LIMITATION: Without timeline data, projections will have lower confidence scores due to inability to validate growth patterns.`
 }
 
 ${externalResearch}

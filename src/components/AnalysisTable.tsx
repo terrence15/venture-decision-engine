@@ -28,6 +28,19 @@ interface CompanyData {
   exitTimeline: number | null;
   revenue: number | null;
   arr: number | null;
+  // Revenue Timeline Fields
+  revenueYearMinus2?: number | null;
+  revenueYearMinus1?: number | null;
+  currentRevenue?: number | null;
+  projectedRevenueYear1?: number | null;
+  projectedRevenueYear2?: number | null;
+  currentARR?: number | null;
+  // Calculated Analytics
+  yoyGrowthPercent?: number | null;
+  historicalCAGR2Y?: number | null;
+  forwardCAGR2Y?: number | null;
+  forwardRevenueMultiple?: number | null;
+  revenueTrajectoryScore?: number | null;
   // AI Generated Fields
   recommendation?: string;
   timingBucket?: string;
@@ -181,6 +194,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                 <TableHead>MOIC</TableHead>
                 <TableHead>TTM Growth</TableHead>
                 <TableHead>Projected Growth</TableHead>
+                <TableHead>Revenue Timeline</TableHead>
                 <TableHead>Exit Timeline</TableHead>
                 <TableHead>Pre-Money</TableHead>
                 <TableHead>Post-Money</TableHead>
@@ -248,6 +262,39 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                             {company.projectedRevenueGrowth >= 100 ? 'Hyper' :
                              company.projectedRevenueGrowth >= 50 ? 'Strong' :
                              company.projectedRevenueGrowth < 25 ? 'Caution' : 'Moderate'}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || 
+                         company.currentRevenue !== null || company.projectedRevenueYear1 !== null || 
+                         company.projectedRevenueYear2 !== null ? (
+                          <div className="text-xs">
+                            <div className="flex gap-1">
+                              <span className="text-muted-foreground">-2:</span>
+                              <span>{company.revenueYearMinus2 ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              <span className="text-muted-foreground">Cur:</span>
+                              <span>{company.currentRevenue ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              <span className="text-muted-foreground">+2:</span>
+                              <span>{company.projectedRevenueYear2 ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No timeline</span>
+                        )}
+                        {company.revenueTrajectoryScore !== null && company.revenueTrajectoryScore !== undefined && (
+                          <Badge variant={
+                            company.revenueTrajectoryScore >= 4 ? 'default' :
+                            company.revenueTrajectoryScore >= 3 ? 'secondary' :
+                            company.revenueTrajectoryScore >= 2 ? 'outline' : 'destructive'
+                          } className="text-xs ml-1">
+                            {company.revenueTrajectoryScore.toFixed(1)}/5
                           </Badge>
                         )}
                       </div>
@@ -329,8 +376,8 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   </TableRow>
                   
                   {expandedRow === company.id && (
-                    <TableRow>
-                      <TableCell colSpan={17} className="bg-muted/20 p-6">
+                  <TableRow>
+                    <TableCell colSpan={18} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
