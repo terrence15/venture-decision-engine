@@ -382,10 +382,31 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       value = parsedValue * 100;
                       console.log(`Converted equity stake from ${parsedValue} to ${value}%`);
                     }
-                    // Convert revenue growth from decimal to percentage if needed
-                    else if ((fieldName === 'revenueGrowth' || fieldName === 'projectedRevenueGrowth') && parsedValue < 10) {
-                      value = parsedValue * 100;
-                      console.log(`Converted ${fieldName} from ${parsedValue} to ${value}%`);
+                    // Convert revenue growth - detect if input is decimal (0.1 = 10%) or percentage (10 = 10%)
+                    else if (fieldName === 'revenueGrowth' || fieldName === 'projectedRevenueGrowth') {
+                      // If value is between 0 and 1, it's likely a decimal (0.1 = 10%)
+                      if (parsedValue > 0 && parsedValue < 1) {
+                        value = parsedValue * 100;
+                        console.log(`Converted ${fieldName} from decimal ${parsedValue} to ${value}%`);
+                      } 
+                      // If value is between 1 and 5, it could be either - check original string for % symbol
+                      else if (parsedValue >= 1 && parsedValue <= 5) {
+                        const originalString = String(row[index]);
+                        if (originalString.includes('%')) {
+                          // Already a percentage
+                          value = parsedValue;
+                          console.log(`Kept ${fieldName} as percentage: ${value}%`);
+                        } else {
+                          // Likely a decimal that should be converted
+                          value = parsedValue * 100;
+                          console.log(`Converted ${fieldName} from decimal ${parsedValue} to ${value}%`);
+                        }
+                      }
+                      // Otherwise, assume it's already a percentage value
+                      else {
+                        value = parsedValue;
+                        console.log(`Kept ${fieldName} as percentage: ${value}%`);
+                      }
                     }
                     // Handle round complexity (validate 1-5 scale)
                     else if (fieldName === 'roundComplexity') {
