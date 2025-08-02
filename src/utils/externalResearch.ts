@@ -195,13 +195,44 @@ Always cite specific sources for claims and include publication dates when avail
         
         results.push(content);
         
-        // Extract sources from content
-        const sourceMatches = content.match(/(?:according to|from|via|source:|reported by)\s+([^.]+)/gi);
-        if (sourceMatches) {
-          const extractedSources = sourceMatches.map(s => s.replace(/^(according to|from|via|source:|reported by)\s+/i, ''));
-          console.log('🔗 [Perplexity Research] Found sources:', extractedSources);
-          allSources.push(...extractedSources);
+        // Extract sources from structured API response
+        let extractedSources: string[] = [];
+        
+        // First, try to get sources from citations array
+        if (data.citations && Array.isArray(data.citations)) {
+          console.log('📚 [Perplexity Research] Found citations array:', data.citations);
+          extractedSources = data.citations.map((citation: any) => {
+            if (typeof citation === 'string') return citation;
+            if (citation.title && citation.url) {
+              const domain = new URL(citation.url).hostname.replace('www.', '');
+              return `${citation.title} (${domain})`;
+            }
+            return citation.title || citation.url || 'Unknown source';
+          });
         }
+        
+        // Fallback to search_results if citations not available
+        if (extractedSources.length === 0 && data.search_results && Array.isArray(data.search_results)) {
+          console.log('🔍 [Perplexity Research] Using search_results for sources:', data.search_results);
+          extractedSources = data.search_results.slice(0, 3).map((result: any) => {
+            if (result.title && result.url) {
+              const domain = new URL(result.url).hostname.replace('www.', '');
+              return `${result.title} (${domain})`;
+            }
+            return result.title || result.url || 'Unknown source';
+          });
+        }
+        
+        // Final fallback: regex extraction from content
+        if (extractedSources.length === 0) {
+          const sourceMatches = content.match(/(?:according to|from|via|source:|reported by)\s+([^.]+)/gi);
+          if (sourceMatches) {
+            extractedSources = sourceMatches.map(s => s.replace(/^(according to|from|via|source:|reported by)\s+/i, ''));
+          }
+        }
+        
+        console.log('🔗 [Perplexity Research] Extracted sources:', extractedSources);
+        allSources.push(...extractedSources);
       } else {
         const errorText = await response.text();
         console.error('❌ [Perplexity Research] API Error:', {
