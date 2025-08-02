@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateCapitalEfficiency, EfficiencyData } from '@/utils/chartData';
@@ -9,7 +10,7 @@ interface CapitalEfficiencyLeaderboardProps {
 }
 
 export function CapitalEfficiencyLeaderboard({ companies, onCompanySelect }: CapitalEfficiencyLeaderboardProps) {
-  const efficiencyData = calculateCapitalEfficiency(companies);
+  const efficiencyData = useMemo(() => calculateCapitalEfficiency(companies), [companies]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {

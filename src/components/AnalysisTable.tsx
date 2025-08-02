@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight, Download, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,7 +102,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     return <Badge variant="default">Clean Terms ({complexity}/5)</Badge>;
   };
 
-  const formatCurrency = (amount: number | null | undefined) => {
+  const formatCurrency = useCallback((amount: number | null | undefined) => {
     if (amount === null || amount === undefined || isNaN(amount)) {
       return 'N/A';
     }
@@ -112,23 +112,23 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
-  };
+  }, []);
 
-  const formatPercentage = (value: number | null | undefined) => {
+  const formatPercentage = useCallback((value: number | null | undefined) => {
     if (value === null || value === undefined || isNaN(value)) {
       return 'N/A';
     }
     return `${value.toFixed(1)}%`;
-  };
+  }, []);
 
-  const formatNumber = (value: number | null | undefined, suffix: string = '') => {
+  const formatNumber = useCallback((value: number | null | undefined, suffix: string = '') => {
     if (value === null || value === undefined || isNaN(value)) {
       return 'N/A';
     }
     return `${value.toFixed(1)}${suffix}`;
-  };
+  }, []);
 
-  const formatRevenue = (revenue: number | null | undefined, arr: number | null | undefined) => {
+  const formatRevenue = useCallback((revenue: number | null | undefined, arr: number | null | undefined) => {
     if (arr !== null && arr !== undefined && arr > 0) {
       return {
         value: `$${(arr / 1000000).toFixed(1)}M`,
@@ -147,15 +147,15 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
       type: 'N/A',
       primary: false
     };
-  };
+  }, []);
 
-  const handleRowClick = (companyId: string) => {
+  const handleRowClick = useCallback((companyId: string) => {
     try {
       setExpandedRow(expandedRow === companyId ? null : companyId);
     } catch (error) {
       console.error('Error expanding row:', error);
     }
-  };
+  }, [expandedRow]);
 
   return (
     <Card className="w-full shadow-medium">

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Scatter, ScatterChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { processPortfolioExposureData, ChartDataPoint } from '@/utils/chartData';
@@ -9,7 +10,7 @@ interface PortfolioExposureBubbleChartProps {
 }
 
 export function PortfolioExposureBubbleChart({ companies, onCompanySelect }: PortfolioExposureBubbleChartProps) {
-  const data = processPortfolioExposureData(companies);
+  const data = useMemo(() => processPortfolioExposureData(companies), [companies]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {

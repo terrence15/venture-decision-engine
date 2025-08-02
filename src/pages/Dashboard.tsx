@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
 import { AnalysisTable } from '@/components/AnalysisTable';
@@ -45,7 +45,7 @@ export function Dashboard() {
   const [filteredCompanies, setFilteredCompanies] = useState<AnalyzedCompanyData[]>([]);
   const { toast } = useToast();
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = useCallback(async (file: File) => {
     setIsParsingFile(true);
     try {
       console.log('Parsing Excel file:', file.name);
@@ -91,7 +91,7 @@ export function Dashboard() {
     } finally {
       setIsParsingFile(false);
     }
-  };
+  }, [toast]);
 
   const handleAnalyze = () => {
     if (companies.length === 0) {
@@ -219,12 +219,21 @@ export function Dashboard() {
     }
   };
 
-  // Calculate metrics safely
-  const totalPortfolioValue = companies.reduce((sum, company) => sum + (company.totalInvestment || 0), 0);
-  const totalRequested = companies.reduce((sum, company) => sum + (company.additionalInvestmentRequested || 0), 0);
-  const validMOICs = companies.filter(company => company.moic !== null && company.moic !== undefined);
-  const avgMOIC = validMOICs.length > 0 ? validMOICs.reduce((sum, company) => sum + company.moic!, 0) / validMOICs.length : 0;
-  const highRiskCount = companies.filter(company => company.confidence && company.confidence <= 2).length;
+  // Calculate metrics safely with memoization
+  const portfolioMetrics = useMemo(() => {
+    const totalPortfolioValue = companies.reduce((sum, company) => sum + (company.totalInvestment || 0), 0);
+    const totalRequested = companies.reduce((sum, company) => sum + (company.additionalInvestmentRequested || 0), 0);
+    const validMOICs = companies.filter(company => company.moic !== null && company.moic !== undefined);
+    const avgMOIC = validMOICs.length > 0 ? validMOICs.reduce((sum, company) => sum + company.moic!, 0) / validMOICs.length : 0;
+    const highRiskCount = companies.filter(company => company.confidence && company.confidence <= 2).length;
+    
+    return {
+      totalPortfolioValue,
+      totalRequested,
+      avgMOIC,
+      highRiskCount
+    };
+  }, [companies]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -278,7 +287,7 @@ export function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${(totalPortfolioValue / 1000000).toFixed(1)}M
+                    ${(portfolioMetrics.totalPortfolioValue / 1000000).toFixed(1)}M
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {companies.length} companies
@@ -293,7 +302,7 @@ export function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${(totalRequested / 1000000).toFixed(1)}M
+                    ${(portfolioMetrics.totalRequested / 1000000).toFixed(1)}M
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Total ask amount
@@ -308,7 +317,7 @@ export function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {avgMOIC > 0 ? `${avgMOIC.toFixed(1)}x` : 'N/A'}
+                    {portfolioMetrics.avgMOIC > 0 ? `${portfolioMetrics.avgMOIC.toFixed(1)}x` : 'N/A'}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Portfolio multiple
@@ -322,7 +331,7 @@ export function Dashboard() {
                   <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{highRiskCount}</div>
+                  <div className="text-2xl font-bold">{portfolioMetrics.highRiskCount}</div>
                   <p className="text-xs text-muted-foreground">
                     Low confidence deals
                   </p>
