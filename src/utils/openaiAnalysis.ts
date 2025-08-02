@@ -1,5 +1,174 @@
 import { conductExternalResearch, getPerplexityApiKey } from './externalResearch';
 
+// Enhanced Scoring Functions
+function calculateMarketCredibilityScore(company: CompanyData): number {
+  let score = 0;
+  
+  // TAM Score (20 points)
+  score += (company.tam / 5) * 20;
+  
+  // Exit Activity (15 points)
+  const exitActivityScore = (() => {
+    if (company.exitActivity.toLowerCase().includes('high')) return 15;
+    if (company.exitActivity.toLowerCase().includes('moderate')) return 10;
+    if (company.exitActivity.toLowerCase().includes('low')) return 5;
+    return 7; // Default moderate
+  })();
+  score += exitActivityScore;
+  
+  // Industry validation (15 points) - based on barrier to entry
+  score += (company.barrierToEntry / 5) * 15;
+  
+  // Investor Interest (10 points)
+  if (company.investorInterest !== null) {
+    score += (company.investorInterest / 5) * 10;
+  } else {
+    score += 5; // Default moderate
+  }
+  
+  return Math.min(100, Math.max(0, score));
+}
+
+function calculateCapitalEfficiencyScore(company: CompanyData): number {
+  let score = 0;
+  
+  // Burn Multiple (30 points)
+  if (company.burnMultiple !== null) {
+    if (company.burnMultiple <= 1.5) score += 30;
+    else if (company.burnMultiple <= 3) score += 20;
+    else if (company.burnMultiple <= 5) score += 10;
+    else score += 5;
+  } else {
+    score += 15; // Default moderate
+  }
+  
+  // Runway (20 points)
+  if (company.runway !== null) {
+    if (company.runway >= 18) score += 20;
+    else if (company.runway >= 12) score += 15;
+    else if (company.runway >= 6) score += 10;
+    else score += 5;
+  } else {
+    score += 10; // Default moderate
+  }
+  
+  // Revenue growth efficiency (25 points)
+  if (company.forwardCAGR2Y !== null && company.burnMultiple !== null) {
+    const growthEfficiency = company.forwardCAGR2Y / company.burnMultiple;
+    if (growthEfficiency >= 50) score += 25;
+    else if (growthEfficiency >= 30) score += 20;
+    else if (growthEfficiency >= 15) score += 15;
+    else if (growthEfficiency >= 5) score += 10;
+    else score += 5;
+  } else {
+    score += 12; // Default moderate
+  }
+  
+  // MOIC (25 points)
+  if (company.moic !== null) {
+    if (company.moic >= 3) score += 25;
+    else if (company.moic >= 2) score += 20;
+    else if (company.moic >= 1.5) score += 15;
+    else if (company.moic >= 1) score += 10;
+    else score += 5;
+  } else {
+    score += 12; // Default moderate
+  }
+  
+  return Math.min(100, Math.max(0, score));
+}
+
+function calculateExecutionCredibilityScore(company: CompanyData): number {
+  let score = 0;
+  
+  // Growth consistency (30 points)
+  if (company.historicalCAGR2Y !== null && company.forwardCAGR2Y !== null) {
+    const growthRatio = company.forwardCAGR2Y / Math.max(company.historicalCAGR2Y, 1);
+    if (growthRatio <= 1.5) score += 30; // Conservative projections
+    else if (growthRatio <= 2.5) score += 25; // Reasonable stretch
+    else if (growthRatio <= 4) score += 15; // Aggressive but possible
+    else score += 5; // Hockey stick risk
+  } else {
+    score += 15; // Default moderate
+  }
+  
+  // Projection realism (25 points) - Revenue trajectory score
+  if (company.revenueTrajectoryScore !== null) {
+    score += (company.revenueTrajectoryScore / 5) * 25;
+  } else {
+    score += 12; // Default moderate
+  }
+  
+  // Historical performance (25 points) - YoY growth
+  if (company.yoyGrowthPercent !== null) {
+    if (company.yoyGrowthPercent >= 100) score += 25;
+    else if (company.yoyGrowthPercent >= 50) score += 20;
+    else if (company.yoyGrowthPercent >= 25) score += 15;
+    else if (company.yoyGrowthPercent >= 0) score += 10;
+    else score += 5;
+  } else {
+    score += 12; // Default moderate
+  }
+  
+  // Round complexity (20 points) - Lower complexity = higher execution credibility
+  if (company.roundComplexity !== null) {
+    score += (company.roundComplexity / 5) * 20;
+  } else {
+    score += 12; // Default moderate (3/5)
+  }
+  
+  return Math.min(100, Math.max(0, score));
+}
+
+function calculateScenarios(company: CompanyData, marketCredibilityScore: number, capitalEfficiencyScore: number, executionCredibilityScore: number) {
+  const currentRevenue = company.currentRevenue || company.revenue || company.arr || company.currentARR || 0;
+  const exitTimeline = company.exitTimeline || 3;
+  const equityStake = company.equityStake / 100;
+  const totalInvestment = company.totalInvestment + (company.additionalInvestmentRequested || 0);
+  
+  // Base growth rate
+  const baseGrowthRate = company.forwardCAGR2Y || company.projectedRevenueGrowth || 50;
+  
+  // Industry multiple estimate (default to 6x revenue)
+  const baseMultiple = 6;
+  
+  // Calculate scenarios
+  const bearGrowthRate = baseGrowthRate * 0.5;
+  const baseGrowthRateValue = baseGrowthRate;
+  const bullGrowthRate = baseGrowthRate * 1.5;
+  
+  const bearMultiple = baseMultiple * 0.7;
+  const baseMultipleValue = baseMultiple;
+  const bullMultiple = baseMultiple * 1.3;
+  
+  // Project revenue at exit
+  const bearRevenue = currentRevenue * Math.pow(1 + bearGrowthRate / 100, exitTimeline);
+  const baseRevenue = currentRevenue * Math.pow(1 + baseGrowthRateValue / 100, exitTimeline);
+  const bullRevenue = currentRevenue * Math.pow(1 + bullGrowthRate / 100, exitTimeline);
+  
+  // Calculate exit values
+  const bearExitValue = bearRevenue * bearMultiple;
+  const baseExitValue = baseRevenue * baseMultipleValue;
+  const bullExitValue = bullRevenue * bullMultiple;
+  
+  // Calculate MOIC
+  const bearMOIC = (bearExitValue * equityStake) / totalInvestment;
+  const baseMOIC = (baseExitValue * equityStake) / totalInvestment;
+  const bullMOIC = (bullExitValue * equityStake) / totalInvestment;
+  
+  // Assign probabilities based on scores
+  const avgScore = (marketCredibilityScore + capitalEfficiencyScore + executionCredibilityScore) / 3;
+  const bearProb = avgScore < 40 ? 0.6 : avgScore < 60 ? 0.4 : 0.2;
+  const bullProb = avgScore > 80 ? 0.3 : avgScore > 60 ? 0.2 : 0.1;
+  const baseProb = 1 - bearProb - bullProb;
+  
+  return {
+    bear: { exitValue: bearExitValue, ownership: equityStake * 100, moic: bearMOIC, probability: bearProb },
+    base: { exitValue: baseExitValue, ownership: equityStake * 100, moic: baseMOIC, probability: baseProb },
+    bull: { exitValue: bullExitValue, ownership: equityStake * 100, moic: bullMOIC, probability: bullProb }
+  };
+}
+
 interface CompanyData {
   id: string;
   companyName: string;
@@ -55,6 +224,24 @@ interface AnalysisResult {
   externalSources: string;
   insufficientData: boolean;
   riskAdjustedMonetizationSummary: string;
+  // Enhanced scoring system
+  marketCredibilityScore: number;
+  capitalEfficiencyScore: number;
+  executionCredibilityScore: number;
+  // Executive dashboard
+  executiveSummary: {
+    valuationAssessment: string;
+    capitalEfficiency: string;
+    marketValidation: string;
+    executionRisk: string;
+    recommendedAction: string;
+  };
+  // Scenario analysis
+  scenarios: {
+    bear: { exitValue: number; ownership: number; moic: number; probability: number };
+    base: { exitValue: number; ownership: number; moic: number; probability: number };
+    bull: { exitValue: number; ownership: number; moic: number; probability: number };
+  };
   // Enhanced external attribution
   externalInsights: {
     marketContext: string[];
@@ -159,6 +346,11 @@ export async function analyzeCompanyWithOpenAI(
       return `Complete missing data: ${missingFields.slice(0, 2).join(', ')}`;
     })();
     
+    // Calculate default scores for incomplete data
+    const marketCredibilityScore = calculateMarketCredibilityScore(company);
+    const capitalEfficiencyScore = calculateCapitalEfficiencyScore(company);
+    const executionCredibilityScore = calculateExecutionCredibilityScore(company);
+
     return {
       recommendation: '📊 INCOMPLETE DATA - Provide revenue anchor for analysis',
       timingBucket: 'N/A - Data Incomplete',
@@ -170,6 +362,21 @@ export async function analyzeCompanyWithOpenAI(
       externalSources: 'External research not conducted due to insufficient internal data foundation',
       insufficientData: true,
       riskAdjustedMonetizationSummary: '🚧 PARTIAL CALCULATION: Risk-adjusted analysis requires revenue anchor (current revenue or ARR). Partial data limits return modeling capability.',
+      marketCredibilityScore,
+      capitalEfficiencyScore,
+      executionCredibilityScore,
+      executiveSummary: {
+        valuationAssessment: '⚠️ Incomplete Data',
+        capitalEfficiency: `🟡 Score: ${capitalEfficiencyScore}/100`,
+        marketValidation: `🟡 Score: ${marketCredibilityScore}/100`,
+        executionRisk: `🟡 Score: ${executionCredibilityScore}/100`,
+        recommendedAction: '📊 Complete data requirements'
+      },
+      scenarios: {
+        bear: { exitValue: 0, ownership: 0, moic: 0, probability: 0 },
+        base: { exitValue: 0, ownership: 0, moic: 0, probability: 0 },
+        bull: { exitValue: 0, ownership: 0, moic: 0, probability: 0 }
+      },
       externalInsights: {
         marketContext: [],
         competitivePosition: [],
@@ -580,18 +787,78 @@ VC Return = Risk-Adjusted Exit × Equity Stake %
 STEP 7: Risk-Adjusted MOIC
 MOIC = VC Return ÷ (Total Investment + Additional Investment Requested)
 
+## ENHANCED INTERCONNECTED ANALYSIS REQUIREMENTS
+
+**PHASE 1: Executive Dashboard (Lead with Quantitative Scores)**
+Calculate and lead with these composite scores to drive all subsequent analysis:
+
+🧮 Market Credibility Score (0-100):
+- TAM validation (20pts): (TAM/5) × 20
+- Exit Activity (15pts): High=15, Moderate=10, Low=5
+- Industry validation (15pts): (Barrier to Entry/5) × 15
+- Investor Interest (10pts): (Interest/5) × 10
+
+💰 Capital Efficiency Score (0-100):
+- Burn Multiple (30pts): ≤1.5=30, ≤3=20, ≤5=10, >5=5
+- Runway (20pts): ≥18mo=20, ≥12mo=15, ≥6mo=10, <6mo=5
+- Growth Efficiency (25pts): Forward CAGR ÷ Burn Multiple ratio scoring
+- Current MOIC (25pts): ≥3x=25, ≥2x=20, ≥1.5x=15, ≥1x=10, <1x=5
+
+⚡ Execution Credibility Score (0-100):
+- Growth Consistency (30pts): Forward/Historical CAGR ratio (lower = better)
+- Projection Realism (25pts): Revenue trajectory score basis
+- Historical Performance (25pts): YoY growth rate scoring
+- Structural Complexity (20pts): Round complexity inversion
+
+**PHASE 2: Revenue Consistency Validation**
+MANDATORY cross-checks that must influence confidence scoring:
+- ARR vs Revenue sanity (flag if ARR >> Revenue by >20%)
+- Hockey-stick detection (flag if Forward CAGR >> Historical CAGR by >2x)
+- Revenue multiple reasonableness vs sector benchmarks
+
+**PHASE 3: Interconnected Analysis Structure**
+
+🧠 AI Reasoning Section:
+Start with: "Market Credibility: X/100, Capital Efficiency: Y/100, Execution Credibility: Z/100"
+Reference specific calculations: "At {forward revenue multiple}x vs sector median of 6.5x, valuation carries {premium}% premium"
+Cross-reference all inputs: burn multiple → urgency, TAM + exits → market validation
+MUST integrate: valuation vs ARR, burn vs growth, ownership vs raise amount
+
+⚠️ Key Risks Section:
+Mirror assumptions in projections - if assuming high growth, address growth sustainability
+Tie risks to red flags: high burn → runway pressure, low exit comps → liquidity risk
+Include score-based thresholds: "Capital Efficiency score of X/100 indicates Y risk level"
+
+✅ Suggested Action Section:
+Include decision math: "At X% ownership, need $YM+ exit for 3x MOIC"
+Reference scoring: "Scores support $X participation level"
+Size recommendations based on risk-adjusted return calculations
+
+📊 Scenario Analysis (Bear/Base/Bull Framework):
+Bear: Conservative growth (0.5x base), low multiple (0.7x base), high probability if low scores
+Base: Reasonable assumptions, median multiple, moderate probability
+Bull: Aggressive growth (1.5x base), high multiple (1.3x base), low probability unless high scores
+Each scenario shows: Exit Value, Ownership %, MOIC, Probability %
+
 Provide your analysis in the following JSON format:
 {
   "recommendation": "${company.isExistingInvestment 
-    ? "Enhanced portfolio management recommendations: 'Double Down - increase position', 'Pro-rata Only - maintain ownership', 'Bridge Capital - extend runway', 'Exit Opportunistically', 'Hold - avoid follow-on', 'Conditional Follow-on - if syndicate secured', etc." 
-    : "Enhanced new investment recommendations: 'Invest $X - strong thesis', 'Pass - insufficient traction', 'Monitor - revisit in 6 months', 'Due Diligence Required', 'Conditional Term Sheet - pending validation', 'Wait for better entry point', etc."}",
-  "timingBucket": "Enhanced options: 'Double Down', 'Conditional Investment', 'Bridge Only Pending Syndicate', 'Wait for Co-Lead', 'Reinvest (3-12 Months)', 'Hold (3-6 Months)', 'Exit Opportunistically', 'Decline'",
-  "reasoning": "2-4 sentences starting with financial analysis, incorporating CRITICAL valuation assessment (markup vs. growth fundamentals), investor interest, and round feasibility. Must address ownership dilution impact, return compression risk, and whether valuation is justified by traction. Include explicit source citations when external data influences decision.",
-  "confidence": "Integer 1-5 where 5=strong financial+clean terms(4-5)+reasonable valuation+external validation+high investor interest, 3=solid metrics+moderate complexity(3)+fair valuation+moderate interest, 1=complex terms(1-2) OR overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",
-  "keyRisks": "1-2 sentences highlighting material threats, MUST include complexity-specific risks like 'complex deal structure', 'governance alignment issues', 'liquidation preference concerns' for complexity 1-2, plus valuation risks like 'return compression from markup', 'overpricing vs. fundamentals', 'exit pressure from high post-money', plus 'syndicate risk', 'round fragility', 'stranded capital risk', or 'bagholder risk' when investor interest ≤ 2 AND capital request > $3M", 
-  "suggestedAction": "1 tactical sentence focusing on complexity management (legal review, term renegotiation for complexity 1-2), valuation negotiation, downside protection, syndicate building, co-investor validation, or conditional deployment triggers based on structure quality, pricing and interest levels",
-  "projectedExitValueRange": "REQUIRED EXPLICIT CALCULATION FORMAT: 'Current ARR: $X.XM | Projected ARR (${company.exitTimeline || 3} years, X% growth): $X.XM × (1.X)^${company.exitTimeline || 3} = $X.XM | Industry Multiple: Xx EV/ARR (based on [named companies with multiples from external research]) | Gross Exit Value: $X.XM × Xx = $XXXM | Risk-Adjusted (X% success): $XXXM'. Use ARR if available, otherwise Revenue. MUST show the actual math calculation and cite specific companies and their multiples from external research. Compare timeline assumptions against sector norms.",
-  "riskAdjustedMonetizationSummary": "REQUIRED STEP-BY-STEP CALCULATION FORMAT: Start with explicit revenue projection: 'Current [ARR/Revenue]: $X.XM → Projected [ARR/Revenue] (${company.exitTimeline || 3} years, X% growth): $X.XM × (1.X)^${company.exitTimeline || 3} = $X.XM'. Then apply industry multiple: 'Industry Multiple: Xx EV/[ARR/Revenue] from [specific named companies and their multiples from external research] → Gross Exit Value: $X.XM × Xx = $XXXM'. Then apply risk assessment: 'Success Probability: X% (rationale based on execution, market, cap table risks) → Risk-Adjusted Exit: $XXXM × X% = $XXXM'. Finally calculate returns: 'VC Return: $XXXM × X% equity = $XXM → MOIC: $XXM ÷ $XM total investment = X.Xx'. Must show ALL math steps explicitly.",
+    ? "Portfolio management with decision math: 'Double Down $X - expect Y.Yx MOIC', 'Pro-rata $X - maintain Z% ownership', 'Bridge $X - extend runway for exit', 'Exit - current MOIC sufficient', etc." 
+    : "Investment decision with sizing: 'Invest $X - target Y.Yx MOIC based on scenarios', 'Pass - insufficient risk-adjusted returns', 'Monitor - scores improve to X threshold', etc."}",
+  "timingBucket": "Enhanced timing with scoring context: 'Double Down (Scores: X/Y/Z)', 'Conditional Investment (Market Score <60)', 'Bridge Pending Validation', 'Wait for Better Entry', 'Reinvest when Efficiency >70', 'Hold', 'Exit Opportunistically', 'Decline'",
+  "reasoning": "MUST START with quantitative scores: 'Market Credibility: X/100, Capital Efficiency: Y/100, Execution Credibility: Z/100.' Then 2-3 sentences integrating valuation analysis (revenue multiple vs sector), growth trajectory credibility, and investor validation. Address ownership math and return requirements. Cross-reference scoring to confidence level.",
+  "confidence": "Integer 1-5 driven by composite scores: Average score >80 AND clean terms = 5; Average score 60-80 AND moderate complexity = 3-4; Average score <40 OR complex terms OR low investor interest = 1-2. Must justify based on scoring breakdown.",
+  "keyRisks": "Score-derived risks: If Capital Efficiency <50: 'Capital efficiency concerns (score: X/100)'. If Market Credibility <50: 'Market validation risks (score: X/100)'. If Execution Credibility <50: 'Execution delivery risks (score: X/100)'. Plus traditional risks tied to specific metrics and assumptions.",
+  "suggestedAction": "Scoring-based action with math: 'Scores support $X participation (Y.Yx expected MOIC from base scenario)' or 'Improve Z score to X threshold before investing' or 'Conditional on co-investor validation given low scores'",
+  "projectedExitValueRange": "MANDATORY 3-SCENARIO FORMAT: 'BEAR: Revenue $XM × Y.Yx multiple = $ZM exit (Probability: X%) | BASE: Revenue $XM × Y.Yx multiple = $ZM exit (Probability: X%) | BULL: Revenue $XM × Y.Yx multiple = $ZM exit (Probability: X%). Expected value: $ZM. At X% ownership, expected return: $YM (Z.Zx MOIC)'. Must show calculation steps and probability weighting.",
+  "riskAdjustedMonetizationSummary": "STEP-BY-STEP with scenario weighting: 'Revenue Projection: Current $XM → Exit $YM (Z% CAGR over W years). Scenario Analysis: Bear Z1.Z1x MOIC (X1% prob), Base Z2.Z2x MOIC (X2% prob), Bull Z3.Z3x MOIC (X3% prob). Risk-Adjusted MOIC: (Z1.Z1×X1% + Z2.Z2×X2% + Z3.Z3×X3%) = Z.Zx. Composite scores (Market: Y1/100, Capital: Y2/100, Execution: Y3/100) justify X% success probability weighting.'",
+  "executiveSummary": {
+    "valuationAssessment": "⚠️ High (8.1x vs 6.5x sector) / 🟡 Market Rate / ✅ Conservative based on forward revenue multiple vs sector median",
+    "capitalEfficiency": "✅ Strong (Score: X/100) / 🟡 Moderate (Score: X/100) / ⚠️ Concerning (Score: X/100) - include burn multiple and runway context",
+    "marketValidation": "✅ Validated (Score: X/100) / 🟡 Moderate (Score: X/100) / ⚠️ Unproven (Score: X/100) - include TAM and exit activity",
+    "executionRisk": "✅ Low (Score: X/100) / 🟡 Moderate (Score: X/100) / ⚠️ High (Score: X/100) - include growth consistency",
+    "recommendedAction": "🟢 Participate $X (Y.Yx MOIC) / 🟡 Monitor (improve scores) / 🔴 Pass (insufficient returns)"
+  },
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
     "marketContext": ["List key market insights that influenced analysis"],
@@ -686,6 +953,24 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
       throw new Error(`Failed to parse JSON response: ${parseError.message}`);
     }
     
+    // Calculate enhanced scores
+    const marketCredibilityScore = calculateMarketCredibilityScore(company);
+    const capitalEfficiencyScore = calculateCapitalEfficiencyScore(company);
+    const executionCredibilityScore = calculateExecutionCredibilityScore(company);
+    const scenarios = calculateScenarios(company, marketCredibilityScore, capitalEfficiencyScore, executionCredibilityScore);
+    
+    // Create executive summary
+    const executiveSummary = {
+      valuationAssessment: analysis.executiveSummary?.valuationAssessment || 
+        (company.forwardRevenueMultiple && company.forwardRevenueMultiple > 8 ? '⚠️ High Valuation' : 
+         company.forwardRevenueMultiple && company.forwardRevenueMultiple < 4 ? '✅ Conservative' : '🟡 Market Rate'),
+      capitalEfficiency: `${capitalEfficiencyScore >= 75 ? '✅' : capitalEfficiencyScore >= 50 ? '🟡' : '⚠️'} Score: ${capitalEfficiencyScore}/100`,
+      marketValidation: `${marketCredibilityScore >= 75 ? '✅' : marketCredibilityScore >= 50 ? '🟡' : '⚠️'} Score: ${marketCredibilityScore}/100`,
+      executionRisk: `${executionCredibilityScore >= 75 ? '✅' : executionCredibilityScore >= 50 ? '🟡' : '⚠️'} Score: ${executionCredibilityScore}/100`,
+      recommendedAction: analysis.executiveSummary?.recommendedAction || 
+        (scenarios.base.moic >= 3 ? '🟢 Participate' : scenarios.base.moic >= 2 ? '🟡 Consider' : '🔴 Pass')
+    };
+
     return {
       recommendation: analysis.recommendation || 'Analysis incomplete',
       timingBucket: analysis.timingBucket || 'Hold (3-6 Months)',
@@ -697,6 +982,11 @@ Think like a VC partner prioritizing financial fundamentals while incorporating 
       externalSources: externalSources,
       insufficientData: false,
       riskAdjustedMonetizationSummary: analysis.riskAdjustedMonetizationSummary || 'Risk-adjusted monetization analysis could not be completed with available data. Requires comprehensive financial metrics and market validation signals for accurate return projections.',
+      marketCredibilityScore,
+      capitalEfficiencyScore,
+      executionCredibilityScore,
+      executiveSummary,
+      scenarios,
       // Enhanced external attribution
       externalInsights: analysis.externalInsights || {
         marketContext: [],
