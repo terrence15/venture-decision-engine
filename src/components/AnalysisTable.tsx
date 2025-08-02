@@ -4,8 +4,6 @@ import { ChevronDown, ChevronRight, Download, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface CompanyData {
   id: string;
@@ -101,21 +99,25 @@ const TableRowComponent = React.memo(({
   getComplexityBadge: (complexity?: number | null) => React.ReactNode;
 }) => (
   <div 
-    className="cursor-pointer hover:bg-muted/50 transition-colors border-b flex items-center min-h-[60px] will-change-transform"
+    className="cursor-pointer hover:bg-muted/50 transition-colors border-b min-h-[60px] will-change-transform"
     onClick={() => onRowClick(company.id)}
-    style={{ display: 'table', width: '100%', tableLayout: 'fixed' }}
+    style={{ 
+      display: 'grid', 
+      gridTemplateColumns: '40px 200px 120px 120px 120px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
+      alignItems: 'center'
+    }}
   >
-    <div className="w-8 p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4 flex justify-center">
       {isExpanded ? (
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       ) : (
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       )}
     </div>
-    <div className="font-medium min-w-[200px] p-4" style={{ display: 'table-cell' }}>
-      <div className="flex items-center gap-2">
-        <span>{company.companyName}</span>
-        <Badge variant={company.isExistingInvestment ? "default" : "outline"}>
+    <div className="font-medium p-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="truncate">{company.companyName}</span>
+        <Badge variant={company.isExistingInvestment ? "default" : "outline"} className="text-xs">
           {company.isExistingInvestment ? "Portfolio" : "Potential"}
         </Badge>
         {company.insufficientData && (
@@ -125,7 +127,7 @@ const TableRowComponent = React.memo(({
         )}
       </div>
     </div>
-    <div className="min-w-[120px] p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       {company.seriesStage ? (
         <Badge variant="secondary" className="text-xs">
           {company.seriesStage}
@@ -134,19 +136,19 @@ const TableRowComponent = React.memo(({
         <span className="text-xs text-muted-foreground">N/A</span>
       )}
     </div>
-    <div className="min-w-[120px] p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       {company.totalRaiseRequest ? (
-        <span className="font-medium">
+        <span className="font-medium text-sm">
           {formatCurrency(company.totalRaiseRequest)}
         </span>
       ) : (
-        <span className="text-muted-foreground">-</span>
+        <span className="text-muted-foreground text-sm">-</span>
       )}
     </div>
-    <div className="min-w-[120px] p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       {company.amountRequestedFromFirm ? (
         <div className="space-y-1">
-          <span className="font-medium">
+          <span className="font-medium text-sm">
             {formatCurrency(company.amountRequestedFromFirm)}
           </span>
           {company.totalRaiseRequest && (
@@ -156,15 +158,15 @@ const TableRowComponent = React.memo(({
           )}
         </div>
       ) : (
-        <span className="text-muted-foreground">-</span>
+        <span className="text-muted-foreground text-sm">-</span>
       )}
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
-      <span className="text-sm font-medium text-muted-foreground">
+    <div className="p-4">
+      <span className="text-sm font-medium text-muted-foreground truncate">
         {company.industry || 'N/A'}
       </span>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       <div className="flex items-center gap-1">
         <span className="text-sm font-medium">
           {formatRevenue(company.revenue, company.arr).value}
@@ -176,13 +178,13 @@ const TableRowComponent = React.memo(({
         )}
       </div>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>{formatCurrency(company.totalInvestment)}</div>
-    <div className="p-4" style={{ display: 'table-cell' }}>{formatPercentage(company.equityStake)}</div>
-    <div className="p-4" style={{ display: 'table-cell' }}>{formatNumber(company.moic, 'x')}</div>
-    <div className="p-4" style={{ display: 'table-cell' }}>{formatPercentage(company.revenueGrowth)}</div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4 text-sm">{formatCurrency(company.totalInvestment)}</div>
+    <div className="p-4 text-sm">{formatPercentage(company.equityStake)}</div>
+    <div className="p-4 text-sm">{formatNumber(company.moic, 'x')}</div>
+    <div className="p-4 text-sm">{formatPercentage(company.revenueGrowth)}</div>
+    <div className="p-4">
       <div className="flex items-center gap-1">
-        {formatPercentage(company.projectedRevenueGrowth)}
+        <span className="text-sm">{formatPercentage(company.projectedRevenueGrowth)}</span>
         {company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined && (
           <Badge variant={
             company.projectedRevenueGrowth >= 100 ? 'default' :
@@ -196,56 +198,24 @@ const TableRowComponent = React.memo(({
         )}
       </div>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       <div className="flex items-center gap-1">
-        {company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || 
-         company.currentRevenue !== null || company.projectedRevenueYear1 !== null || 
-         company.projectedRevenueYear2 !== null ? (
-          <div className="text-xs">
-            <div className="flex gap-1 items-center">
-              <span className="text-muted-foreground">-2:</span>
-              <span>{company.revenueYearMinus2 ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
-              {!company.revenueYearMinus2 && (
-                <span className="text-yellow-500 text-xs" title="Historical CAGR calculation unavailable">⚠️</span>
-              )}
-            </div>
-            <div className="flex gap-1 items-center">
-              <span className="text-muted-foreground">Cur:</span>
-              <span>{company.currentRevenue ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}</span>
-              {!company.currentRevenue && (
-                <span className="text-red-500 text-xs" title="Critical: Current revenue missing">🚫</span>
-              )}
-            </div>
-            <div className="flex gap-1 items-center">
-              <span className="text-muted-foreground">+2:</span>
-              <span>{company.projectedRevenueYear2 ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
-              {!company.projectedRevenueYear2 && (
-                <span className="text-red-500 text-xs" title="Risk-adjusted analysis disabled">⛔</span>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground">No timeline</span>
-            <span className="text-red-500 text-xs" title="Insufficient data for trajectory analysis">🚫</span>
-          </div>
-        )}
         {company.revenueTrajectoryScore !== null && company.revenueTrajectoryScore !== undefined ? (
           <Badge variant={
             company.revenueTrajectoryScore >= 4 ? 'default' :
             company.revenueTrajectoryScore >= 3 ? 'secondary' :
             company.revenueTrajectoryScore >= 2 ? 'outline' : 'destructive'
-          } className="text-xs ml-1">
+          } className="text-xs">
             {company.revenueTrajectoryScore.toFixed(1)}/5
           </Badge>
         ) : (
-          <Badge variant="destructive" className="text-xs ml-1" title="Low confidence: Incomplete data">
+          <Badge variant="destructive" className="text-xs">
             Insufficient
           </Badge>
         )}
       </div>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       <div className="flex items-center gap-1">
         <span className="text-sm font-medium">
           {company.exitTimeline !== null && company.exitTimeline !== undefined 
@@ -259,49 +229,47 @@ const TableRowComponent = React.memo(({
         )}
       </div>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       <div className="text-sm">
         {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
           ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
           : 'N/A'}
       </div>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
-      <div className="flex items-center gap-1">
-        <span className="text-sm">
-          {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
-            ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
-            : 'N/A'}
-        </span>
+    <div className="p-4">
+      <div className="text-sm">
+        {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
+          ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
+          : 'N/A'}
       </div>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>{formatCurrency(company.additionalInvestmentRequested)}</div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4 text-sm">{formatCurrency(company.additionalInvestmentRequested)}</div>
+    <div className="p-4">
       {company.investorInterest !== null && company.investorInterest !== undefined ? (
         <Badge variant={
           company.investorInterest >= 4 ? 'default' :
           company.investorInterest >= 3 ? 'secondary' :
           company.investorInterest >= 2 ? 'outline' : 'destructive'
-        }>
+        } className="text-xs">
           {company.investorInterest}/5
         </Badge>
       ) : (
-        <span className="text-muted-foreground">N/A</span>
+        <span className="text-muted-foreground text-sm">N/A</span>
       )}
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       {getComplexityBadge(company.roundComplexity)}
     </div>
-    <div className="p-4 max-w-[200px]" style={{ display: 'table-cell' }}>
-      <div className="truncate" title={company.recommendation || 'Pending analysis'}>
+    <div className="p-4">
+      <div className="text-sm truncate" title={company.recommendation || 'Pending analysis'}>
         {company.recommendation || 'Pending analysis'}
       </div>
     </div>
-    <div className="p-4" style={{ display: 'table-cell' }}>
+    <div className="p-4">
       {getConfidenceBadge(company.confidence)}
     </div>
-    <div className="p-4 max-w-[300px]" style={{ display: 'table-cell' }}>
-      <div className="truncate" title={company.riskAdjustedMonetizationSummary || 'Pending analysis'}>
+    <div className="p-4">
+      <div className="text-sm truncate" title={company.riskAdjustedMonetizationSummary || 'Pending analysis'}>
         {company.riskAdjustedMonetizationSummary || 'Pending analysis'}
       </div>
     </div>
@@ -324,14 +292,14 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     };
     
     const config = variants[confidence as keyof typeof variants];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={config.variant} className="text-xs">{config.label}</Badge>;
   }, []);
 
   const getComplexityBadge = useCallback((complexity?: number | null) => {
-    if (!complexity) return <Badge variant="secondary">Unknown</Badge>;
-    if (complexity <= 2) return <Badge variant="destructive">High Risk ({complexity}/5)</Badge>;
-    if (complexity === 3) return <Badge variant="secondary">Review Terms ({complexity}/5)</Badge>;
-    return <Badge variant="default">Clean Terms ({complexity}/5)</Badge>;
+    if (!complexity) return <Badge variant="secondary" className="text-xs">Unknown</Badge>;
+    if (complexity <= 2) return <Badge variant="destructive" className="text-xs">High Risk ({complexity}/5)</Badge>;
+    if (complexity === 3) return <Badge variant="secondary" className="text-xs">Review ({complexity}/5)</Badge>;
+    return <Badge variant="default" className="text-xs">Clean ({complexity}/5)</Badge>;
   }, []);
 
   const formatCurrency = useCallback((amount: number | null | undefined) => {
@@ -382,20 +350,46 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
   }, []);
 
   const handleRowClick = useCallback((companyId: string) => {
-    try {
-      setExpandedRow(expandedRow === companyId ? null : companyId);
-    } catch (error) {
-      console.error('Error expanding row:', error);
-    }
+    setExpandedRow(expandedRow === companyId ? null : companyId);
   }, [expandedRow]);
+
+  const getItemSize = useCallback((index: number) => {
+    const company = companies[index];
+    return expandedRow === company.id ? 300 : 60;
+  }, [expandedRow, companies]);
 
   // Virtual scrolling setup
   const virtualizer = useVirtualizer({
     count: companies.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => expandedRow ? 400 : 60,
-    overscan: 5,
+    estimateSize: getItemSize,
+    overscan: 3,
   });
+
+  const headerColumns = [
+    { label: '', width: '40px' },
+    { label: 'Company', width: '200px' },
+    { label: 'Series/Stage', width: '120px' },
+    { label: 'Total Raise', width: '120px' },
+    { label: 'Amount Requested', width: '120px' },
+    { label: 'Industry', width: '1fr' },
+    { label: 'ARR/Revenue', width: '1fr' },
+    { label: 'Investment', width: '1fr' },
+    { label: 'Equity', width: '1fr' },
+    { label: 'MOIC', width: '1fr' },
+    { label: 'TTM Growth', width: '1fr' },
+    { label: 'Projected Growth', width: '1fr' },
+    { label: 'Revenue Timeline', width: '1fr' },
+    { label: 'Exit Timeline', width: '1fr' },
+    { label: 'Pre-Money', width: '1fr' },
+    { label: 'Post-Money', width: '1fr' },
+    { label: 'Requested', width: '1fr' },
+    { label: 'Investor Interest', width: '1fr' },
+    { label: 'Round Terms', width: '1fr' },
+    { label: 'Recommendation', width: '1fr' },
+    { label: 'Confidence', width: '1fr' },
+    { label: 'Risk-Adjusted Summary', width: '1fr' }
+  ];
 
   return (
     <Card className="w-full shadow-medium">
@@ -426,7 +420,30 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
       </CardHeader>
       
       <CardContent className="p-0">
-        <ScrollArea className="h-[600px]" ref={parentRef}>
+        <div 
+          ref={parentRef}
+          className="h-[600px] overflow-auto"
+          style={{ 
+            contain: 'layout style',
+            transform: 'translate3d(0, 0, 0)'
+          }}
+        >
+          {/* Fixed Table Header */}
+          <div className="sticky top-0 z-20 bg-muted/50 border-b">
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '40px 200px 120px 120px 120px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
+              alignItems: 'center'
+            }}>
+              {headerColumns.map((col, index) => (
+                <div key={index} className="p-4 font-medium text-sm text-muted-foreground">
+                  {col.label}
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Virtual Scrolling Content */}
           <div
             style={{
               height: `${virtualizer.getTotalSize()}px`,
@@ -434,95 +451,64 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
               position: 'relative',
             }}
           >
-            <Table style={{ tableLayout: 'fixed' }}>
-              <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                <TableRow>
-                  <TableHead className="w-8"></TableHead>
-                  <TableHead className="min-w-[200px]">Company</TableHead>
-                  <TableHead className="min-w-[120px]">Series/Stage</TableHead>
-                  <TableHead className="min-w-[120px]">Total Raise</TableHead>
-                  <TableHead className="min-w-[120px]">Amount Requested</TableHead>
-                  <TableHead>Industry</TableHead>
-                  <TableHead>ARR/Revenue</TableHead>
-                  <TableHead>Investment</TableHead>
-                  <TableHead>Equity</TableHead>
-                  <TableHead>MOIC</TableHead>
-                  <TableHead>TTM Growth</TableHead>
-                  <TableHead>Projected Growth</TableHead>
-                  <TableHead>Revenue Timeline</TableHead>
-                  <TableHead>Exit Timeline</TableHead>
-                  <TableHead>Pre-Money</TableHead>
-                  <TableHead>Post-Money</TableHead>
-                  <TableHead>Requested</TableHead>
-                  <TableHead>Investor Interest</TableHead>
-                  <TableHead>Round Terms</TableHead>
-                  <TableHead>Recommendation</TableHead>
-                  <TableHead>Confidence</TableHead>
-                  <TableHead>Risk-Adjusted Summary</TableHead>
-                </TableRow>
-              </TableHeader>
-            </Table>
-            
-            <div style={{ position: 'relative' }}>
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const company = companies[virtualRow.index];
-                const isExpanded = expandedRow === company.id;
-                
-                return (
-                  <div
-                    key={`${company.id}-${virtualRow.key}`}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                  >
-                    <TableRowComponent
-                      company={company}
-                      isExpanded={isExpanded}
-                      onRowClick={handleRowClick}
-                      formatCurrency={formatCurrency}
-                      formatPercentage={formatPercentage}
-                      formatNumber={formatNumber}
-                      formatRevenue={formatRevenue}
-                      getConfidenceBadge={getConfidenceBadge}
-                      getComplexityBadge={getComplexityBadge}
-                    />
-                    
-                    {isExpanded && (
-                      <div className="border-b bg-muted/20 p-6 space-y-6">
-                        {/* Expanded content here - simplified for brevity */}
-                        <div className="text-sm space-y-2">
-                          <h4 className="font-medium">Detailed Analysis</h4>
-                          {company.reasoning && (
-                            <div className="bg-background border rounded-lg p-4">
-                              <p className="text-sm leading-relaxed">{company.reasoning}</p>
-                            </div>
-                          )}
-                          {company.keyRisks && (
-                            <div className="bg-background border rounded-lg p-4">
-                              <h5 className="font-medium mb-2">Key Risks</h5>
-                              <p className="text-sm leading-relaxed">{company.keyRisks}</p>
-                            </div>
-                          )}
-                          {company.suggestedAction && (
-                            <div className="bg-background border rounded-lg p-4">
-                              <h5 className="font-medium mb-2">Suggested Actions</h5>
-                              <p className="text-sm leading-relaxed">{company.suggestedAction}</p>
-                            </div>
-                          )}
-                        </div>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const company = companies[virtualRow.index];
+              const isExpanded = expandedRow === company.id;
+              
+              return (
+                <div
+                  key={`${company.id}-${virtualRow.key}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <TableRowComponent
+                    company={company}
+                    isExpanded={isExpanded}
+                    onRowClick={handleRowClick}
+                    formatCurrency={formatCurrency}
+                    formatPercentage={formatPercentage}
+                    formatNumber={formatNumber}
+                    formatRevenue={formatRevenue}
+                    getConfidenceBadge={getConfidenceBadge}
+                    getComplexityBadge={getComplexityBadge}
+                  />
+                  
+                  {isExpanded && (
+                    <div className="bg-muted/20 p-6 space-y-4 border-t">
+                      <div className="text-sm space-y-4">
+                        <h4 className="font-medium text-base">Detailed Analysis</h4>
+                        {company.reasoning && (
+                          <div className="bg-background border rounded-lg p-4">
+                            <h5 className="font-medium mb-2">Investment Reasoning</h5>
+                            <p className="text-sm leading-relaxed">{company.reasoning}</p>
+                          </div>
+                        )}
+                        {company.keyRisks && (
+                          <div className="bg-background border rounded-lg p-4">
+                            <h5 className="font-medium mb-2">Key Risks</h5>
+                            <p className="text-sm leading-relaxed">{company.keyRisks}</p>
+                          </div>
+                        )}
+                        {company.suggestedAction && (
+                          <div className="bg-background border rounded-lg p-4">
+                            <h5 className="font-medium mb-2">Suggested Actions</h5>
+                            <p className="text-sm leading-relaxed">{company.suggestedAction}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
