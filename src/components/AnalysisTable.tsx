@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
+// Stable row size mapping to prevent layout thrashing
+const ROW_HEIGHT_MAP = new Map<string, number>();
+
 interface CompanyData {
   id: string;
   companyName: string;
@@ -76,7 +79,7 @@ interface AnalysisTableProps {
   analysisStatus?: string;
 }
 
-// Memoized row component for performance
+// Memoized row component with stable props comparison
 const TableRowComponent = React.memo(({ 
   company, 
   isExpanded, 
@@ -99,12 +102,14 @@ const TableRowComponent = React.memo(({
   getComplexityBadge: (complexity?: number | null) => React.ReactNode;
 }) => (
   <div 
-    className="cursor-pointer hover:bg-muted/50 transition-colors border-b min-h-[60px] will-change-transform"
+    className="cursor-pointer hover:bg-muted/50 transition-colors border-b"
     onClick={() => onRowClick(company.id)}
     style={{ 
       display: 'grid', 
       gridTemplateColumns: '40px 200px 120px 120px 120px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
-      alignItems: 'center'
+      alignItems: 'center',
+      height: '60px',
+      contain: 'layout style'
     }}
   >
     <div className="p-4 flex justify-center">
@@ -274,11 +279,21 @@ const TableRowComponent = React.memo(({
       </div>
     </div>
   </div>
-));
+), (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  return (
+    prevProps.company.id === nextProps.company.id &&
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.company.recommendation === nextProps.company.recommendation &&
+    prevProps.company.confidence === nextProps.company.confidence
+  );
+});
 
 export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [expandedRowDetails, setExpandedRowDetails] = useState<CompanyData | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
 
   const getConfidenceBadge = useCallback((confidence?: number) => {
     if (!confidence) return null;
@@ -350,23 +365,47 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
   }, []);
 
   const handleRowClick = useCallback((companyId: string) => {
-    setExpandedRow(expandedRow === companyId ? null : companyId);
-  }, [expandedRow]);
-
-  const getItemSize = useCallback((index: number) => {
-    const company = companies[index];
-    return expandedRow === company.id ? 300 : 60;
+    // Debounced row expansion to prevent rapid state changes
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      const company = companies.find(c => c.id === companyId);
+      if (expandedRow === companyId) {
+        setExpandedRow(null);
+        setExpandedRowDetails(null);
+      } else {
+        setExpandedRow(companyId);
+        setExpandedRowDetails(company || null);
+      }
+    }, 50);
   }, [expandedRow, companies]);
 
-  // Virtual scrolling setup
+  // Stable size calculation using memoized mapping
+  const getItemSize = useCallback((index: number) => {
+    const company = companies[index];
+    const rowId = company.id;
+    
+    // Cache the size to prevent recalculation
+    if (!ROW_HEIGHT_MAP.has(rowId)) {
+      ROW_HEIGHT_MAP.set(rowId, 60);
+    }
+    
+    return ROW_HEIGHT_MAP.get(rowId) || 60;
+  }, [companies]);
+
+  // Virtual scrolling setup with stable configuration
   const virtualizer = useVirtualizer({
     count: companies.length,
     getScrollElement: () => parentRef.current,
     estimateSize: getItemSize,
-    overscan: 3,
+    overscan: 10, // Increased overscan to prevent flickering
+    measureElement: undefined, // Disable dynamic measurement
   });
 
-  const headerColumns = [
+  // Memoized header columns to prevent re-renders
+  const headerColumns = useMemo(() => [
     { label: '', width: '40px' },
     { label: 'Company', width: '200px' },
     { label: 'Series/Stage', width: '120px' },
@@ -389,7 +428,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     { label: 'Recommendation', width: '1fr' },
     { label: 'Confidence', width: '1fr' },
     { label: 'Risk-Adjusted Summary', width: '1fr' }
-  ];
+  ], []);
 
   return (
     <Card className="w-full shadow-medium">
@@ -424,16 +463,17 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
           ref={parentRef}
           className="h-[600px] overflow-auto"
           style={{ 
-            contain: 'layout style',
-            transform: 'translate3d(0, 0, 0)'
+            contain: 'layout size style',
+            position: 'relative'
           }}
         >
           {/* Fixed Table Header */}
-          <div className="sticky top-0 z-20 bg-muted/50 border-b">
+          <div className="sticky top-0 z-20 bg-muted/50 border-b" style={{ contain: 'layout style' }}>
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: '40px 200px 120px 120px 120px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
-              alignItems: 'center'
+              alignItems: 'center',
+              height: '60px'
             }}>
               {headerColumns.map((col, index) => (
                 <div key={index} className="p-4 font-medium text-sm text-muted-foreground">
@@ -457,14 +497,15 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
               
               return (
                 <div
-                  key={`${company.id}-${virtualRow.key}`}
+                  key={company.id}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     width: '100%',
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
+                    height: '60px',
+                    transform: `translate3d(0, ${virtualRow.start}px, 0)`,
+                    contain: 'layout style'
                   }}
                 >
                   <TableRowComponent
