@@ -22,6 +22,8 @@ interface CompanyData {
   exitTimeline: number | null;
   revenue: number | null;
   arr: number | null;
+  caEquityValuation: number | null;
+  isExistingInvestment: boolean;
   monthlyBurn?: number;
   currentValuation?: number;
   // Revenue Timeline Fields
@@ -204,7 +206,11 @@ Research Sources: ${research.sources.join(', ') || 'Limited external data availa
 
   onProgress?.(`Analyzing ${company.companyName}...`);
 
-  const prompt = `You are an expert venture capital investor evaluating whether to approve an additional capital request from a portfolio company. Your analysis must be grounded in the Excel financial data with external market insights used only as supporting context.
+  const investmentContext = company.isExistingInvestment 
+    ? "You are an expert venture capital investor evaluating whether to approve an additional capital request from an EXISTING PORTFOLIO COMPANY. Focus on performance tracking, exit timing optimization, and portfolio management decisions."
+    : "You are an expert venture capital investor evaluating a NEW POTENTIAL INVESTMENT OPPORTUNITY. Focus on investment thesis validation, due diligence priorities, market entry strategy, and initial capital deployment decisions.";
+
+  const prompt = `${investmentContext} Your analysis must be grounded in the Excel financial data with external market insights used only as supporting context.
 
 ANALYSIS PROTOCOL:
 - Excel financial data is the PRIMARY source of truth for all investment decisions
@@ -305,10 +311,12 @@ CONFIDENCE MODIFICATION:
 
 PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
+Investment Status: ${company.isExistingInvestment ? 'EXISTING PORTFOLIO COMPANY' : 'NEW POTENTIAL INVESTMENT'}
 Industry: ${company.industry || 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
 Current MOIC: ${company.moic}x
+${company.caEquityValuation !== null ? `CA Equity Valuation: $${(company.caEquityValuation / 1000000).toFixed(1)}M` : ''}
 
 REVENUE TIMELINE ANALYSIS (5-Point Historical and Forward Progression):
 ${company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || company.currentRevenue !== null || company.projectedRevenueYear1 !== null || company.projectedRevenueYear2 !== null ?
@@ -471,7 +479,9 @@ MOIC = VC Return ÷ (Total Investment + Additional Investment Requested)
 
 Provide your analysis in the following JSON format:
 {
-  "recommendation": "Enhanced recommendations incorporating valuation analysis: 'Invest $X at fair valuation', 'Decline due to overpricing', 'Pro-rata only - valuation stretch', 'Conditional Investment - $X if terms include downside protection', 'Bridge Capital Only - $X pending reasonable valuation', 'Wait for Co-Lead', 'Decline due to syndicate risk', etc.",
+  "recommendation": "${company.isExistingInvestment 
+    ? "Enhanced portfolio management recommendations: 'Double Down - increase position', 'Pro-rata Only - maintain ownership', 'Bridge Capital - extend runway', 'Exit Opportunistically', 'Hold - avoid follow-on', 'Conditional Follow-on - if syndicate secured', etc." 
+    : "Enhanced new investment recommendations: 'Invest $X - strong thesis', 'Pass - insufficient traction', 'Monitor - revisit in 6 months', 'Due Diligence Required', 'Conditional Term Sheet - pending validation', 'Wait for better entry point', etc."}",
   "timingBucket": "Enhanced options: 'Double Down', 'Conditional Investment', 'Bridge Only Pending Syndicate', 'Wait for Co-Lead', 'Reinvest (3-12 Months)', 'Hold (3-6 Months)', 'Exit Opportunistically', 'Decline'",
   "reasoning": "2-4 sentences starting with financial analysis, incorporating CRITICAL valuation assessment (markup vs. growth fundamentals), investor interest, and round feasibility. Must address ownership dilution impact, return compression risk, and whether valuation is justified by traction. Include explicit source citations when external data influences decision.",
   "confidence": "Integer 1-5 where 5=strong financial+clean terms(4-5)+reasonable valuation+external validation+high investor interest, 3=solid metrics+moderate complexity(3)+fair valuation+moderate interest, 1=complex terms(1-2) OR overpriced round OR low investor interest (1-2) regardless of other metrics or insufficient data",

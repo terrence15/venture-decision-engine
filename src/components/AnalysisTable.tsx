@@ -28,6 +28,8 @@ interface CompanyData {
   exitTimeline: number | null;
   revenue: number | null;
   arr: number | null;
+  caEquityValuation: number | null;
+  isExistingInvestment: boolean;
   // Revenue Timeline Fields
   revenueYearMinus2?: number | null;
   revenueYearMinus1?: number | null;
@@ -222,12 +224,17 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                       )}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {company.companyName}
-                      {company.insufficientData && (
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          Insufficient Data
+                      <div className="flex items-center gap-2">
+                        <span>{company.companyName}</span>
+                        <Badge variant={company.isExistingInvestment ? "default" : "outline"}>
+                          {company.isExistingInvestment ? "Portfolio" : "Potential"}
                         </Badge>
-                      )}
+                        {company.insufficientData && (
+                          <Badge variant="outline" className="text-xs">
+                            Insufficient Data
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm font-medium text-muted-foreground">

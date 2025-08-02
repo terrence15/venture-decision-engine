@@ -24,6 +24,8 @@ export interface RawCompanyData {
   exitTimeline: number | null;
   revenue: number | null;
   arr: number | null;
+  caEquityValuation: number | null; // CA Equity Valuation in dollars
+  isExistingInvestment: boolean; // True if existing portfolio company, false if new potential investment
   // Revenue Timeline Fields
   revenueYearMinus2: number | null;
   revenueYearMinus1: number | null;
@@ -98,6 +100,10 @@ const COLUMN_MAPPINGS = {
   'Annual Revenue': 'revenue',
   'Latest Revenue': 'revenue',
   'Revenue ($)': 'revenue',
+  'CA Equity Valuation ($ in Thousands)': 'caEquityValuation',
+  'CA Equity Valuation \r\n($ in Thousands)': 'caEquityValuation',
+  'CA Equity Valuation': 'caEquityValuation',
+  'Equity Valuation': 'caEquityValuation',
   'ARR': 'arr',
   'Annual Recurring Revenue': 'arr',
   'Recurring Revenue': 'arr',
@@ -157,6 +163,7 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'exitTimeline': ['exit', 'timeline', 'years', 'time', 'horizon', 'liquidity'],
   'revenue': ['revenue', 'total', 'annual', 'latest'],
   'arr': ['arr', 'annual', 'recurring', 'subscription'],
+  'caEquityValuation': ['ca', 'equity', 'valuation', 'thousands'],
   // Revenue Timeline Keywords
   'revenueYearMinus2': ['revenue', 'year', 'minus', '2', 'two', 'ago'],
   'revenueYearMinus1': ['revenue', 'year', 'minus', '1', 'last', 'previous'],
@@ -245,7 +252,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -259,6 +266,16 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   console.log('Final column mapping:', mapping);
   return mapping;
+}
+
+// Investment status detection function
+function detectInvestmentStatus(totalInvestment: number, equityStake: number, caEquityValuation: number | null): boolean {
+  // If any of the three key investment indicators are 0, it's a new potential investment
+  const isNewInvestment = totalInvestment === 0 || equityStake === 0 || (caEquityValuation !== null && caEquityValuation === 0);
+  
+  console.log(`Investment status detection: totalInvestment=${totalInvestment}, equityStake=${equityStake}, caEquityValuation=${caEquityValuation} → ${isNewInvestment ? 'New Investment' : 'Existing Portfolio Company'}`);
+  
+  return !isNewInvestment; // Return true for existing investments
 }
 
 export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
@@ -348,7 +365,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -364,6 +381,11 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                     value = parsedValue;
                     // Scale only totalInvestment from thousands to actual dollars
                     if (fieldName === 'totalInvestment') {
+                      value = parsedValue * 1000;
+                      console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
+                    }
+                    // Scale CA Equity Valuation from thousands to actual dollars
+                    else if (fieldName === 'caEquityValuation') {
                       value = parsedValue * 1000;
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
                     }
@@ -461,6 +483,14 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
 
           // Validate required fields
           if (company.companyName) {
+            // Ensure numeric fields have defaults for investment status detection
+            const totalInvestment = company.totalInvestment || 0;
+            const equityStake = company.equityStake || 0;
+            const caEquityValuation = company.caEquityValuation || null;
+            
+            // Detect investment status
+            company.isExistingInvestment = detectInvestmentStatus(totalInvestment, equityStake, caEquityValuation);
+            
             // Apply revenue analytics calculations
             const enhancedCompany = enhanceCompanyWithAnalytics(company);
             companies.push(enhancedCompany);
