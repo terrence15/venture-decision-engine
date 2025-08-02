@@ -25,6 +25,8 @@ interface CompanyData {
   caEquityValuation: number | null;
   isExistingInvestment: boolean;
   seriesStage: string | null;
+  totalRaiseRequest: number | null;
+  amountRequestedFromFirm: number | null;
   monthlyBurn?: number;
   currentValuation?: number;
   // Revenue Timeline Fields
@@ -255,6 +257,27 @@ IMPORTANT: This Series/Stage information is for CONTEXTUAL FRAMING ONLY and shou
 
 Use Series/Stage to enhance qualitative commentary, provide relevant benchmarks, and add appropriate context to financial analysis.` : ''}
 
+## FUNDRAISING CONTEXT & ROUND DYNAMICS
+${company.totalRaiseRequest && company.amountRequestedFromFirm ? `
+- Total Round Size: $${(company.totalRaiseRequest / 1000000).toFixed(1)}M
+- Our Participation: $${(company.amountRequestedFromFirm / 1000000).toFixed(1)}M (${((company.amountRequestedFromFirm / company.totalRaiseRequest) * 100).toFixed(1)}%)
+- Remaining to Raise: $${((company.totalRaiseRequest - company.amountRequestedFromFirm) / 1000000).toFixed(1)}M
+
+ROUND VIABILITY ASSESSMENT:
+- Evaluate likelihood of successful round closure based on size vs. market conditions
+- Assess syndicate strategy and lead/follow dynamics given our participation level
+- Flag potential stranded capital risks if round fails to close fully
+- Consider capital efficiency: raise size relative to revenue/traction metrics
+` : company.totalRaiseRequest ? `
+- Total Round Size: $${(company.totalRaiseRequest / 1000000).toFixed(1)}M
+- Our Participation: Not specified (cannot assess round participation strategy)
+` : company.amountRequestedFromFirm ? `
+- Our Participation: $${(company.amountRequestedFromFirm / 1000000).toFixed(1)}M
+- Total Round Size: Unknown (cannot assess full round viability or risk of stranded investment)
+` : `
+- Fundraising details not provided (limited ability to assess round dynamics and closing risk)
+`}
+
 CRITICAL INVESTOR INTEREST LOGIC (GATING VARIABLE):
 The "Investor Interest / Ability to Raise Capital" score is NOT a soft modifier - it's a critical feasibility gate that can override positive financial metrics:
 
@@ -350,6 +373,8 @@ Company: ${company.companyName}
 Investment Status: ${company.isExistingInvestment ? 'EXISTING PORTFOLIO COMPANY' : 'NEW POTENTIAL INVESTMENT'}
 ${company.seriesStage ? `Series/Stage: ${company.seriesStage}` : 'Series/Stage: Not specified'}
 Industry: ${company.industry || 'Not specified'}
+Total Raise Request: ${company.totalRaiseRequest ? `$${(company.totalRaiseRequest / 1000000).toFixed(1)}M` : 'Not specified'}
+Amount Requested from Firm: ${company.amountRequestedFromFirm ? `$${(company.amountRequestedFromFirm / 1000000).toFixed(1)}M` : 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
 Current MOIC: ${company.moic}x

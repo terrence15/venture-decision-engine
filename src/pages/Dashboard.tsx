@@ -172,6 +172,8 @@ export function Dashboard() {
         caEquityValuation: company.caEquityValuation,
         isExistingInvestment: company.isExistingInvestment,
         seriesStage: company.seriesStage,
+        totalRaiseRequest: company.totalRaiseRequest || null,
+        amountRequestedFromFirm: company.amountRequestedFromFirm || null,
         // Revenue Timeline Fields (defaulting to null if not available)
         revenueYearMinus2: company.revenueYearMinus2 || null,
         revenueYearMinus1: company.revenueYearMinus1 || null,

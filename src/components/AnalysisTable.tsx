@@ -31,6 +31,8 @@ interface CompanyData {
   caEquityValuation: number | null;
   isExistingInvestment: boolean;
   seriesStage: string | null;
+  totalRaiseRequest: number | null;
+  amountRequestedFromFirm: number | null;
   // Revenue Timeline Fields
   revenueYearMinus2?: number | null;
   revenueYearMinus1?: number | null;
@@ -190,7 +192,9 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
               <TableRow>
                 <TableHead className="w-8"></TableHead>
                 <TableHead className="min-w-[200px]">Company</TableHead>
-                <TableHead>Stage</TableHead>
+                <TableHead className="min-w-[120px]">Series/Stage</TableHead>
+                <TableHead className="min-w-[120px]">Total Raise</TableHead>
+                <TableHead className="min-w-[120px]">Amount Requested</TableHead>
                 <TableHead>Industry</TableHead>
                 <TableHead>ARR/Revenue</TableHead>
                 <TableHead>Investment</TableHead>
@@ -245,6 +249,31 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {company.totalRaiseRequest ? (
+                        <span className="font-medium">
+                          {formatCurrency(company.totalRaiseRequest)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {company.amountRequestedFromFirm ? (
+                        <div className="space-y-1">
+                          <span className="font-medium">
+                            {formatCurrency(company.amountRequestedFromFirm)}
+                          </span>
+                          {company.totalRaiseRequest && (
+                            <div className="text-xs text-muted-foreground">
+                              {((company.amountRequestedFromFirm / company.totalRaiseRequest) * 100).toFixed(1)}%
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -411,7 +440,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                   
                   {expandedRow === company.id && (
                   <TableRow>
-                    <TableCell colSpan={18} className="bg-muted/20 p-6">
+                    <TableCell colSpan={22} className="bg-muted/20 p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
@@ -523,12 +552,31 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                      )}
                                    </span>
                                  </div>
-                                <div className="col-span-2">
-                                  <span className="text-muted-foreground">Exit Activity:</span>
-                                  <span className="ml-2 font-medium">
-                                    {company.exitActivity || 'N/A'}
-                                  </span>
-                                </div>
+                                 {(company.totalRaiseRequest || company.amountRequestedFromFirm) && (
+                                   <div className="col-span-2">
+                                     <span className="text-muted-foreground">Fundraising:</span>
+                                     <div className="ml-2 space-y-1">
+                                       {company.totalRaiseRequest && (
+                                         <div className="text-sm">Total Raise: <span className="font-semibold">{formatCurrency(company.totalRaiseRequest)}</span></div>
+                                       )}
+                                       {company.amountRequestedFromFirm && (
+                                         <div className="text-sm">From Us: <span className="font-semibold">{formatCurrency(company.amountRequestedFromFirm)}</span></div>
+                                       )}
+                                       {company.totalRaiseRequest && company.amountRequestedFromFirm && (
+                                         <div className="text-xs text-muted-foreground">
+                                           {((company.amountRequestedFromFirm / company.totalRaiseRequest) * 100).toFixed(1)}% participation
+                                           {company.amountRequestedFromFirm / company.totalRaiseRequest > 0.3 ? ' (Anchor investor)' : ' (Follow investor)'}
+                                         </div>
+                                       )}
+                                     </div>
+                                   </div>
+                                 )}
+                                 <div className="col-span-2">
+                                   <span className="text-muted-foreground">Exit Activity:</span>
+                                   <span className="ml-2 font-medium">
+                                     {company.exitActivity || 'N/A'}
+                                   </span>
+                                 </div>
                               </div>
                             </div>
                             

@@ -27,6 +27,8 @@ export interface RawCompanyData {
   caEquityValuation: number | null; // CA Equity Valuation in dollars
   isExistingInvestment: boolean; // True if existing portfolio company, false if new potential investment
   seriesStage: string | null; // Series/Stage for contextual framing (e.g., "Seed", "Series A", "Growth")
+  totalRaiseRequest: number | null; // Full round size the company is targeting
+  amountRequestedFromFirm: number | null; // Portion of the round the company wants from our firm
   // Revenue Timeline Fields
   revenueYearMinus2: number | null;
   revenueYearMinus1: number | null;
@@ -148,7 +150,27 @@ const COLUMN_MAPPINGS = {
   'Round Type': 'seriesStage',
   'Investment Stage': 'seriesStage',
   'Funding Round': 'seriesStage',
-  'Round Stage': 'seriesStage'
+  'Round Stage': 'seriesStage',
+  // Total Raise Request Column Mappings
+  'Total Raise Request ($)': 'totalRaiseRequest',
+  'Total Raise Request': 'totalRaiseRequest',
+  'Total Raise': 'totalRaiseRequest',
+  'Round Size': 'totalRaiseRequest',
+  'Full Raise': 'totalRaiseRequest',
+  'Target Raise': 'totalRaiseRequest',
+  'Total Funding': 'totalRaiseRequest',
+  'Round Amount': 'totalRaiseRequest',
+  'Target Round Size': 'totalRaiseRequest',
+  // Amount Requested from Firm Column Mappings
+  'Amount Requested from Our Firm ($)': 'amountRequestedFromFirm',
+  'Amount Requested from Our Firm': 'amountRequestedFromFirm',
+  'Amount from Us': 'amountRequestedFromFirm',
+  'Our Portion': 'amountRequestedFromFirm',
+  'Firm Request': 'amountRequestedFromFirm',
+  'Our Amount': 'amountRequestedFromFirm',
+  'Requested from Firm': 'amountRequestedFromFirm',
+  'Our Investment': 'amountRequestedFromFirm',
+  'Amount Requested': 'amountRequestedFromFirm'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -181,7 +203,9 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'projectedRevenueYear1': ['projected', 'revenue', 'year', '1', 'next', 'plus'],
   'projectedRevenueYear2': ['projected', 'revenue', 'year', '2', 'plus', 'forward'],
   'currentARR': ['current', 'arr', 'ttm', 'annual', 'recurring'],
-  'seriesStage': ['series', 'stage', 'funding', 'round', 'seed', 'growth', 'investment']
+  'seriesStage': ['series', 'stage', 'funding', 'round', 'seed', 'growth', 'investment'],
+  'totalRaiseRequest': ['total', 'raise', 'round', 'size', 'target', 'funding', 'amount'],
+  'amountRequestedFromFirm': ['amount', 'requested', 'firm', 'portion', 'investment', 'our']
 };
 
 // Improved fuzzy matching function
@@ -263,7 +287,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'seriesStage', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'seriesStage', 'totalRaiseRequest', 'amountRequestedFromFirm', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -376,7 +400,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
               console.log(`Processing ${fieldName} from column "${header}":`, value);
               
               // Type conversions based on field
-              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
+              if (['totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'additionalInvestmentRequested', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'totalRaiseRequest', 'amountRequestedFromFirm', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
                 // Clean the value for number parsing
                 let cleanValue = String(value).replace(/[$,\s%]/g, '');
                 console.log(`Cleaned value for ${fieldName}:`, cleanValue);
@@ -524,6 +548,12 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
             
             // Detect investment status
             company.isExistingInvestment = detectInvestmentStatus(totalInvestment, equityStake, caEquityValuation);
+            
+            // Validate fundraising data consistency
+            if (company.amountRequestedFromFirm && company.totalRaiseRequest && 
+                company.amountRequestedFromFirm > company.totalRaiseRequest) {
+              console.warn(`Data inconsistency for ${company.companyName}: Amount requested (${company.amountRequestedFromFirm}) exceeds total raise (${company.totalRaiseRequest})`);
+            }
             
             // Apply revenue analytics calculations
             const enhancedCompany = enhanceCompanyWithAnalytics(company);
