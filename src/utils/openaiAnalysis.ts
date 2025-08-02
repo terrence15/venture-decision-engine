@@ -73,16 +73,39 @@ export async function analyzeCompanyWithOpenAI(
 ): Promise<AnalysisResult> {
   console.log('🤖 [OpenAI Analysis] Starting analysis for:', company.companyName);
   
-  // Enhanced data validation with comprehensive fail-safe checks
+  // Enhanced data validation with graduated fail-safe checks
   const currentRevenue = company.currentRevenue || company.revenue;
   const currentARR = company.currentARR || company.arr;
-  const hasAnyRevenueMetric = (currentRevenue !== null && currentRevenue !== undefined && currentRevenue > 0) ||
-                             (currentARR !== null && currentARR !== undefined && currentARR > 0);
+  
+  // Fix revenue detection logic - separate null/undefined from zero values
+  const hasRevenueField = currentRevenue !== null && currentRevenue !== undefined;
+  const hasARRField = currentARR !== null && currentARR !== undefined;
+  const hasAnyRevenueAnchor = hasRevenueField || hasARRField;
+  
+  // Determine revenue data quality for graduated analysis
+  const revenueDataQuality = (() => {
+    if (!hasAnyRevenueAnchor) return 'missing';
+    if (hasRevenueField && hasARRField && 
+        company.projectedRevenueYear1 !== null && company.projectedRevenueYear2 !== null) return 'complete';
+    if (company.projectedRevenueYear1 !== null || company.projectedRevenueYear2 !== null) return 'partial';
+    if (hasAnyRevenueAnchor) return 'projections-only';
+    return 'missing';
+  })();
+  
+  // Determine exit modeling capability
+  const canDoExitModeling = (() => {
+    if (hasAnyRevenueAnchor && company.projectedRevenueYear1 && company.projectedRevenueYear2 && 
+        company.postMoneyValuation) return 'full';
+    if (hasAnyRevenueAnchor && company.projectedRevenueYear1 && company.postMoneyValuation) return 'limited';
+    return 'blocked';
+  })();
   
   const dataValidation = {
-    hasRevenue: currentRevenue !== null && currentRevenue !== undefined && currentRevenue > 0,
-    hasARR: currentARR !== null && currentARR !== undefined && currentARR > 0,
-    hasAnyRevenueMetric,
+    hasRevenue: hasRevenueField,
+    hasARR: hasARRField, 
+    hasAnyRevenueAnchor,
+    revenueDataQuality,
+    canDoExitModeling,
     hasGrowthData: company.revenueGrowth !== null && company.revenueGrowth !== undefined,
     hasProjectedGrowth: company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined,
     hasValuation: company.preMoneyValuation !== null && company.preMoneyValuation !== undefined && 
@@ -90,46 +113,63 @@ export async function analyzeCompanyWithOpenAI(
     hasTimeline: company.exitTimeline !== null && company.exitTimeline !== undefined,
     hasInvestorInterest: company.investorInterest !== null && company.investorInterest !== undefined,
     hasComplexity: company.roundComplexity !== null && company.roundComplexity !== undefined,
-    // Fail-safe specific validations
-    hasTimelineData: company.revenueYearMinus1 !== null || company.projectedRevenueYear2 !== null,
-    canCalculateExitModeling: hasAnyRevenueMetric && 
-                             (company.projectedRevenueYear2 !== null && company.projectedRevenueYear2 !== undefined) &&
-                             (company.postMoneyValuation !== null && company.postMoneyValuation !== undefined)
+    // Enhanced timeline validations
+    hasTimelineData: company.revenueYearMinus1 !== null || company.projectedRevenueYear1 !== null || company.projectedRevenueYear2 !== null,
+    confidenceLevel: (() => {
+      if (revenueDataQuality === 'complete' && canDoExitModeling === 'full') return 'HIGH CONFIDENCE (5/5)';
+      if (revenueDataQuality === 'partial' && canDoExitModeling === 'limited') return 'MEDIUM CONFIDENCE (3/5)';
+      if (hasAnyRevenueAnchor && company.projectedRevenueYear1) return 'LIMITED CONFIDENCE (2/5)';
+      return 'LOW CONFIDENCE (1/5)';
+    })()
   };
   
   console.log('📊 [OpenAI Analysis] Data validation results:', dataValidation);
   
-  // Enhanced fail-safe logic for critical data requirements
-  const canCalculateExitValue = dataValidation.hasAnyRevenueMetric && 
-                               (dataValidation.hasGrowthData || dataValidation.hasTimelineData) && 
-                               dataValidation.hasTimeline;
-  const canAssessValuation = dataValidation.hasValuation && dataValidation.hasInvestorInterest;
+  // Graduated fail-safe logic with tiered analysis capability
+  const analysisCapability = (() => {
+    if (!dataValidation.hasAnyRevenueAnchor) return 'blocked';
+    if (dataValidation.canDoExitModeling === 'full' && dataValidation.hasValuation && dataValidation.hasInvestorInterest) return 'full';
+    if (dataValidation.canDoExitModeling === 'limited' && dataValidation.hasValuation) return 'limited';
+    return 'partial';
+  })();
   
-  if (!canCalculateExitValue || !canAssessValuation) {
-    console.log('⚠️ [OpenAI Analysis] Insufficient data for reliable analysis');
+  console.log('📊 [OpenAI Analysis] Analysis capability:', analysisCapability);
+  
+  // Only block analysis if completely missing revenue anchor
+  if (analysisCapability === 'blocked') {
+    console.log('⚠️ [OpenAI Analysis] 📊 INCOMPLETE DATA - Providing guided analysis');
     const missingFields = [];
-    if (!dataValidation.hasAnyRevenueMetric) missingFields.push('current revenue or ARR');
+    if (!dataValidation.hasAnyRevenueAnchor) missingFields.push('current revenue or ARR');
     if (!dataValidation.hasGrowthData && !dataValidation.hasTimelineData) missingFields.push('revenue growth or timeline data');
     if (!dataValidation.hasTimeline) missingFields.push('exit timeline');
     if (!dataValidation.hasValuation) missingFields.push('pre/post-money valuation');
     if (!dataValidation.hasInvestorInterest) missingFields.push('investor interest score');
     
-    // Enhanced fail-safe response with specific guidance
-    const failsafeAction = !dataValidation.canCalculateExitModeling 
-      ? "Critical: Provide Projected Revenue +2 and valuation data to enable risk-adjusted analysis"
-      : `Provide missing data: ${missingFields.join(', ')}`;
+    // Graduated guidance based on what's missing
+    const specificGuidance = (() => {
+      if (!dataValidation.hasAnyRevenueAnchor && !company.projectedRevenueYear2) {
+        return "Add current revenue/ARR and projected revenue +2 to enable risk-adjusted analysis";
+      }
+      if (!dataValidation.hasAnyRevenueAnchor) {
+        return "Add current revenue or ARR to enable partial analysis";
+      }
+      if (dataValidation.canDoExitModeling === 'blocked') {
+        return "Add projected revenue +2 to enable exit modeling";
+      }
+      return `Complete missing data: ${missingFields.slice(0, 2).join(', ')}`;
+    })();
     
     return {
-      recommendation: 'Insufficient data: Cannot calculate projected exit value',
+      recommendation: '📊 INCOMPLETE DATA - Provide revenue anchor for analysis',
       timingBucket: 'N/A - Data Incomplete',
-      reasoning: `FAIL-SAFE ANALYSIS: Missing critical fields prevent reliable investment assessment. Required fields: ${missingFields.join(', ')}. Investment decisions require complete financial metrics and market validation signals to avoid speculative commitments.`,
+      reasoning: `📊 INCOMPLETE DATA: Missing critical revenue anchor prevents reliable investment assessment. Required fields: ${missingFields.join(', ')}. Investment decisions require at least current revenue or ARR to evaluate growth trajectory and investment potential.`,
       confidence: 1,
-      keyRisks: 'PRIMARY RISK: Data insufficiency creates investment blind spots. Cannot assess growth trajectory, exit feasibility, or valuation reasonableness without complete metrics. High probability of poor investment decisions due to incomplete information.',
-      suggestedAction: failsafeAction,
-      projectedExitValueRange: 'BLOCKED: Insufficient data to calculate exit value projections. Complete revenue timeline and valuation data required.',
+      keyRisks: 'PRIMARY RISK: Data insufficiency creates investment blind spots. Cannot assess growth trajectory, exit feasibility, or valuation reasonableness without revenue metrics. Recommend completing data before investment decision.',
+      suggestedAction: specificGuidance,
+      projectedExitValueRange: '⚠️ LIMITED ANALYSIS: Revenue anchor required for exit value projections. Add current revenue/ARR to enable partial calculations.',
       externalSources: 'External research not conducted due to insufficient internal data foundation',
       insufficientData: true,
-      riskAdjustedMonetizationSummary: 'DISABLED: Risk-adjusted analysis requires complete revenue timeline (current + projected +2) and valuation data. Partial data prevents reliable return modeling and success probability assessment.',
+      riskAdjustedMonetizationSummary: '🚧 PARTIAL CALCULATION: Risk-adjusted analysis requires revenue anchor (current revenue or ARR). Partial data limits return modeling capability.',
       externalInsights: {
         marketContext: [],
         competitivePosition: [],
@@ -395,10 +435,11 @@ Forward 2Y CAGR: ${company.forwardCAGR2Y !== null ? `${company.forwardCAGR2Y.toF
 Forward Revenue Multiple (Exit Val/Rev+2): ${company.forwardRevenueMultiple !== null ? `${company.forwardRevenueMultiple.toFixed(1)}x` : '🚫 DISABLED: Risk-adjusted outputs require Projected +2 Revenue'}
 Revenue Trajectory Score: ${company.revenueTrajectoryScore !== null ? `${company.revenueTrajectoryScore}/5` : '⚠️ LOW CONFIDENCE: Incomplete data prevents scoring'}
 
-FAIL-SAFE DATA QUALITY ASSESSMENT:
-- Data Completeness: ${dataValidation.hasTimelineData ? 'Partial timeline data available' : 'No timeline progression data'}
-- Critical Missing: ${!dataValidation.canCalculateExitModeling ? '🚫 Exit modeling BLOCKED (missing Projected +2 Revenue)' : '✅ Exit modeling enabled'}
-- Analysis Confidence: ${dataValidation.hasAnyRevenueMetric && dataValidation.hasTimelineData ? 'MEDIUM - Proceed with caution' : 'LOW - High risk of speculative analysis'}` :
+GRADUATED DATA QUALITY ASSESSMENT:
+- Revenue Data Quality: ${dataValidation.revenueDataQuality.toUpperCase()}
+- Exit Modeling Capability: ${dataValidation.canDoExitModeling.toUpperCase()}
+- Analysis Confidence Level: ${dataValidation.confidenceLevel}
+- Critical Status: ${dataValidation.canDoExitModeling === 'blocked' ? '🚫 Exit modeling BLOCKED (missing revenue anchor)' : dataValidation.canDoExitModeling === 'limited' ? '⚠️ Exit modeling LIMITED (missing Year +2)' : '✅ Exit modeling FULL'}` :
   'Timeline data not available - using legacy single-point revenue metrics below'}
 
 LEGACY REVENUE METRICS (for compatibility):
