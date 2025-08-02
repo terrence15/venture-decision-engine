@@ -14,6 +14,7 @@ import { getPerplexityApiKey, setPerplexityApiKey } from '@/utils/externalResear
 import { PortfolioExposureBubbleChart } from '@/components/charts/PortfolioExposureBubbleChart';
 import { MOICDistributionHistogram } from '@/components/charts/MOICDistributionHistogram';
 import { CapitalEfficiencyLeaderboard } from '@/components/charts/CapitalEfficiencyLeaderboard';
+import { enhanceCompanyWithAnalytics, computeRevenueAnalytics } from '@/utils/revenueAnalytics';
 
 // Extended interface for analyzed companies
 export interface AnalyzedCompanyData extends RawCompanyData {
@@ -27,6 +28,10 @@ export interface AnalyzedCompanyData extends RawCompanyData {
   riskAdjustedMonetizationSummary?: string;
   externalSources?: string;
   insufficientData?: boolean;
+  // Fail-safe metadata
+  dataQualityWarnings?: string[];
+  canCalculateExitModeling?: boolean;
+  dataCompletenessScore?: number;
 }
 
 export function Dashboard() {
@@ -44,17 +49,37 @@ export function Dashboard() {
     setIsParsingFile(true);
     try {
       console.log('Parsing Excel file:', file.name);
-      const parsedCompanies = await parseExcelFile(file);
+      const data = await parseExcelFile(file);
       
-      setCompanies(parsedCompanies);
+      // Enhance with revenue analytics including fail-safe logic
+      const enhancedCompanies = data.map(company => {
+        const enhanced = enhanceCompanyWithAnalytics(company);
+        const analytics = computeRevenueAnalytics(company);
+        
+        // Add fail-safe metadata to company data
+        return {
+          ...enhanced,
+          dataQualityWarnings: analytics.warningFlags,
+          canCalculateExitModeling: analytics.dataCompleteness.canCalculateExitModeling,
+          dataCompletenessScore: analytics.dataCompleteness.score
+        };
+      });
+      
+      setCompanies(enhancedCompanies);
       setUploadedFile(file);
+      
+      // Count data quality warnings for user feedback
+      const warningCount = enhancedCompanies.reduce((count, company) => 
+        count + (company.dataQualityWarnings?.length || 0), 0);
       
       toast({
         title: "File Uploaded Successfully",
-        description: `Loaded ${parsedCompanies.length} companies from your Excel file`,
+        description: warningCount > 0 
+          ? `Loaded ${enhancedCompanies.length} companies with ${warningCount} data quality warnings`
+          : `Loaded ${enhancedCompanies.length} companies from your Excel file`,
       });
       
-      console.log('Parsed companies:', parsedCompanies);
+      console.log('Enhanced companies with analytics:', enhancedCompanies);
       
     } catch (error) {
       console.error('File parsing failed:', error);

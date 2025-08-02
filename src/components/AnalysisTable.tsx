@@ -266,39 +266,55 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || 
-                         company.currentRevenue !== null || company.projectedRevenueYear1 !== null || 
-                         company.projectedRevenueYear2 !== null ? (
-                          <div className="text-xs">
-                            <div className="flex gap-1">
-                              <span className="text-muted-foreground">-2:</span>
-                              <span>{company.revenueYearMinus2 ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
-                            </div>
-                            <div className="flex gap-1">
-                              <span className="text-muted-foreground">Cur:</span>
-                              <span>{company.currentRevenue ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}</span>
-                            </div>
-                            <div className="flex gap-1">
-                              <span className="text-muted-foreground">+2:</span>
-                              <span>{company.projectedRevenueYear2 ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No timeline</span>
-                        )}
-                        {company.revenueTrajectoryScore !== null && company.revenueTrajectoryScore !== undefined && (
-                          <Badge variant={
-                            company.revenueTrajectoryScore >= 4 ? 'default' :
-                            company.revenueTrajectoryScore >= 3 ? 'secondary' :
-                            company.revenueTrajectoryScore >= 2 ? 'outline' : 'destructive'
-                          } className="text-xs ml-1">
-                            {company.revenueTrajectoryScore.toFixed(1)}/5
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
+                     <TableCell>
+                       <div className="flex items-center gap-1">
+                         {company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || 
+                          company.currentRevenue !== null || company.projectedRevenueYear1 !== null || 
+                          company.projectedRevenueYear2 !== null ? (
+                           <div className="text-xs">
+                             <div className="flex gap-1 items-center">
+                               <span className="text-muted-foreground">-2:</span>
+                               <span>{company.revenueYearMinus2 ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                               {!company.revenueYearMinus2 && (
+                                 <span className="text-yellow-500 text-xs" title="Historical CAGR calculation unavailable">⚠️</span>
+                               )}
+                             </div>
+                             <div className="flex gap-1 items-center">
+                               <span className="text-muted-foreground">Cur:</span>
+                               <span>{company.currentRevenue ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                               {!company.currentRevenue && (
+                                 <span className="text-red-500 text-xs" title="Critical: Current revenue missing">🚫</span>
+                               )}
+                             </div>
+                             <div className="flex gap-1 items-center">
+                               <span className="text-muted-foreground">+2:</span>
+                               <span>{company.projectedRevenueYear2 ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
+                               {!company.projectedRevenueYear2 && (
+                                 <span className="text-red-500 text-xs" title="Risk-adjusted analysis disabled">⛔</span>
+                               )}
+                             </div>
+                           </div>
+                         ) : (
+                           <div className="flex items-center gap-1">
+                             <span className="text-xs text-muted-foreground">No timeline</span>
+                             <span className="text-red-500 text-xs" title="Insufficient data for trajectory analysis">🚫</span>
+                           </div>
+                         )}
+                         {company.revenueTrajectoryScore !== null && company.revenueTrajectoryScore !== undefined ? (
+                           <Badge variant={
+                             company.revenueTrajectoryScore >= 4 ? 'default' :
+                             company.revenueTrajectoryScore >= 3 ? 'secondary' :
+                             company.revenueTrajectoryScore >= 2 ? 'outline' : 'destructive'
+                           } className="text-xs ml-1">
+                             {company.revenueTrajectoryScore.toFixed(1)}/5
+                           </Badge>
+                         ) : (
+                           <Badge variant="destructive" className="text-xs ml-1" title="Low confidence: Incomplete data">
+                             Insufficient
+                           </Badge>
+                         )}
+                       </div>
+                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span className="text-sm font-medium">

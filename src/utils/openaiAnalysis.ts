@@ -68,47 +68,63 @@ export async function analyzeCompanyWithOpenAI(
 ): Promise<AnalysisResult> {
   console.log('🤖 [OpenAI Analysis] Starting analysis for:', company.companyName);
   
-  // Enhanced data validation with field-specific checks
+  // Enhanced data validation with comprehensive fail-safe checks
+  const currentRevenue = company.currentRevenue || company.revenue;
+  const currentARR = company.currentARR || company.arr;
+  const hasAnyRevenueMetric = (currentRevenue !== null && currentRevenue !== undefined && currentRevenue > 0) ||
+                             (currentARR !== null && currentARR !== undefined && currentARR > 0);
+  
   const dataValidation = {
-    hasRevenue: company.revenue !== null && company.revenue !== undefined && company.revenue > 0,
-    hasARR: company.arr !== null && company.arr !== undefined && company.arr > 0,
-    hasAnyRevenueMetric: (company.revenue !== null && company.revenue !== undefined && company.revenue > 0) || 
-                        (company.arr !== null && company.arr !== undefined && company.arr > 0),
+    hasRevenue: currentRevenue !== null && currentRevenue !== undefined && currentRevenue > 0,
+    hasARR: currentARR !== null && currentARR !== undefined && currentARR > 0,
+    hasAnyRevenueMetric,
     hasGrowthData: company.revenueGrowth !== null && company.revenueGrowth !== undefined,
     hasProjectedGrowth: company.projectedRevenueGrowth !== null && company.projectedRevenueGrowth !== undefined,
     hasValuation: company.preMoneyValuation !== null && company.preMoneyValuation !== undefined && 
                   company.postMoneyValuation !== null && company.postMoneyValuation !== undefined,
     hasTimeline: company.exitTimeline !== null && company.exitTimeline !== undefined,
     hasInvestorInterest: company.investorInterest !== null && company.investorInterest !== undefined,
-    hasComplexity: company.roundComplexity !== null && company.roundComplexity !== undefined
+    hasComplexity: company.roundComplexity !== null && company.roundComplexity !== undefined,
+    // Fail-safe specific validations
+    hasTimelineData: company.revenueYearMinus1 !== null || company.projectedRevenueYear2 !== null,
+    canCalculateExitModeling: hasAnyRevenueMetric && 
+                             (company.projectedRevenueYear2 !== null && company.projectedRevenueYear2 !== undefined) &&
+                             (company.postMoneyValuation !== null && company.postMoneyValuation !== undefined)
   };
   
   console.log('📊 [OpenAI Analysis] Data validation results:', dataValidation);
   
-  // Critical data requirements for exit value calculations - now using flexible revenue logic
-  const canCalculateExitValue = dataValidation.hasAnyRevenueMetric && dataValidation.hasGrowthData && dataValidation.hasTimeline;
+  // Enhanced fail-safe logic for critical data requirements
+  const canCalculateExitValue = dataValidation.hasAnyRevenueMetric && 
+                               (dataValidation.hasGrowthData || dataValidation.hasTimelineData) && 
+                               dataValidation.hasTimeline;
   const canAssessValuation = dataValidation.hasValuation && dataValidation.hasInvestorInterest;
   
   if (!canCalculateExitValue || !canAssessValuation) {
     console.log('⚠️ [OpenAI Analysis] Insufficient data for reliable analysis');
     const missingFields = [];
-    if (!dataValidation.hasAnyRevenueMetric) missingFields.push('revenue or ARR');
-    if (!dataValidation.hasGrowthData) missingFields.push('revenue growth');
+    if (!dataValidation.hasAnyRevenueMetric) missingFields.push('current revenue or ARR');
+    if (!dataValidation.hasGrowthData && !dataValidation.hasTimelineData) missingFields.push('revenue growth or timeline data');
     if (!dataValidation.hasTimeline) missingFields.push('exit timeline');
-    if (!dataValidation.hasValuation) missingFields.push('valuation data');
-    if (!dataValidation.hasInvestorInterest) missingFields.push('investor interest');
+    if (!dataValidation.hasValuation) missingFields.push('pre/post-money valuation');
+    if (!dataValidation.hasInvestorInterest) missingFields.push('investor interest score');
+    
+    // Enhanced fail-safe response with specific guidance
+    const failsafeAction = !dataValidation.canCalculateExitModeling 
+      ? "Critical: Provide Projected Revenue +2 and valuation data to enable risk-adjusted analysis"
+      : `Provide missing data: ${missingFields.join(', ')}`;
     
     return {
-      recommendation: 'Insufficient data to calculate projected exit value',
-      timingBucket: 'N/A',
-      reasoning: `Missing required fields: ${missingFields.join(', ')}. Cannot reliably assess investment opportunity without core financial metrics and market validation data.`,
+      recommendation: 'Insufficient data: Cannot calculate projected exit value',
+      timingBucket: 'N/A - Data Incomplete',
+      reasoning: `FAIL-SAFE ANALYSIS: Missing critical fields prevent reliable investment assessment. Required fields: ${missingFields.join(', ')}. Investment decisions require complete financial metrics and market validation signals to avoid speculative commitments.`,
       confidence: 1,
-      keyRisks: 'Data insufficiency prevents proper risk assessment. Investment decision would be speculative without key performance indicators.',
-      suggestedAction: `Please provide missing data: ${missingFields.join(', ')} before proceeding with investment evaluation.`,
-      projectedExitValueRange: 'Insufficient data to calculate projected exit value. Please ensure all required inputs are filled.',
-      externalSources: 'Insufficient internal data - external research not conducted',
+      keyRisks: 'PRIMARY RISK: Data insufficiency creates investment blind spots. Cannot assess growth trajectory, exit feasibility, or valuation reasonableness without complete metrics. High probability of poor investment decisions due to incomplete information.',
+      suggestedAction: failsafeAction,
+      projectedExitValueRange: 'BLOCKED: Insufficient data to calculate exit value projections. Complete revenue timeline and valuation data required.',
+      externalSources: 'External research not conducted due to insufficient internal data foundation',
       insufficientData: true,
-      riskAdjustedMonetizationSummary: 'Insufficient data to calculate risk-adjusted monetization summary. Core financial metrics, growth projections, and market validation data required to assess projected returns, success probability, and risk-adjusted exit value.',
+      riskAdjustedMonetizationSummary: 'DISABLED: Risk-adjusted analysis requires complete revenue timeline (current + projected +2) and valuation data. Partial data prevents reliable return modeling and success probability assessment.',
       externalInsights: {
         marketContext: [],
         competitivePosition: [],
@@ -302,12 +318,17 @@ Current: ${company.currentRevenue !== null ? `$${(company.currentRevenue / 10000
 Year +1: ${company.projectedRevenueYear1 !== null ? `$${(company.projectedRevenueYear1 / 1000000).toFixed(1)}M` : 'N/A'}
 Year +2: ${company.projectedRevenueYear2 !== null ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}
 
-CALCULATED ANALYTICS:
-YoY Growth: ${company.yoyGrowthPercent !== null ? `${company.yoyGrowthPercent.toFixed(1)}%` : 'N/A'}
-Historical 2Y CAGR: ${company.historicalCAGR2Y !== null ? `${company.historicalCAGR2Y.toFixed(1)}%` : 'N/A'}
-Forward 2Y CAGR: ${company.forwardCAGR2Y !== null ? `${company.forwardCAGR2Y.toFixed(1)}%` : 'N/A'}
-Forward Revenue Multiple (Exit Val/Rev+2): ${company.forwardRevenueMultiple !== null ? `${company.forwardRevenueMultiple.toFixed(1)}x` : 'N/A'}
-Revenue Trajectory Score: ${company.revenueTrajectoryScore !== null ? `${company.revenueTrajectoryScore}/5` : 'N/A'}` :
+CALCULATED ANALYTICS WITH FAIL-SAFE STATUS:
+YoY Growth: ${company.yoyGrowthPercent !== null ? `${company.yoyGrowthPercent.toFixed(1)}%` : '⚠️ INSUFFICIENT DATA: Missing previous year revenue'}
+Historical 2Y CAGR: ${company.historicalCAGR2Y !== null ? `${company.historicalCAGR2Y.toFixed(1)}%` : '⚠️ SKIP: Year -2 revenue not available'}
+Forward 2Y CAGR: ${company.forwardCAGR2Y !== null ? `${company.forwardCAGR2Y.toFixed(1)}%` : '⚠️ PROJECTION NOT AVAILABLE: Missing Year +2 revenue'}
+Forward Revenue Multiple (Exit Val/Rev+2): ${company.forwardRevenueMultiple !== null ? `${company.forwardRevenueMultiple.toFixed(1)}x` : '🚫 DISABLED: Risk-adjusted outputs require Projected +2 Revenue'}
+Revenue Trajectory Score: ${company.revenueTrajectoryScore !== null ? `${company.revenueTrajectoryScore}/5` : '⚠️ LOW CONFIDENCE: Incomplete data prevents scoring'}
+
+FAIL-SAFE DATA QUALITY ASSESSMENT:
+- Data Completeness: ${dataValidation.hasTimelineData ? 'Partial timeline data available' : 'No timeline progression data'}
+- Critical Missing: ${!dataValidation.canCalculateExitModeling ? '🚫 Exit modeling BLOCKED (missing Projected +2 Revenue)' : '✅ Exit modeling enabled'}
+- Analysis Confidence: ${dataValidation.hasAnyRevenueMetric && dataValidation.hasTimelineData ? 'MEDIUM - Proceed with caution' : 'LOW - High risk of speculative analysis'}` :
   'Timeline data not available - using legacy single-point revenue metrics below'}
 
 LEGACY REVENUE METRICS (for compatibility):
@@ -467,6 +488,21 @@ Provide your analysis in the following JSON format:
   },
   "sourceAttributions": ["List specific sources that were cited in reasoning or risks"]
 }
+
+MANDATORY FAIL-SAFE RESPONSE REQUIREMENTS:
+🔴 CRITICAL FIELD MISSING RESPONSES:
+- If Projected Revenue +2 missing → Include: "⚠️ RISK-ADJUSTED ANALYSIS DISABLED: Missing Projected Revenue +2 prevents exit value modeling, forward MOIC calculations, and success probability assessment."
+- If Current Revenue missing → Include: "🚫 INSUFFICIENT DATA: Current revenue/ARR missing prevents all growth calculations."
+- If Year -1 Revenue missing → Include: "⚠️ Unable to calculate YoY Growth: Previous year revenue data required."
+
+🟡 CONFIDENCE DEGRADATION RULES:
+- Missing Projected +2: Cap confidence at 3 maximum
+- Missing 2+ critical fields: Cap confidence at 2 maximum  
+- Missing Current Revenue: Force confidence to 1
+
+🟢 REQUIRED DISCLAIMERS:
+- Any missing timeline data → Add: "Revenue trajectory limited by missing historical/projected data; outputs are directional only."
+- Missing exit modeling capability → Add: "Risk-adjusted monetization disabled due to insufficient projection data."
 
 Think like a VC partner prioritizing financial fundamentals while incorporating market intelligence responsibly.`;
 
