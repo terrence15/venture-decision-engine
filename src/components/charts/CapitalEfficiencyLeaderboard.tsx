@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateCapitalEfficiency, EfficiencyData } from '@/utils/chartData';
+import { formatCurrency } from '@/utils/numberFormatting';
 import { AnalyzedCompanyData } from '@/pages/Dashboard';
 
 interface CapitalEfficiencyLeaderboardProps {
@@ -20,7 +21,7 @@ export function CapitalEfficiencyLeaderboard({ companies, onCompanySelect }: Cap
           <p className="font-orbitron font-bold text-accent text-xs uppercase tracking-wider">{label}</p>
           <p className="text-sm text-foreground">Burn Multiple: <span className="text-accent">{data.burnMultiple.toFixed(2)}x</span></p>
           <p className="text-sm text-foreground">Efficiency Score: <span className="text-accent">{data.efficiency.toFixed(2)}</span></p>
-          <p className="text-sm text-foreground">Revenue: <span className="text-accent">${((data.data.revenue || data.data.arr || 0) / 1000000).toFixed(1)}M</span></p>
+          <p className="text-sm text-foreground">Revenue: <span className="text-accent">{formatCurrency(data.data.revenue || data.data.arr || 0)}</span></p>
         </div>
       );
     }

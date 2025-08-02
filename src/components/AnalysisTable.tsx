@@ -106,12 +106,22 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
     if (amount === null || amount === undefined || isNaN(amount)) {
       return 'N/A';
     }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+    
+    const absAmount = Math.abs(amount);
+    if (absAmount >= 1000000000) {
+      return `$${(amount / 1000000000).toFixed(1)}B`;
+    } else if (absAmount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`;
+    } else if (absAmount >= 1000) {
+      return `$${(amount / 1000).toFixed(0)}K`;
+    } else {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+    }
   }, []);
 
   const formatPercentage = useCallback((value: number | null | undefined) => {
@@ -129,24 +139,45 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
   }, []);
 
   const formatRevenue = useCallback((revenue: number | null | undefined, arr: number | null | undefined) => {
-    if (arr !== null && arr !== undefined && arr > 0) {
-      return {
-        value: `$${(arr / 1000000).toFixed(1)}M`,
-        type: 'ARR',
-        primary: true
-      };
-    } else if (revenue !== null && revenue !== undefined && revenue > 0) {
-      return {
-        value: `$${(revenue / 1000000).toFixed(1)}M`,
-        type: 'Revenue',
-        primary: false
-      };
+    const hasValidARR = arr !== null && arr !== undefined && arr > 0;
+    const hasValidRevenue = revenue !== null && revenue !== undefined && revenue > 0;
+    
+    if (!hasValidARR && !hasValidRevenue) {
+      return { value: 'N/A', type: 'N/A', primary: false };
     }
-    return {
-      value: 'N/A',
-      type: 'N/A',
-      primary: false
-    };
+    
+    // Use ARR if it's the only one available, or if it's significantly larger than revenue
+    const useARR = hasValidARR && (!hasValidRevenue || (arr && revenue && arr > revenue * 1.2));
+    
+    if (useARR && arr) {
+      const absAmount = Math.abs(arr);
+      let formattedValue;
+      if (absAmount >= 1000000000) {
+        formattedValue = `$${(arr / 1000000000).toFixed(1)}B`;
+      } else if (absAmount >= 1000000) {
+        formattedValue = `$${(arr / 1000000).toFixed(1)}M`;
+      } else if (absAmount >= 1000) {
+        formattedValue = `$${(arr / 1000).toFixed(0)}K`;
+      } else {
+        formattedValue = `$${arr.toFixed(0)}`;
+      }
+      return { value: formattedValue, type: 'ARR', primary: true };
+    } else if (hasValidRevenue && revenue) {
+      const absAmount = Math.abs(revenue);
+      let formattedValue;
+      if (absAmount >= 1000000000) {
+        formattedValue = `$${(revenue / 1000000000).toFixed(1)}B`;
+      } else if (absAmount >= 1000000) {
+        formattedValue = `$${(revenue / 1000000).toFixed(1)}M`;
+      } else if (absAmount >= 1000) {
+        formattedValue = `$${(revenue / 1000).toFixed(0)}K`;
+      } else {
+        formattedValue = `$${revenue.toFixed(0)}`;
+      }
+      return { value: formattedValue, type: 'Revenue', primary: true };
+    }
+    
+    return { value: 'N/A', type: 'N/A', primary: false };
   }, []);
 
   const handleRowClick = useCallback((companyId: string) => {
@@ -319,27 +350,27 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                           company.currentRevenue !== null || company.projectedRevenueYear1 !== null || 
                           company.projectedRevenueYear2 !== null ? (
                            <div className="text-xs">
-                             <div className="flex gap-1 items-center">
-                               <span className="text-muted-foreground">-2:</span>
-                               <span>{company.revenueYearMinus2 ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
-                               {!company.revenueYearMinus2 && (
-                                 <span className="text-yellow-500 text-xs" title="Historical CAGR calculation unavailable">⚠️</span>
-                               )}
-                             </div>
-                             <div className="flex gap-1 items-center">
-                               <span className="text-muted-foreground">Cur:</span>
-                               <span>{company.currentRevenue ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}</span>
-                               {!company.currentRevenue && (
-                                 <span className="text-red-500 text-xs" title="Critical: Current revenue missing">🚫</span>
-                               )}
-                             </div>
-                             <div className="flex gap-1 items-center">
-                               <span className="text-muted-foreground">+2:</span>
-                               <span>{company.projectedRevenueYear2 ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}</span>
-                               {!company.projectedRevenueYear2 && (
-                                 <span className="text-red-500 text-xs" title="Risk-adjusted analysis disabled">⛔</span>
-                               )}
-                             </div>
+                              <div className="flex gap-1 items-center">
+                                <span className="text-muted-foreground">-2:</span>
+                                <span>{company.revenueYearMinus2 ? formatCurrency(company.revenueYearMinus2) : 'N/A'}</span>
+                                {!company.revenueYearMinus2 && (
+                                  <span className="text-yellow-500 text-xs" title="Historical CAGR calculation unavailable">⚠️</span>
+                                )}
+                              </div>
+                              <div className="flex gap-1 items-center">
+                                <span className="text-muted-foreground">Cur:</span>
+                                <span>{company.currentRevenue ? formatCurrency(company.currentRevenue) : 'N/A'}</span>
+                                {!company.currentRevenue && (
+                                  <span className="text-red-500 text-xs" title="Critical: Current revenue missing">🚫</span>
+                                )}
+                              </div>
+                              <div className="flex gap-1 items-center">
+                                <span className="text-muted-foreground">+2:</span>
+                                <span>{company.projectedRevenueYear2 ? formatCurrency(company.projectedRevenueYear2) : 'N/A'}</span>
+                                {!company.projectedRevenueYear2 && (
+                                  <span className="text-red-500 text-xs" title="Risk-adjusted analysis disabled">⛔</span>
+                                )}
+                              </div>
                            </div>
                          ) : (
                            <div className="flex items-center gap-1">
@@ -377,19 +408,19 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
-                          ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
-                          : 'N/A'}
-                      </div>
+                       <div className="text-sm">
+                         {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
+                           ? formatCurrency(company.preMoneyValuation)
+                           : 'N/A'}
+                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <span className="text-sm">
-                          {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
-                            ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
-                            : 'N/A'}
-                        </span>
+                         <span className="text-sm">
+                           {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
+                             ? formatCurrency(company.postMoneyValuation)
+                             : 'N/A'}
+                         </span>
                         {company.preMoneyValuation && company.postMoneyValuation && (
                           <Badge variant={
                             (company.postMoneyValuation / company.preMoneyValuation) >= 3 ? 'destructive' :
@@ -472,33 +503,33 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                      {company.barrierToEntry || 'N/A'}/5
                                    </span>
                                  </div>
-                                 <div>
-                                   <span className="text-muted-foreground">ARR:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.arr !== null && company.arr !== undefined && company.arr > 0 
-                                       ? `$${(company.arr / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                   </span>
-                                   {company.arr !== null && company.arr !== undefined && company.arr > 0 && (
-                                     <Badge variant="default" className="ml-1 text-xs">
-                                       Primary
-                                     </Badge>
-                                   )}
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Revenue:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 
-                                       ? `$${(company.revenue / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                   </span>
-                                   {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 && 
-                                    (company.arr === null || company.arr === undefined || company.arr <= 0) && (
-                                     <Badge variant="secondary" className="ml-1 text-xs">
-                                       Primary
-                                     </Badge>
-                                   )}
-                                 </div>
+                                  <div>
+                                    <span className="text-muted-foreground">ARR:</span>
+                                    <span className="ml-2 font-medium">
+                                      {company.arr !== null && company.arr !== undefined && company.arr > 0 
+                                        ? formatCurrency(company.arr)
+                                        : 'N/A'}
+                                    </span>
+                                    {company.arr !== null && company.arr !== undefined && company.arr > 0 && (
+                                      <Badge variant="default" className="ml-1 text-xs">
+                                        Primary
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Revenue:</span>
+                                    <span className="ml-2 font-medium">
+                                      {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 
+                                        ? formatCurrency(company.revenue)
+                                        : 'N/A'}
+                                    </span>
+                                    {company.revenue !== null && company.revenue !== undefined && company.revenue > 0 && 
+                                     (company.arr === null || company.arr === undefined || company.arr <= 0) && (
+                                      <Badge variant="secondary" className="ml-1 text-xs">
+                                        Primary
+                                      </Badge>
+                                    )}
+                                  </div>
                                  <div>
                                    <span className="text-muted-foreground">Projected Growth:</span>
                                    <span className="ml-2 font-medium">
@@ -531,27 +562,27 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                    </span>
                                    <div className="mt-1">{getComplexityBadge(company.roundComplexity)}</div>
                                  </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Pre-Money:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
-                                       ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                   </span>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Post-Money:</span>
-                                   <span className="ml-2 font-medium">
-                                     {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
-                                       ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M`
-                                       : 'N/A'}
-                                     {company.preMoneyValuation && company.postMoneyValuation && (
-                                       <Badge variant="outline" className="ml-1 text-xs">
-                                         {((company.postMoneyValuation / company.preMoneyValuation)).toFixed(1)}x markup
-                                       </Badge>
-                                     )}
-                                   </span>
-                                 </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Pre-Money:</span>
+                                    <span className="ml-2 font-medium">
+                                      {company.preMoneyValuation !== null && company.preMoneyValuation !== undefined 
+                                        ? formatCurrency(company.preMoneyValuation)
+                                        : 'N/A'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Post-Money:</span>
+                                    <span className="ml-2 font-medium">
+                                      {company.postMoneyValuation !== null && company.postMoneyValuation !== undefined 
+                                        ? formatCurrency(company.postMoneyValuation)
+                                        : 'N/A'}
+                                      {company.preMoneyValuation && company.postMoneyValuation && (
+                                        <Badge variant="outline" className="ml-1 text-xs">
+                                          {((company.postMoneyValuation / company.preMoneyValuation)).toFixed(1)}x markup
+                                        </Badge>
+                                      )}
+                                    </span>
+                                  </div>
                                  {(company.totalRaiseRequest || company.amountRequestedFromFirm) && (
                                    <div className="col-span-2">
                                      <span className="text-muted-foreground">Fundraising:</span>

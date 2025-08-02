@@ -424,15 +424,11 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       value = parsedValue * 1000;
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
                     }
-                    // Scale revenue and ARR fields based on magnitude (handle millions)
+                    // Revenue and valuation fields - keep raw values, no auto-scaling
                     else if (['preMoneyValuation', 'postMoneyValuation', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
-                      // If value is less than 1000, assume it's in millions and convert to dollars
-                      if (parsedValue < 1000) {
-                        value = parsedValue * 1000000;
-                        console.log(`Scaled ${fieldName} from ${parsedValue}M to ${value}`);
-                      } else {
-                        value = parsedValue;
-                      }
+                      // Store raw values - let the UI handle formatting
+                      value = parsedValue;
+                      console.log(`Set ${fieldName} to raw value: ${value}`);
                     }
                     // Convert equity stake from decimal to percentage if needed
                     else if (fieldName === 'equityStake' && parsedValue < 1) {
