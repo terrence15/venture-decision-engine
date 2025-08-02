@@ -30,6 +30,7 @@ interface CompanyData {
   arr: number | null;
   caEquityValuation: number | null;
   isExistingInvestment: boolean;
+  seriesStage: string | null;
   // Revenue Timeline Fields
   revenueYearMinus2?: number | null;
   revenueYearMinus1?: number | null;
@@ -189,6 +190,7 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
               <TableRow>
                 <TableHead className="w-8"></TableHead>
                 <TableHead className="min-w-[200px]">Company</TableHead>
+                <TableHead>Stage</TableHead>
                 <TableHead>Industry</TableHead>
                 <TableHead>ARR/Revenue</TableHead>
                 <TableHead>Investment</TableHead>
@@ -235,6 +237,15 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                           </Badge>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {company.seriesStage ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {company.seriesStage}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm font-medium text-muted-foreground">

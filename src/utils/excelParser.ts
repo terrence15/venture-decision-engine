@@ -26,6 +26,7 @@ export interface RawCompanyData {
   arr: number | null;
   caEquityValuation: number | null; // CA Equity Valuation in dollars
   isExistingInvestment: boolean; // True if existing portfolio company, false if new potential investment
+  seriesStage: string | null; // Series/Stage for contextual framing (e.g., "Seed", "Series A", "Growth")
   // Revenue Timeline Fields
   revenueYearMinus2: number | null;
   revenueYearMinus1: number | null;
@@ -138,7 +139,16 @@ const COLUMN_MAPPINGS = {
   'Current ARR': 'currentARR',
   'Current ARR ($)': 'currentARR',
   'TTM ARR': 'currentARR',
-  'ARR Current': 'currentARR'
+  'ARR Current': 'currentARR',
+  // Series/Stage Column Mappings
+  'Series/Stage': 'seriesStage',
+  'Series': 'seriesStage',
+  'Stage': 'seriesStage',
+  'Funding Stage': 'seriesStage',
+  'Round Type': 'seriesStage',
+  'Investment Stage': 'seriesStage',
+  'Funding Round': 'seriesStage',
+  'Round Stage': 'seriesStage'
 };
 
 // Enhanced keyword mappings for better fuzzy matching
@@ -170,7 +180,8 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'currentRevenue': ['current', 'revenue', 'ttm', 'present'],
   'projectedRevenueYear1': ['projected', 'revenue', 'year', '1', 'next', 'plus'],
   'projectedRevenueYear2': ['projected', 'revenue', 'year', '2', 'plus', 'forward'],
-  'currentARR': ['current', 'arr', 'ttm', 'annual', 'recurring']
+  'currentARR': ['current', 'arr', 'ttm', 'annual', 'recurring'],
+  'seriesStage': ['series', 'stage', 'funding', 'round', 'seed', 'growth', 'investment']
 };
 
 // Improved fuzzy matching function
@@ -252,7 +263,7 @@ function createColumnMapping(headers: string[]): { [key: string]: string } {
   
   // Then try fuzzy matching for unmapped fields
   const mappedFields = Object.values(mapping);
-  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'];
+  const fieldsToMap = ['companyName', 'totalInvestment', 'equityStake', 'moic', 'revenueGrowth', 'projectedRevenueGrowth', 'burnMultiple', 'runway', 'tam', 'exitActivity', 'barrierToEntry', 'additionalInvestmentRequested', 'industry', 'investorInterest', 'preMoneyValuation', 'postMoneyValuation', 'roundComplexity', 'exitTimeline', 'revenue', 'arr', 'caEquityValuation', 'seriesStage', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'];
   
   fieldsToMap.forEach(fieldName => {
     if (!mappedFields.includes(fieldName)) {
@@ -466,6 +477,29 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                 } else {
                   value = parseInt(cleanValue) || 1;
                 }
+              } else if (fieldName === 'seriesStage') {
+                // Handle Series/Stage field - normalize common variations
+                let stageValue = String(value).trim();
+                
+                // Normalize common variations
+                const normalizedStage = stageValue.toLowerCase();
+                if (normalizedStage === 'seed' || normalizedStage === 'pre-seed') {
+                  value = 'Seed';
+                } else if (normalizedStage.includes('series a') || normalizedStage === 'a') {
+                  value = 'Series A';
+                } else if (normalizedStage.includes('series b') || normalizedStage === 'b') {
+                  value = 'Series B';
+                } else if (normalizedStage.includes('series c') || normalizedStage === 'c') {
+                  value = 'Series C';
+                } else if (normalizedStage === 'growth' || normalizedStage === 'late stage') {
+                  value = 'Growth';
+                } else if (stageValue === '' || stageValue === '-' || stageValue === 'N/A' || stageValue === 'TBD') {
+                  value = null; // Fail-safe for missing data
+                } else {
+                  // Keep original value for other valid stages
+                  value = stageValue;
+                }
+                console.log(`Normalized series/stage from "${row[index]}" to "${value}"`);
               } else if (typeof value !== 'string') {
                 value = String(value);
               }

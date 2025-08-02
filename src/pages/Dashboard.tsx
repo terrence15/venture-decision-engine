@@ -171,6 +171,7 @@ export function Dashboard() {
         arr: company.arr,
         caEquityValuation: company.caEquityValuation,
         isExistingInvestment: company.isExistingInvestment,
+        seriesStage: company.seriesStage,
         // Revenue Timeline Fields (defaulting to null if not available)
         revenueYearMinus2: company.revenueYearMinus2 || null,
         revenueYearMinus1: company.revenueYearMinus1 || null,

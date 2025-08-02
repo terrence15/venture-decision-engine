@@ -24,6 +24,7 @@ interface CompanyData {
   arr: number | null;
   caEquityValuation: number | null;
   isExistingInvestment: boolean;
+  seriesStage: string | null;
   monthlyBurn?: number;
   currentValuation?: number;
   // Revenue Timeline Fields
@@ -219,6 +220,41 @@ ANALYSIS PROTOCOL:
 - If external data is insufficient, state this explicitly rather than making assumptions
 - Integrate approved source insights into reasoning and risk assessment where available
 
+SERIES/STAGE CONTEXTUAL FRAMING:
+${company.seriesStage ? `This company is at the ${company.seriesStage} stage. Use this contextual information to enhance your analysis:` : 'Series/Stage not specified - provide general analysis without stage-specific context.'}
+
+${company.seriesStage ? `STAGE-SPECIFIC INTERPRETATION GUIDELINES FOR ${company.seriesStage.toUpperCase()}:
+${company.seriesStage === 'Seed' ? `
+- Focus on product-market fit signals, early traction validation, and founder-market fit
+- Typical metrics: $0-2M ARR, high growth volatility, limited revenue history
+- Investment thesis: Early-stage risk/reward, emphasis on team and market opportunity
+- Example context: "For a Seed company with $1M ARR, this $5M raise suggests strong early validation signals"` : 
+company.seriesStage === 'Series A' ? `
+- Emphasize scalable business model, growth efficiency, and unit economics validation
+- Typical metrics: $1-10M ARR, proven growth trajectory, emerging competitive differentiation
+- Investment thesis: Growth capital for market expansion, sales/marketing scale-up
+- Example context: "For a Series A company with $3M ARR, this $40M raise suggests an ambitious scale-up plan"` :
+company.seriesStage === 'Series B' || company.seriesStage === 'Series C' ? `
+- Highlight market expansion, operational scaling, and path to profitability clarity
+- Typical metrics: $10M+ ARR, established market position, proven business model
+- Investment thesis: Expansion capital, geographic/product line growth, market leadership
+- Example context: "Series B companies typically see 2-3 year exit timelines; this 6-year plan may indicate structural drag"` :
+company.seriesStage === 'Growth' ? `
+- Focus on path to profitability, exit readiness, and market leadership consolidation
+- Typical metrics: $50M+ ARR, strong unit economics, clear competitive moats
+- Investment thesis: Late-stage growth capital, pre-IPO positioning, strategic partnerships
+- Example context: "At the Growth stage, an 8x projected revenue multiple is aggressive but not unprecedented in frontier AI"` :
+`- Analyze based on available financial metrics without stage-specific assumptions
+- Use general venture capital benchmarks and industry standards for evaluation`}
+
+IMPORTANT: This Series/Stage information is for CONTEXTUAL FRAMING ONLY and should NOT:
+- Drive automated benchmarks or conditional logic
+- Override financial data or calculations  
+- Be used as a primary decision factor
+- Change core investment methodology
+
+Use Series/Stage to enhance qualitative commentary, provide relevant benchmarks, and add appropriate context to financial analysis.` : ''}
+
 CRITICAL INVESTOR INTEREST LOGIC (GATING VARIABLE):
 The "Investor Interest / Ability to Raise Capital" score is NOT a soft modifier - it's a critical feasibility gate that can override positive financial metrics:
 
@@ -312,6 +348,7 @@ CONFIDENCE MODIFICATION:
 PRIMARY FINANCIAL DATA (REQUIRED BASIS FOR DECISIONS):
 Company: ${company.companyName}
 Investment Status: ${company.isExistingInvestment ? 'EXISTING PORTFOLIO COMPANY' : 'NEW POTENTIAL INVESTMENT'}
+${company.seriesStage ? `Series/Stage: ${company.seriesStage}` : 'Series/Stage: Not specified'}
 Industry: ${company.industry || 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
