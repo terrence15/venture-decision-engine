@@ -70,7 +70,7 @@ interface ExternalResearchResult {
   competitiveLandscape: string;
   recentNews: string;
   fundingHistory: string;
-  sources: string[];
+  sources: { title: string; url: string; domain: string }[];
   // Enhanced attribution fields
   structuredInsights: {
     marketContext: { insight: string; source: string; }[];
@@ -139,7 +139,7 @@ export async function conductExternalResearch(
   console.log('📝 [Perplexity Research] Prepared queries:', queries);
 
   const results: string[] = [];
-  const allSources: string[] = [];
+  const allSources: { title: string; url: string; domain: string }[] = [];
 
   for (let i = 0; i < queries.length; i++) {
     const query = queries[i];
@@ -196,18 +196,20 @@ Always cite specific sources for claims and include publication dates when avail
         results.push(content);
         
         // Extract sources from structured API response
-        let extractedSources: string[] = [];
+        let extractedSources: { title: string; url: string; domain: string }[] = [];
         
         // First, try to get sources from citations array
         if (data.citations && Array.isArray(data.citations)) {
           console.log('📚 [Perplexity Research] Found citations array:', data.citations);
           extractedSources = data.citations.map((citation: any) => {
-            if (typeof citation === 'string') return citation;
+            if (typeof citation === 'string') {
+              return { title: citation, url: '', domain: '' };
+            }
             if (citation.title && citation.url) {
               const domain = new URL(citation.url).hostname.replace('www.', '');
-              return `${citation.title} (${domain})`;
+              return { title: citation.title, url: citation.url, domain };
             }
-            return citation.title || citation.url || 'Unknown source';
+            return { title: citation.title || citation.url || 'Unknown source', url: citation.url || '', domain: '' };
           });
         }
         
@@ -217,9 +219,9 @@ Always cite specific sources for claims and include publication dates when avail
           extractedSources = data.search_results.slice(0, 3).map((result: any) => {
             if (result.title && result.url) {
               const domain = new URL(result.url).hostname.replace('www.', '');
-              return `${result.title} (${domain})`;
+              return { title: result.title, url: result.url, domain };
             }
-            return result.title || result.url || 'Unknown source';
+            return { title: result.title || result.url || 'Unknown source', url: result.url || '', domain: '' };
           });
         }
         
@@ -227,7 +229,11 @@ Always cite specific sources for claims and include publication dates when avail
         if (extractedSources.length === 0) {
           const sourceMatches = content.match(/(?:according to|from|via|source:|reported by)\s+([^.]+)/gi);
           if (sourceMatches) {
-            extractedSources = sourceMatches.map(s => s.replace(/^(according to|from|via|source:|reported by)\s+/i, ''));
+            extractedSources = sourceMatches.map(s => ({
+              title: s.replace(/^(according to|from|via|source:|reported by)\s+/i, ''),
+              url: '',
+              domain: ''
+            }));
           }
         }
         
@@ -334,7 +340,7 @@ function getIndustrySpecificMultipleQuery(industry: string): string {
 
 // Source validation removed - all sources allowed
 
-function parseStructuredInsights(results: string[], sources: string[]): {
+function parseStructuredInsights(results: string[], sources: { title: string; url: string; domain: string }[]): {
   marketContext: { insight: string; source: string; }[];
   competitivePosition: { insight: string; source: string; }[];
   fundingEnvironment: { insight: string; source: string; }[];
@@ -361,21 +367,23 @@ function parseStructuredInsights(results: string[], sources: string[]): {
     if (!result || result.includes('unavailable') || result.includes('failed')) return;
     
     const sentences = result.split(/[.!?]+/).filter(s => s.trim().length > 20);
-    const relevantSource = sources[index] || 'External research';
+    const relevantSource = sources[index] || { title: 'External research', url: '', domain: '' };
     
     sentences.forEach(sentence => {
       const trimmed = sentence.trim();
       if (trimmed.length < 30) return;
       
+      const sourceTitle = typeof relevantSource === 'string' ? relevantSource : relevantSource?.title || 'External research';
+      
       // Categorize insights based on content keywords
       if (trimmed.match(/TAM|market size|addressable market|market opportunity/i)) {
-        insights.marketContext.push({ insight: trimmed, source: relevantSource });
+        insights.marketContext.push({ insight: trimmed, source: sourceTitle });
       } else if (trimmed.match(/competitor|competitive|barriers|market share|leaders/i)) {
-        insights.competitivePosition.push({ insight: trimmed, source: relevantSource });
+        insights.competitivePosition.push({ insight: trimmed, source: sourceTitle });
       } else if (trimmed.match(/funding|investment|capital|raised|valuation|round|multiple/i)) {
-        insights.fundingEnvironment.push({ insight: trimmed, source: relevantSource });
+        insights.fundingEnvironment.push({ insight: trimmed, source: sourceTitle });
       } else if (trimmed.match(/trend|growth|outlook|forecast|direction/i)) {
-        insights.industryTrends.push({ insight: trimmed, source: relevantSource });
+        insights.industryTrends.push({ insight: trimmed, source: sourceTitle });
       }
     });
   });
@@ -447,7 +455,7 @@ function determineMultipleType(content: string): string {
   }
 }
 
-function determineResearchQuality(results: string[], sources: string[]): 'comprehensive' | 'limited' | 'minimal' | 'unavailable' {
+function determineResearchQuality(results: string[], sources: { title: string; url: string; domain: string }[]): 'comprehensive' | 'limited' | 'minimal' | 'unavailable' {
   const validResults = results.filter(r => r && !r.includes('unavailable') && !r.includes('failed')).length;
   const sourcesCount = sources.length;
   

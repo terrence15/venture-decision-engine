@@ -436,11 +436,11 @@ ${research.structuredInsights.namedComps.length > 0 ?
   'No specific M&A comparables identified in research'
 }
 
-Research Sources: ${research.sources.join(', ') || 'Limited external data available'}
+Research Sources: ${research.sources.map(s => s.url ? `[${s.title}](${s.url})` : s.title).join(', ') || 'Limited external data available'}
       `;
       
       externalSources = research.sources.length > 0 
-        ? `Approved research sources: ${research.sources.join(', ')}` 
+        ? `**External Sources**\n${research.sources.filter(s => s.title && s.title !== 'External research').slice(0, 5).map(s => s.url ? `- [${s.title}](${s.url})` : `- ${s.title}`).join('\n')}` 
         : 'External research conducted with limited source availability';
         
     } catch (error) {
