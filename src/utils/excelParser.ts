@@ -424,12 +424,26 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                       value = parsedValue * 1000;
                       console.log(`Scaled ${fieldName} from ${parsedValue}k to ${value}`);
                     }
-                    // Revenue and valuation fields - keep raw values, no auto-scaling
-                    else if (['preMoneyValuation', 'postMoneyValuation', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
-                      // Store raw values - let the UI handle formatting
-                      value = parsedValue;
-                      console.log(`Set ${fieldName} to raw value: ${value}`);
-                    }
+                     // Revenue and valuation fields - keep raw values, no auto-scaling
+                     else if (['preMoneyValuation', 'postMoneyValuation', 'revenue', 'arr', 'revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2', 'currentARR'].includes(fieldName)) {
+                       // Store raw values - let the UI handle formatting
+                       value = parsedValue;
+                       
+                       // Enhanced debugging for projectedRevenueYear2 specifically
+                       if (fieldName === 'projectedRevenueYear2') {
+                         console.log(`🔍 DEBUGGING projectedRevenueYear2 for ${company.companyName}:`);
+                         console.log(`  - Original Excel cell value:`, row[index]);
+                         console.log(`  - Original string value:`, String(row[index]));
+                         console.log(`  - After cleaning (removed $,%,spaces):`, cleanValue);
+                         console.log(`  - parseFloat result:`, parsedValue);
+                         console.log(`  - Final stored value:`, value);
+                         console.log(`  - Scientific notation check:`, Number(cleanValue).toExponential());
+                         console.log(`  - Type of original:`, typeof row[index]);
+                         console.log(`  - Excel cell formatted as millions?`, String(row[index]).toLowerCase().includes('m'));
+                       }
+                       
+                       console.log(`Set ${fieldName} to raw value: ${value}`);
+                     }
                     // Convert equity stake from decimal to percentage if needed
                     else if (fieldName === 'equityStake' && parsedValue < 1) {
                       value = parsedValue * 100;
