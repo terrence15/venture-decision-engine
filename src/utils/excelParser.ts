@@ -437,25 +437,19 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
                     }
                     // Convert revenue growth - detect if input is decimal (0.1 = 10%) or percentage (10 = 10%)
                     else if (fieldName === 'revenueGrowth' || fieldName === 'projectedRevenueGrowth') {
+                      const originalString = String(row[index]);
+                      
+                      // If original string contained %, the numeric value is already a percentage
+                      if (originalString.includes('%')) {
+                        value = parsedValue;
+                        console.log(`Kept ${fieldName} as percentage from % input: ${value}%`);
+                      }
                       // If value is between 0 and 1, it's likely a decimal (0.1 = 10%)
-                      if (parsedValue > 0 && parsedValue < 1) {
+                      else if (parsedValue > 0 && parsedValue < 1) {
                         value = parsedValue * 100;
                         console.log(`Converted ${fieldName} from decimal ${parsedValue} to ${value}%`);
-                      } 
-                      // If value is between 1 and 5, it could be either - check original string for % symbol
-                      else if (parsedValue >= 1 && parsedValue <= 5) {
-                        const originalString = String(row[index]);
-                        if (originalString.includes('%')) {
-                          // Already a percentage
-                          value = parsedValue;
-                          console.log(`Kept ${fieldName} as percentage: ${value}%`);
-                        } else {
-                          // Likely a decimal that should be converted
-                          value = parsedValue * 100;
-                          console.log(`Converted ${fieldName} from decimal ${parsedValue} to ${value}%`);
-                        }
                       }
-                      // Otherwise, assume it's already a percentage value
+                      // For values >= 1, assume they're already percentages (handles large values like 2200%)
                       else {
                         value = parsedValue;
                         console.log(`Kept ${fieldName} as percentage: ${value}%`);
