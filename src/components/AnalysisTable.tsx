@@ -318,8 +318,8 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                           {formatRevenue(company.revenue, company.currentARR).value}
                         </span>
                         {formatRevenue(company.revenue, company.currentARR).type !== 'N/A' && (
-                          <Badge variant={formatRevenue(company.revenue, company.arr).primary ? 'default' : 'secondary'} className="text-xs">
-                            {formatRevenue(company.revenue, company.arr).type}
+                          <Badge variant={formatRevenue(company.revenue, company.currentARR).primary ? 'default' : 'secondary'} className="text-xs">
+                            {formatRevenue(company.revenue, company.currentARR).type}
                           </Badge>
                         )}
                       </div>

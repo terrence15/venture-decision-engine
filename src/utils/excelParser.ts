@@ -112,7 +112,13 @@ const COLUMN_MAPPINGS = {
   'Recurring Revenue': 'arr',
   'Subscription Revenue': 'arr',
   'ARR ($)': 'arr',
-  // Revenue Timeline Column Mappings
+  // Revenue Timeline Column Mappings - Enhanced with exact headers
+  'Revenue -2 (Years)': 'revenueYearMinus2',
+  'Revenue -1 (Years)': 'revenueYearMinus1',
+  'Current Revenue ': 'currentRevenue',
+  'Revenue + 1 (Years)': 'projectedRevenueYear1',
+  'Revenue +1 (Years)': 'projectedRevenueYear1',
+  'Revenue +2 (Years)': 'projectedRevenueYear2',
   'Revenue Year -2': 'revenueYearMinus2',
   'Revenue Year -2 ($)': 'revenueYearMinus2',
   'Revenue Two Years Ago': 'revenueYearMinus2',
@@ -196,12 +202,12 @@ const KEYWORD_MAPPINGS: { [key: string]: string[] } = {
   'revenue': ['revenue', 'total', 'annual', 'latest'],
   'arr': ['arr', 'annual', 'recurring', 'subscription'],
   'caEquityValuation': ['ca', 'equity', 'valuation', 'thousands'],
-  // Revenue Timeline Keywords
-  'revenueYearMinus2': ['revenue', 'year', 'minus', '2', 'two', 'ago'],
-  'revenueYearMinus1': ['revenue', 'year', 'minus', '1', 'last', 'previous'],
-  'currentRevenue': ['current', 'revenue', 'ttm', 'present'],
-  'projectedRevenueYear1': ['projected', 'revenue', 'year', '1', 'next', 'plus'],
-  'projectedRevenueYear2': ['projected', 'revenue', 'year', '2', 'plus', 'forward'],
+  // Revenue Timeline Keywords - Enhanced with better distinction
+  'revenueYearMinus2': ['revenue', 'years', 'minus', '-2', 'minus2', 'two', 'ago', 'past'],
+  'revenueYearMinus1': ['revenue', 'years', 'minus', '-1', 'minus1', 'last', 'previous', 'past'],
+  'currentRevenue': ['current', 'revenue', 'ttm', 'present', 'now'],
+  'projectedRevenueYear1': ['revenue', 'years', 'plus', '+1', 'plus1', '1', 'next', 'forward', 'projected'],
+  'projectedRevenueYear2': ['revenue', 'years', 'plus', '+2', 'plus2', '2', 'forward', 'projected'],
   'currentARR': ['current', 'arr', 'ttm', 'annual', 'recurring'],
   'seriesStage': ['series', 'stage', 'funding', 'round', 'seed', 'growth', 'investment'],
   'totalRaiseRequest': ['total', 'raise', 'round', 'size', 'target', 'funding', 'amount'],
@@ -386,7 +392,9 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
           const field = columnMapping[header];
           if (revenueTimelineFields.includes(field)) {
             if ((header.includes('-2') && field !== 'revenueYearMinus2') ||
-                (header.includes('+2') && field !== 'projectedRevenueYear2')) {
+                (header.includes('+2') && field !== 'projectedRevenueYear2') ||
+                (header.includes('-1') && field !== 'revenueYearMinus1') ||
+                (header.includes('+1') && field !== 'projectedRevenueYear1')) {
               console.log(`🚨 POTENTIAL CROSS-MAPPING ISSUE: Header "${header}" mapped to field "${field}"`);
             }
           }
