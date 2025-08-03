@@ -1,4 +1,5 @@
 import { conductExternalResearch, getPerplexityApiKey } from './externalResearch';
+import { formatLargeNumber } from './numberFormatting';
 
 // Enhanced Scoring Functions
 function calculateMarketCredibilityScore(company: CompanyData): number {
@@ -536,8 +537,8 @@ Company: ${company.companyName}
 Investment Status: ${company.isExistingInvestment ? 'EXISTING PORTFOLIO COMPANY' : 'NEW POTENTIAL INVESTMENT'}
 ${company.seriesStage ? `Series/Stage: ${company.seriesStage}` : 'Series/Stage: Not specified'}
 Industry: ${company.industry || 'Not specified'}
-Total Raise Request: ${company.totalRaiseRequest ? `$${(company.totalRaiseRequest / 1000000).toFixed(1)}M` : 'Not specified'}
-Amount Requested from Firm: ${company.amountRequestedFromFirm ? `$${(company.amountRequestedFromFirm / 1000000).toFixed(1)}M` : 'Not specified'}
+Total Raise Request: ${company.totalRaiseRequest ? formatLargeNumber(company.totalRaiseRequest, { currency: true }).value : 'Not specified'}
+Amount Requested from Firm: ${company.amountRequestedFromFirm ? formatLargeNumber(company.amountRequestedFromFirm, { currency: true }).value : 'Not specified'}
 Total Investment to Date: $${(company.totalInvestment / 1000000).toFixed(1)}M
 Equity Stake: ${company.equityStake}%
 Current MOIC: ${company.moic}x
@@ -545,11 +546,11 @@ ${company.caEquityValuation !== null ? `CA Equity Valuation: $${(company.caEquit
 
 REVENUE TIMELINE ANALYSIS (5-Point Historical and Forward Progression):
 ${company.revenueYearMinus2 !== null || company.revenueYearMinus1 !== null || company.currentRevenue !== null || company.projectedRevenueYear1 !== null || company.projectedRevenueYear2 !== null ?
-  `Year -2: ${company.revenueYearMinus2 !== null ? `$${(company.revenueYearMinus2 / 1000000).toFixed(1)}M` : 'N/A'}
-Year -1: ${company.revenueYearMinus1 !== null ? `$${(company.revenueYearMinus1 / 1000000).toFixed(1)}M` : 'N/A'}
-Current: ${company.currentRevenue !== null ? `$${(company.currentRevenue / 1000000).toFixed(1)}M` : 'N/A'}
-Year +1: ${company.projectedRevenueYear1 !== null ? `$${(company.projectedRevenueYear1 / 1000000).toFixed(1)}M` : 'N/A'}
-Year +2: ${company.projectedRevenueYear2 !== null ? `$${(company.projectedRevenueYear2 / 1000000).toFixed(1)}M` : 'N/A'}
+  `Year -2: ${company.revenueYearMinus2 !== null ? formatLargeNumber(company.revenueYearMinus2, { currency: true }).value : 'N/A'}
+Year -1: ${company.revenueYearMinus1 !== null ? formatLargeNumber(company.revenueYearMinus1, { currency: true }).value : 'N/A'}
+Current: ${company.currentRevenue !== null ? formatLargeNumber(company.currentRevenue, { currency: true }).value : 'N/A'}
+Year +1: ${company.projectedRevenueYear1 !== null ? formatLargeNumber(company.projectedRevenueYear1, { currency: true }).value : 'N/A'}
+Year +2: ${company.projectedRevenueYear2 !== null ? formatLargeNumber(company.projectedRevenueYear2, { currency: true }).value : 'N/A'}
 
 CALCULATED ANALYTICS WITH FAIL-SAFE STATUS:
 YoY Growth: ${company.yoyGrowthPercent !== null ? `${company.yoyGrowthPercent.toFixed(1)}%` : '⚠️ INSUFFICIENT DATA: Missing previous year revenue'}
@@ -578,10 +579,10 @@ Runway: ${company.runway !== null ? `${company.runway} months` : 'Not provided'}
 TAM Score: ${company.tam}/5
 Exit Activity in Sector: ${company.exitActivity}
 Barrier to Entry: ${company.barrierToEntry}/5
-Additional Investment Requested: $${(company.additionalInvestmentRequested / 1000000).toFixed(1)}M
+Additional Investment Requested: ${company.additionalInvestmentRequested ? formatLargeNumber(company.additionalInvestmentRequested, { currency: true }).value : 'Not provided'}
 Investor Interest / Ability to Raise Capital: ${company.investorInterest !== null ? `${company.investorInterest}/5` : 'Not provided'}
-Pre-Money Valuation: ${company.preMoneyValuation !== null ? `$${(company.preMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
-Post-Money Valuation: ${company.postMoneyValuation !== null ? `$${(company.postMoneyValuation / 1000000).toFixed(1)}M` : 'Not provided'}
+Pre-Money Valuation: ${company.preMoneyValuation !== null ? formatLargeNumber(company.preMoneyValuation, { currency: true }).value : 'Not provided'}
+Post-Money Valuation: ${company.postMoneyValuation !== null ? formatLargeNumber(company.postMoneyValuation, { currency: true }).value : 'Not provided'}
 Round Complexity: ${company.roundComplexity !== null ? `${company.roundComplexity}/5` : 'Not provided - defaulting to 3 (neutral)'}
 Exit Timeline: ${company.exitTimeline !== null ? `${company.exitTimeline} years` : '3 years (default assumption)'}
 
