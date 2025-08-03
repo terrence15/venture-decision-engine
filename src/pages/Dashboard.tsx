@@ -180,7 +180,7 @@ export function Dashboard() {
         currentRevenue: company.currentRevenue ?? null,
         projectedRevenueYear1: company.projectedRevenueYear1 ?? null,
         projectedRevenueYear2: company.projectedRevenueYear2 ?? null,
-        currentARR: company.currentARR || null,
+        currentARR: company.currentARR ?? null,
         // Calculated Analytics (will be computed by analytics module)
         yoyGrowthPercent: company.yoyGrowthPercent || null,
         historicalCAGR2Y: company.historicalCAGR2Y || null,

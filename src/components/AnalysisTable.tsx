@@ -315,9 +315,9 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span className="text-sm font-medium">
-                          {formatRevenue(company.revenue, company.arr).value}
+                          {formatRevenue(company.revenue, company.currentARR).value}
                         </span>
-                        {formatRevenue(company.revenue, company.arr).type !== 'N/A' && (
+                        {formatRevenue(company.revenue, company.currentARR).type !== 'N/A' && (
                           <Badge variant={formatRevenue(company.revenue, company.arr).primary ? 'default' : 'secondary'} className="text-xs">
                             {formatRevenue(company.revenue, company.arr).type}
                           </Badge>
@@ -504,13 +504,13 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                                    </span>
                                  </div>
                                   <div>
-                                    <span className="text-muted-foreground">ARR:</span>
-                                    <span className="ml-2 font-medium">
-                                      {company.arr !== null && company.arr !== undefined && company.arr > 0 
-                                        ? formatCurrency(company.arr)
-                                        : 'N/A'}
-                                    </span>
-                                    {company.arr !== null && company.arr !== undefined && company.arr > 0 && (
+                                     <span className="text-muted-foreground">ARR:</span>
+                                     <span className="ml-2 font-medium">
+                                       {company.currentARR !== null && company.currentARR !== undefined 
+                                         ? formatCurrency(company.currentARR)
+                                         : 'N/A'}
+                                     </span>
+                                     {company.currentARR !== null && company.currentARR !== undefined && company.currentARR > 0 && (
                                       <Badge variant="default" className="ml-1 text-xs">
                                         Primary
                                       </Badge>
