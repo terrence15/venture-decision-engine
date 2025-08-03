@@ -175,11 +175,11 @@ export function Dashboard() {
         totalRaiseRequest: company.totalRaiseRequest || null,
         amountRequestedFromFirm: company.amountRequestedFromFirm || null,
         // Revenue Timeline Fields (defaulting to null if not available)
-        revenueYearMinus2: company.revenueYearMinus2 || null,
-        revenueYearMinus1: company.revenueYearMinus1 || null,
-        currentRevenue: company.currentRevenue || null,
-        projectedRevenueYear1: company.projectedRevenueYear1 || null,
-        projectedRevenueYear2: company.projectedRevenueYear2 || null,
+        revenueYearMinus2: company.revenueYearMinus2 ?? null,
+        revenueYearMinus1: company.revenueYearMinus1 ?? null,
+        currentRevenue: company.currentRevenue ?? null,
+        projectedRevenueYear1: company.projectedRevenueYear1 ?? null,
+        projectedRevenueYear2: company.projectedRevenueYear2 ?? null,
         currentARR: company.currentARR || null,
         // Calculated Analytics (will be computed by analytics module)
         yoyGrowthPercent: company.yoyGrowthPercent || null,

@@ -352,22 +352,22 @@ export function AnalysisTable({ companies, onAnalyze, isAnalyzing }: AnalysisTab
                            <div className="text-xs">
                               <div className="flex gap-1 items-center">
                                 <span className="text-muted-foreground">-2:</span>
-                                <span>{company.revenueYearMinus2 ? formatCurrency(company.revenueYearMinus2) : 'N/A'}</span>
-                                {!company.revenueYearMinus2 && (
+                                <span>{company.revenueYearMinus2 !== null && company.revenueYearMinus2 !== undefined ? formatCurrency(company.revenueYearMinus2) : 'N/A'}</span>
+                                {(company.revenueYearMinus2 === null || company.revenueYearMinus2 === undefined) && (
                                   <span className="text-yellow-500 text-xs" title="Historical CAGR calculation unavailable">⚠️</span>
                                 )}
                               </div>
                               <div className="flex gap-1 items-center">
                                 <span className="text-muted-foreground">Cur:</span>
-                                <span>{company.currentRevenue ? formatCurrency(company.currentRevenue) : 'N/A'}</span>
-                                {!company.currentRevenue && (
+                                 <span>{company.currentRevenue !== null && company.currentRevenue !== undefined ? formatCurrency(company.currentRevenue) : 'N/A'}</span>
+                                 {(company.currentRevenue === null || company.currentRevenue === undefined) && (
                                   <span className="text-red-500 text-xs" title="Critical: Current revenue missing">🚫</span>
                                 )}
                               </div>
                               <div className="flex gap-1 items-center">
                                 <span className="text-muted-foreground">+2:</span>
-                                <span>{company.projectedRevenueYear2 ? formatCurrency(company.projectedRevenueYear2) : 'N/A'}</span>
-                                {!company.projectedRevenueYear2 && (
+                                 <span>{company.projectedRevenueYear2 !== null && company.projectedRevenueYear2 !== undefined ? formatCurrency(company.projectedRevenueYear2) : 'N/A'}</span>
+                                 {(company.projectedRevenueYear2 === null || company.projectedRevenueYear2 === undefined) && (
                                   <span className="text-red-500 text-xs" title="Risk-adjusted analysis disabled">⛔</span>
                                 )}
                               </div>

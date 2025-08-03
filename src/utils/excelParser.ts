@@ -320,6 +320,7 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
     reader.onload = (e) => {
       try {
         console.log('Starting Excel file parsing...');
+        console.log('🔍 REVENUE TIMELINE DEBUG: Enhanced column mapping validation enabled');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         
@@ -364,6 +365,32 @@ export function parseExcelFile(file: File): Promise<RawCompanyData[]> {
         
         // Create column mapping
         const columnMapping = createColumnMapping(headers);
+        
+        // Enhanced revenue timeline validation
+        console.log('🔍 REVENUE TIMELINE COLUMN MAPPING VALIDATION:');
+        const revenueTimelineFields = ['revenueYearMinus2', 'revenueYearMinus1', 'currentRevenue', 'projectedRevenueYear1', 'projectedRevenueYear2'];
+        revenueTimelineFields.forEach(field => {
+          const mappedHeader = Object.keys(columnMapping).find(header => columnMapping[header] === field);
+          if (mappedHeader) {
+            console.log(`✅ ${field} mapped to header: "${mappedHeader}"`);
+            const headerIndex = headers.indexOf(mappedHeader);
+            console.log(`   Header index: ${headerIndex}`);
+          } else {
+            console.log(`❌ ${field} NOT MAPPED to any header`);
+          }
+        });
+        
+        // Validate for potential cross-mapping issues
+        const mappedHeaders = Object.keys(columnMapping);
+        mappedHeaders.forEach(header => {
+          const field = columnMapping[header];
+          if (revenueTimelineFields.includes(field)) {
+            if ((header.includes('-2') && field !== 'revenueYearMinus2') ||
+                (header.includes('+2') && field !== 'projectedRevenueYear2')) {
+              console.log(`🚨 POTENTIAL CROSS-MAPPING ISSUE: Header "${header}" mapped to field "${field}"`);
+            }
+          }
+        });
         
         // Check for essential columns
         const essentialFields = ['companyName', 'totalInvestment', 'equityStake'];
