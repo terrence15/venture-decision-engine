@@ -1,6 +1,44 @@
 import { conductExternalResearch, getPerplexityApiKey } from './externalResearch';
 import { formatLargeNumber } from './numberFormatting';
 
+// Score-to-Language Translation Functions
+function translateMarketCredibility(score: number): string {
+  if (score >= 80) return "strong market validation and competitive positioning";
+  if (score >= 60) return "moderate market traction with growth potential";
+  if (score >= 40) return "emerging market opportunity requiring validation";
+  return "limited market validation signals";
+}
+
+function translateCapitalEfficiency(score: number): string {
+  if (score >= 80) return "exceptional capital discipline and deployment efficiency";
+  if (score >= 60) return "solid capital management with room for improvement";
+  if (score >= 40) return "concerning capital burn patterns requiring attention";
+  return "critical capital efficiency issues demanding immediate action";
+}
+
+function translateExecutionCredibility(score: number): string {
+  if (score >= 80) return "strong execution track record with consistent delivery";
+  if (score >= 60) return "moderate execution confidence with mixed historical performance";
+  if (score >= 40) return "limited execution validation requiring further proof points";
+  return "significant execution risks based on historical performance";
+}
+
+function getQualitativeRiskLevel(score: number): string {
+  if (score >= 80) return "Low";
+  if (score >= 60) return "Moderate";
+  if (score >= 40) return "High";
+  return "Critical";
+}
+
+function getConfidenceFromScores(marketScore: number, capitalScore: number, executionScore: number): number {
+  const averageScore = (marketScore + capitalScore + executionScore) / 3;
+  if (averageScore >= 80) return 5;
+  if (averageScore >= 65) return 4;
+  if (averageScore >= 50) return 3;
+  if (averageScore >= 35) return 2;
+  return 1;
+}
+
 // Enhanced Scoring Functions
 function calculateMarketCredibilityScore(company: CompanyData): number {
   let score = 0;
@@ -474,10 +512,8 @@ Research Sources: ${research.sources.join(', ') || 'Limited external data availa
 COMPANY DATA:
 ${JSON.stringify(company, null, 2)}
 
-INTERNAL ANALYSIS SCORES:
-- Market Credibility: ${marketCredibilityScore}/100 (TAM validation, exit activity, industry positioning)
-- Capital Efficiency: ${capitalEfficiencyScore}/100 (burn multiple, runway, growth efficiency)  
-- Execution Credibility: ${executionCredibilityScore}/100 (growth consistency, projection realism)
+INTERNAL ANALYSIS CONTEXT:
+This company demonstrates ${translateMarketCredibility(marketCredibilityScore)} alongside ${translateCapitalEfficiency(capitalEfficiencyScore)}. Historical execution shows ${translateExecutionCredibility(executionCredibilityScore)}. Use these insights to guide tone and emphasis, but do not mention scores or internal rating names in your analysis.
 
 SCENARIO ANALYSIS:
 ${JSON.stringify(scenarios, null, 2)}
@@ -762,19 +798,19 @@ Provide your analysis in the following JSON format:
   "recommendation": "${company.isExistingInvestment 
     ? "Portfolio management with decision math: 'Double Down $X - expect Y.Yx MOIC', 'Pro-rata $X - maintain Z% ownership', 'Bridge $X - extend runway for exit', 'Exit - current MOIC sufficient', etc." 
     : "Investment decision with sizing: 'Invest $X - target Y.Yx MOIC based on scenarios', 'Pass - insufficient risk-adjusted returns', 'Monitor - scores improve to X threshold', etc."}",
-  "timingBucket": "Enhanced timing with scoring context: 'Double Down (Scores: X/Y/Z)', 'Conditional Investment (Market Score <60)', 'Bridge Pending Validation', 'Wait for Better Entry', 'Reinvest when Efficiency >70', 'Hold', 'Exit Opportunistically', 'Decline'",
-  "reasoning": "MUST START with quantitative scores formatted on separate lines: '**Market Credibility:** X/100\\n**Capital Efficiency:** Y/100\\n**Execution Credibility:** Z/100\\n\\nThen 2-3 sentences integrating valuation analysis (revenue multiple vs sector), growth trajectory credibility, and investor validation. Address ownership math and return requirements. Cross-reference scoring to confidence level.",
-  "confidence": "Integer 1-5 driven by composite scores: Average score >80 AND clean terms = 5; Average score 60-80 AND moderate complexity = 3-4; Average score <40 OR complex terms OR low investor interest = 1-2. Must justify based on scoring breakdown.",
-  "keyRisks": "Score-derived risks: If Capital Efficiency <50: 'Capital efficiency concerns (score: X/100)'. If Market Credibility <50: 'Market validation risks (score: X/100)'. If Execution Credibility <50: 'Execution delivery risks (score: X/100)'. Plus traditional risks tied to specific metrics and assumptions.",
-  "suggestedAction": "Scoring-based action with math: 'Scores support $X participation (Y.Yx expected MOIC from base scenario)' or 'Improve Z score to X threshold before investing' or 'Conditional on co-investor validation given low scores'",
+  "timingBucket": "Enhanced timing with qualitative context: 'Double Down', 'Conditional Investment (Pending Market Validation)', 'Bridge Pending Validation', 'Wait for Better Entry', 'Reinvest when Efficiency Improves', 'Hold', 'Exit Opportunistically', 'Decline'",
+  "reasoning": "Provide comprehensive investment analysis covering market positioning, capital deployment efficiency, and execution track record. Use natural investor language focused on valuation analysis (revenue multiple vs sector), growth trajectory credibility, and investor validation. Address ownership math and return requirements without referencing internal scores.",
+  "confidence": "Integer 1-5 based on overall investment conviction: 5 = High confidence with strong fundamentals and clear execution; 4 = Solid opportunity with manageable risks; 3 = Moderate confidence requiring additional validation; 2 = Low confidence with significant concerns; 1 = Very low confidence with critical issues.",
+  "keyRisks": "Traditional investment risks focused on specific metrics and assumptions. Highlight capital efficiency concerns, market validation challenges, or execution delivery risks using qualitative assessments rather than numeric references.",
+  "suggestedAction": "Investment action with rationale: 'Market positioning supports $X participation (Y.Yx expected MOIC from base scenario)' or 'Improve market validation before investing' or 'Conditional on co-investor validation given current risk profile'",
   "projectedExitValueRange": "MANDATORY 3-SCENARIO FORMAT with each scenario on separate lines: '**BEAR:** Revenue $XM × Y.Yx multiple = $ZM exit (Probability: X%)\\n**BASE:** Revenue $XM × Y.Yx multiple = $ZM exit (Probability: X%)\\n**BULL:** Revenue $XM × Y.Yx multiple = $ZM exit (Probability: X%)\\n\\nExpected value: $ZM. At X% ownership, expected return: $YM (Z.Zx MOIC)'. Must show calculation steps and probability weighting.",
-  "riskAdjustedMonetizationSummary": "STEP-BY-STEP with scenario weighting: 'Revenue Projection: Current $XM → Exit $YM (Z% CAGR over W years)\\n\\nScenario Analysis:\\n**Bear:** Z1.Z1x MOIC (X1% probability)\\n**Base:** Z2.Z2x MOIC (X2% probability)\\n**Bull:** Z3.Z3x MOIC (X3% probability)\\n\\nRisk-Adjusted MOIC: (Z1.Z1×X1% + Z2.Z2×X2% + Z3.Z3×X3%) = Z.Zx\\n\\nComposite scores (Market: Y1/100, Capital: Y2/100, Execution: Y3/100) justify X% success probability weighting.'",
+  "riskAdjustedMonetizationSummary": "STEP-BY-STEP with scenario weighting: 'Revenue Projection: Current $XM → Exit $YM (Z% CAGR over W years)\\n\\nScenario Analysis:\\n**Bear:** Z1.Z1x MOIC (X1% probability)\\n**Base:** Z2.Z2x MOIC (X2% probability)\\n**Bull:** Z3.Z3x MOIC (X3% probability)\\n\\nRisk-Adjusted MOIC: (Z1.Z1×X1% + Z2.Z2×X2% + Z3.Z3×X3%) = Z.Zx\\n\\nQualitative risk assessment based on market positioning, capital efficiency, and execution credibility justifies X% success probability weighting.'",
   "executiveSummary": {
-    "valuationAssessment": "⚠️ High (8.1x vs 6.5x sector) / 🟡 Market Rate / ✅ Conservative based on forward revenue multiple vs sector median",
-    "capitalEfficiency": "✅ Strong (Score: X/100) / 🟡 Moderate (Score: X/100) / ⚠️ Concerning (Score: X/100) - include burn multiple and runway context",
-    "marketValidation": "✅ Validated (Score: X/100) / 🟡 Moderate (Score: X/100) / ⚠️ Unproven (Score: X/100) - include TAM and exit activity",
-    "executionRisk": "✅ Low (Score: X/100) / 🟡 Moderate (Score: X/100) / ⚠️ High (Score: X/100) - include growth consistency",
-    "recommendedAction": "🟢 Participate $X (Y.Yx MOIC) / 🟡 Monitor (improve scores) / 🔴 Pass (insufficient returns)"
+    "valuationAssessment": "⚠️ High vs sector / 🟡 Market Rate / ✅ Conservative based on forward revenue multiple vs sector median",
+    "capitalEfficiency": "✅ Strong / 🟡 Moderate / ⚠️ Concerning - include burn multiple and runway context using qualitative language",
+    "marketValidation": "✅ Validated / 🟡 Moderate / ⚠️ Unproven - include TAM and exit activity assessment using qualitative language",
+    "executionRisk": "✅ Low / 🟡 Moderate / ⚠️ High - include growth consistency assessment using qualitative language",
+    "recommendedAction": "🟢 Participate $X (Y.Yx MOIC) / 🟡 Monitor for improvement / 🔴 Pass (insufficient returns)"
   },
   "externalSources": "Brief summary of external research quality and limitations",
   "externalInsights": {
